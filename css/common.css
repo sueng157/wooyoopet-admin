@@ -357,6 +357,37 @@ ul, ol {
   text-decoration: underline;
 }
 
+/* ── Masked Field Component (민감정보 마스킹 + 전체보기) ── */
+.masked-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.masked-field__value {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.masked-field__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.masked-field__toggle:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
 /* ── Utility ── */
 .text-weak   { color: var(--text-weak); }
 .text-coral  { color: var(--coral); }

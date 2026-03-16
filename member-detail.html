@@ -102,7 +102,12 @@
           <span class="info-grid__value">SKT</span>
 
           <span class="info-grid__label">휴대폰번호</span>
-          <span class="info-grid__value">010-****-5678</span>
+          <span class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value" data-masked="010-****-5678" data-raw="010-1234-5678">010-****-5678</span>
+              <button class="masked-field__toggle" type="button" onclick="toggleMask(this)">전체보기</button>
+            </span>
+          </span>
 
           <span class="info-grid__label">현재 모드</span>
           <span class="info-grid__value"><span class="badge badge--guardian">보호자</span></span>
@@ -155,7 +160,12 @@
           <span class="info-grid__value">101동</span>
 
           <span class="info-grid__label">호수</span>
-          <span class="info-grid__value">1234호</span>
+          <span class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value" data-masked="****호" data-raw="1234호">****호</span>
+              <button class="masked-field__toggle" type="button" onclick="toggleMask(this)">전체보기</button>
+            </span>
+          </span>
 
           <span class="info-grid__label">주소 인증 상태</span>
           <span class="info-grid__value"><span class="badge badge--reviewing">심사중</span></span>
@@ -518,6 +528,22 @@
   </main>
 
 </div><!-- .layout -->
+
+<!-- 마스킹 토글 스크립트 -->
+<script>
+function toggleMask(btn) {
+  const valueEl = btn.previousElementSibling;
+  const masked = valueEl.getAttribute('data-masked');
+  const raw = valueEl.getAttribute('data-raw');
+  if (valueEl.textContent === masked) {
+    valueEl.textContent = raw;
+    btn.textContent = '숨기기';
+  } else {
+    valueEl.textContent = masked;
+    btn.textContent = '전체보기';
+  }
+}
+</script>
 
 </body>
 </html>
