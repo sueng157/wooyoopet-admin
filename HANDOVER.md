@@ -14,7 +14,7 @@
 
 | # | 대메뉴 | 상태 | 파일 | PR |
 |---|--------|------|------|----|
-| 0 | 대시보드 | ✅ 완료 | `dashboard.html`, `css/dashboard.css` | 초기커밋 |
+| 0 | 대시보드 | ✅ 완료 | `index.html`, `css/dashboard.css` | 초기커밋 |
 | 1 | 회원관리 | ✅ 완료 | `members.html`, `member-detail.html`, `css/members.css` | #1 |
 | 2 | 유치원관리 | ✅ 완료 | `kindergartens.html`, `kindergarten-detail.html`, `css/kindergartens.css` | #1 |
 | 3 | 반려동물관리 | ✅ 완료 | `pets.html`, `pet-detail.html`, `css/pets.css` | #4 |
@@ -47,7 +47,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 | HTML | CSS 참조 순서 |
 |------|--------------|
-| `dashboard.html` | common → dashboard |
+| `index.html` | common → dashboard |
 | `members.html`, `member-detail.html` | common → components → members |
 | `kindergartens.html`, `kindergarten-detail.html` | common → components → kindergartens |
 | `pets.html`, `pet-detail.html` | common → components → pets |
@@ -121,7 +121,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 현재 링크가 연결된 항목과 아직 `#`인 항목:
 
 ```html
-<a href="dashboard.html" class="sidebar__menu-item">대시보드</a>
+<a href="index.html" class="sidebar__menu-item">대시보드</a>
 <a href="members.html" class="sidebar__menu-item">회원관리</a>
 <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
 <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>

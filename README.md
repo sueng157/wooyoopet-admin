@@ -12,7 +12,7 @@ cd /home/user/webapp
 python3 -m http.server 8080
 ```
 
-브라우저에서 `http://localhost:8080/dashboard.html` 접속.
+브라우저에서 `http://localhost:8080/index.html` 접속.
 
 ---
 
@@ -20,7 +20,7 @@ python3 -m http.server 8080
 
 | # | 메뉴 | 목록 | 상세 | 상태 |
 |---|------|------|------|------|
-| 0 | 대시보드 | `dashboard.html` | — | ✅ |
+| 0 | 대시보드 | `index.html` | — | ✅ |
 | 1 | 회원관리 | `members.html` | `member-detail.html` | ✅ |
 | 2 | 유치원관리 | `kindergartens.html` | `kindergarten-detail.html` | ✅ |
 | 3 | 반려동물관리 | `pets.html` | `pet-detail.html` | ✅ |
@@ -50,7 +50,7 @@ webapp/
 ├── assets/
 │   └── images/
 │       └── logo.png
-├── dashboard.html
+├── index.html
 ├── members.html
 ├── member-detail.html
 ├── kindergartens.html
