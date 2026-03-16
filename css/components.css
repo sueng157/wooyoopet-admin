@@ -1,0 +1,822 @@
+/* ============================================
+   공통 UI 컴포넌트 (Components)
+   필터바, 데이터 테이블, 배지(기본), 페이지네이션,
+   상세 카드, 정보 그리드, 미니 테이블, 갤러리,
+   소개글, 가격표, 프로그레스바, 액션 버튼 등
+   모든 목록+상세 페이지에서 재사용
+   ============================================ */
+
+/* ── 필터 바 ── */
+.filter-bar {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-weak);
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.filter-input,
+.filter-select {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.filter-input--date {
+  width: 150px;
+}
+
+.filter-input--search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-select {
+  min-width: 120px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238C9AA5' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.filter-separator {
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.btn-search {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--gradient);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-search:hover {
+  opacity: 0.85;
+}
+
+/* ── 결과 헤더 ── */
+.result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.result-header__count {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.result-header__count strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.btn-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-excel:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+.btn-excel__icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── 데이터 테이블 ── */
+.data-table-wrap {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.data-table-wrap--scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-weak);
+  text-align: left;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.02);
+  white-space: nowrap;
+}
+
+.data-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(51, 157, 238, 0.03);
+}
+
+.data-table tbody td {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  padding: 13px 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.data-table__link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.data-table__link:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+/* 마스킹 텍스트 */
+.masked {
+  letter-spacing: 0.5px;
+}
+
+/* 금액 우측 정렬 */
+.text-right {
+  text-align: right;
+}
+
+/* 썸네일 이미지 (목록) */
+.thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface-base);
+  flex-shrink: 0;
+}
+
+.thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-base);
+}
+
+.thumb--placeholder svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--text-weak);
+}
+
+/* ── 배지 (기본) ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-badge);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 회원 상태 */
+.badge--normal   { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+.badge--suspended { background: rgba(224, 90, 58, 0.10); color: #E05A3A; }
+.badge--withdrawn { background: rgba(0, 0, 0, 0.04);     color: #8C9AA5; }
+
+/* 모드 */
+.badge--guardian    { background: rgba(51, 157, 238, 0.10); color: #339DEE; }
+.badge--kindergarten { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+
+/* 인증 상태 */
+.badge--unverified { background: rgba(0, 0, 0, 0.04);     color: #8C9AA5; }
+.badge--reviewing  { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+.badge--verified   { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+
+/* 완료/미완료 */
+.badge--done    { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+.badge--notdone { background: rgba(0, 0, 0, 0.04);     color: #8C9AA5; }
+
+/* 필수/선택 */
+.badge--required { background: rgba(51, 157, 238, 0.10); color: #339DEE; }
+.badge--optional { background: rgba(0, 0, 0, 0.04);     color: #8C9AA5; }
+
+/* 결제 상태 */
+.badge--paid      { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+.badge--cancelled { background: rgba(224, 90, 58, 0.10);  color: #E05A3A; }
+.badge--refunded  { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+
+/* 노쇼 소명 */
+.badge--noshow    { background: rgba(224, 90, 58, 0.10);  color: #E05A3A; }
+.badge--claim-received { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+.badge--claim-accepted { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+.badge--claim-rejected { background: rgba(224, 90, 58, 0.10);  color: #E05A3A; }
+
+/* 영업 상태 */
+.badge--open     { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+.badge--vacation { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+
+/* 대표 */
+.badge--primary-pet { background: rgba(51, 157, 238, 0.10); color: #339DEE; }
+
+/* 정산정보 심사 */
+.badge--drafting   { background: rgba(0, 0, 0, 0.04);       color: #8C9AA5; }
+.badge--submitted  { background: rgba(245, 166, 35, 0.10);  color: #F5A623; }
+.badge--approved   { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }
+.badge--rejected   { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }
+
+/* 이니시스 서브몰 */
+.badge--unregistered { background: rgba(0, 0, 0, 0.04);       color: #8C9AA5; }
+.badge--registering  { background: rgba(51, 157, 238, 0.10);  color: #339DEE; }
+.badge--registered   { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }
+.badge--reg-failed   { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }
+
+/* 교육이수 */
+.badge--not-started  { background: rgba(0, 0, 0, 0.04);       color: #8C9AA5; }
+.badge--in-progress  { background: rgba(245, 166, 35, 0.10);  color: #F5A623; }
+.badge--completed    { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }
+
+/* 서약서 */
+.badge--pledge-yes { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }
+.badge--pledge-no  { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }
+
+/* 제재 상태 */
+.badge--no-sanction  { background: rgba(0, 0, 0, 0.04);       color: #8C9AA5; }
+.badge--warning      { background: rgba(245, 166, 35, 0.10);  color: #F5A623; }
+.badge--permanent    { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }
+
+/* 신선도 퍼센트 색상 */
+.freshness--good {
+  color: #2ECC71;
+  font-weight: 700;
+}
+
+.freshness--bad {
+  color: #E05A3A;
+  font-weight: 700;
+}
+
+/* 동의/미동의 */
+.text-agreed    { color: #2ECC71; font-weight: 500; }
+.text-disagreed { color: #8C9AA5; }
+
+/* ── 페이지네이션 ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 24px;
+  padding-bottom: 8px;
+}
+
+.pagination__btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: background 0.15s ease;
+}
+
+.pagination__btn:hover {
+  background: rgba(51, 157, 238, 0.06);
+}
+
+.pagination__btn.active {
+  background: var(--gradient);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.pagination__btn--arrow {
+  color: var(--text-weak);
+}
+
+.pagination__btn--arrow:hover {
+  color: var(--primary);
+}
+
+.pagination__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── 상세 화면 ── */
+
+/* 상단 네비게이션 */
+.detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  background: none;
+  border: none;
+  font-family: var(--font-family);
+}
+
+.btn-back:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-action:hover {
+  opacity: 0.8;
+}
+
+.btn-action--danger {
+  background: rgba(224, 90, 58, 0.10);
+  color: #E05A3A;
+}
+
+.btn-action--success {
+  background: rgba(46, 204, 113, 0.10);
+  color: #2ECC71;
+}
+
+.btn-action--primary {
+  background: var(--gradient);
+  color: #ffffff;
+}
+
+.btn-action--ghost {
+  background: transparent;
+  color: var(--primary);
+}
+
+.btn-action--outline-primary {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-action--outline-coral {
+  background: transparent;
+  color: var(--coral);
+  border: 1px solid var(--coral);
+}
+
+.btn-action--outline-warning {
+  background: transparent;
+  color: #F5A623;
+  border: 1px solid #F5A623;
+}
+
+.btn-action--filled-coral {
+  background: var(--coral);
+  color: #ffffff;
+}
+
+/* 상세 카드 */
+.detail-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.detail-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.detail-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 라벨-값 그리드 (세로 테이블) */
+.info-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  row-gap: 0;
+}
+
+.info-grid--wide {
+  grid-template-columns: 220px 1fr;
+}
+
+.info-grid__label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-weak);
+  padding: 10px 0;
+}
+
+.info-grid__value {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+  padding: 10px 0;
+}
+
+.info-grid__value--link {
+  color: var(--primary);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.info-grid__value--link:hover {
+  text-decoration: underline;
+  opacity: 0.75;
+}
+
+.info-grid__value--danger {
+  color: var(--coral);
+}
+
+/* 프로필 이미지 */
+.profile-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-sidebar);
+  object-fit: cover;
+}
+
+/* 미니 통계 카드 그리드 */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.stat-cards--3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: var(--surface-base);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-card__label {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-weak);
+  margin-bottom: 8px;
+}
+
+.stat-card__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-card__unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-weak);
+  margin-top: 2px;
+}
+
+.stat-card--highlight {
+  background: rgba(51, 157, 238, 0.06);
+}
+
+.stat-card--highlight .stat-card__value {
+  color: var(--primary);
+}
+
+.stat-card--fee .stat-card__value {
+  color: var(--primary);
+}
+
+.stat-card--settlement .stat-card__value {
+  color: var(--text-secondary);
+}
+
+.stat-card--link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-card--link .stat-card__value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.stat-card--link .stat-card__value:hover {
+  text-decoration: underline;
+}
+
+/* 미니 테이블 (상세 내부용) */
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mini-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-weak);
+  text-align: left;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.mini-table thead th:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.mini-table thead th:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.mini-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.mini-table tbody tr:hover {
+  background: rgba(51, 157, 238, 0.03);
+}
+
+.mini-table tbody td {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.mini-table__link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.mini-table__link:hover {
+  text-decoration: underline;
+  opacity: 0.75;
+}
+
+/* 조건부 영역 */
+.conditional-section {
+  position: relative;
+}
+
+.conditional-section__badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  background: rgba(51, 157, 238, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+/* ── 사진 갤러리 ── */
+.photo-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.photo-gallery::-webkit-scrollbar {
+  height: 4px;
+}
+
+.photo-gallery::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+.photo-gallery__item {
+  position: relative;
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-base);
+}
+
+.photo-gallery__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-gallery__badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── 소개글 더보기 ── */
+.intro-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-height: 2.6em;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.intro-text.expanded {
+  max-height: 200px;
+}
+
+.intro-toggle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  font-family: var(--font-family);
+}
+
+.intro-toggle:hover {
+  text-decoration: underline;
+}
+
+/* ── 돌봄비 가격표 ── */
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.price-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-weak);
+  text-align: center;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.price-table thead th:first-child {
+  text-align: left;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.price-table thead th:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.price-table tbody td {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-align: right;
+  padding: 10px 12px;
+}
+
+.price-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.price-table tbody td.na {
+  color: var(--text-weak);
+  text-align: center;
+}
+
+/* ── 교육 프로그레스바 ── */
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar__track {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--gradient);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar__text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
