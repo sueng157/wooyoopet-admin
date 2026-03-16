@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 반려동물관리</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pets.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="dashboard.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item active">반려동물관리</a>
+      <a href="#" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="#" class="sidebar__menu-item">결제관리</a>
+      <a href="#" class="sidebar__menu-item">정산관리</a>
+      <a href="#" class="sidebar__menu-item">채팅관리</a>
+      <a href="#" class="sidebar__menu-item">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">반려동물관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 필터 바 (3행) -->
+      <div class="filter-bar">
+        <!-- 1행: 기간 -->
+        <div class="filter-row">
+          <span class="filter-label">기간</span>
+          <input type="date" class="filter-input filter-input--date" value="2025-01-01">
+          <span class="filter-separator">~</span>
+          <input type="date" class="filter-input filter-input--date" value="2025-12-31">
+        </div>
+        <!-- 2행: 분류 -->
+        <div class="filter-row">
+          <span class="filter-label">분류</span>
+          <select class="filter-select">
+            <option>전체</option>
+            <option>소형</option>
+            <option>중형</option>
+            <option>대형</option>
+          </select>
+        </div>
+        <!-- 3행: 검색 -->
+        <div class="filter-row">
+          <span class="filter-label">검색</span>
+          <select class="filter-select">
+            <option>반려동물 이름</option>
+            <option>보호자 이름</option>
+            <option>견종</option>
+          </select>
+          <input type="text" class="filter-input filter-input--search" placeholder="검색어를 입력하세요">
+          <button class="btn-search">검색</button>
+        </div>
+      </div>
+
+      <!-- 결과 헤더 -->
+      <div class="result-header">
+        <span class="result-header__count">검색 결과 <strong>256</strong>건</span>
+        <button class="btn-excel">
+          <svg class="btn-excel__icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 12l-4-4h2.5V3h3v5H12L8 12zm-6 2h12v1.5H2V14z"/>
+          </svg>
+          내역 다운로드
+        </button>
+      </div>
+
+      <!-- 데이터 테이블 -->
+      <div class="data-table-wrap data-table-wrap--scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>번호</th>
+              <th>반려동물 이름</th>
+              <th>보호자 이름</th>
+              <th>보호자 연락처</th>
+              <th>이미지</th>
+              <th>견종</th>
+              <th>성별</th>
+              <th>나이</th>
+              <th>몸무게</th>
+              <th>크기</th>
+              <th>중성화</th>
+              <th>예방접종</th>
+              <th>대표</th>
+              <th>돌봄 횟수</th>
+              <th>등록일</th>
+              <th>편집</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 1행 -->
+            <tr>
+              <td>1</td>
+              <td>코코</td>
+              <td>김민수</td>
+              <td class="masked">010-****-1234</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>비숑프리제</td>
+              <td><span class="badge badge--male">수컷</span></td>
+              <td>4세</td>
+              <td>5.8kg</td>
+              <td><span class="badge badge--size-s">소형</span></td>
+              <td><span class="badge badge--neutered">했어요</span></td>
+              <td><span class="badge badge--vaccinated">했어요</span></td>
+              <td><span class="badge badge--rep-yes">대표</span></td>
+              <td>12회</td>
+              <td>2025-11-03</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 2행 -->
+            <tr>
+              <td>2</td>
+              <td>두부</td>
+              <td>김민수</td>
+              <td class="masked">010-****-1234</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>포메라니안</td>
+              <td><span class="badge badge--female">암컷</span></td>
+              <td>2세</td>
+              <td>3.1kg</td>
+              <td><span class="badge badge--size-s">소형</span></td>
+              <td><span class="badge badge--not-neutered">안 했어요</span></td>
+              <td><span class="badge badge--vaccinated">했어요</span></td>
+              <td><span class="badge badge--rep-no">일반</span></td>
+              <td>8회</td>
+              <td>2025-11-05</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 3행 -->
+            <tr>
+              <td>3</td>
+              <td>몽이</td>
+              <td>이영희</td>
+              <td class="masked">010-****-5678</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>말티즈</td>
+              <td><span class="badge badge--male">수컷</span></td>
+              <td>6세</td>
+              <td>4.2kg</td>
+              <td><span class="badge badge--size-s">소형</span></td>
+              <td><span class="badge badge--neutered">했어요</span></td>
+              <td><span class="badge badge--vaccinated">했어요</span></td>
+              <td><span class="badge badge--rep-yes">대표</span></td>
+              <td>22회</td>
+              <td>2025-10-12</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 4행 -->
+            <tr>
+              <td>4</td>
+              <td>초코</td>
+              <td>박서연</td>
+              <td class="masked">010-****-9012</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>믹스견</td>
+              <td><span class="badge badge--male">수컷</span></td>
+              <td>3세</td>
+              <td>12.5kg</td>
+              <td><span class="badge badge--size-m">중형</span></td>
+              <td><span class="badge badge--neutered">했어요</span></td>
+              <td><span class="badge badge--not-vaccinated">안 했어요</span></td>
+              <td><span class="badge badge--rep-yes">대표</span></td>
+              <td>5회</td>
+              <td>2025-09-28</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 5행 -->
+            <tr>
+              <td>5</td>
+              <td>뽀삐</td>
+              <td>최지훈</td>
+              <td class="masked">010-****-3456</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>골든리트리버</td>
+              <td><span class="badge badge--female">암컷</span></td>
+              <td>5세</td>
+              <td>28.3kg</td>
+              <td><span class="badge badge--size-l">대형</span></td>
+              <td><span class="badge badge--not-neutered">안 했어요</span></td>
+              <td><span class="badge badge--vaccinated">했어요</span></td>
+              <td><span class="badge badge--rep-no">일반</span></td>
+              <td>3회</td>
+              <td>2025-08-15</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 6행 -->
+            <tr>
+              <td>6</td>
+              <td>보리</td>
+              <td>정하늘</td>
+              <td class="masked">010-****-7890</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>시바이누</td>
+              <td><span class="badge badge--male">수컷</span></td>
+              <td>1세</td>
+              <td>9.8kg</td>
+              <td><span class="badge badge--size-s">소형</span></td>
+              <td><span class="badge badge--neutered">했어요</span></td>
+              <td><span class="badge badge--vaccinated">했어요</span></td>
+              <td><span class="badge badge--rep-yes">대표</span></td>
+              <td>15회</td>
+              <td>2025-12-01</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+            <!-- 7행 -->
+            <tr>
+              <td>7</td>
+              <td>루이</td>
+              <td>한수정</td>
+              <td class="masked">010-****-2345</td>
+              <td><div class="thumb thumb--placeholder"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div></td>
+              <td>푸들</td>
+              <td><span class="badge badge--male">수컷</span></td>
+              <td>7세</td>
+              <td>6.1kg</td>
+              <td><span class="badge badge--size-s">소형</span></td>
+              <td><span class="badge badge--not-neutered">안 했어요</span></td>
+              <td><span class="badge badge--not-vaccinated">안 했어요</span></td>
+              <td><span class="badge badge--rep-no">일반</span></td>
+              <td>0회</td>
+              <td>2025-12-10</td>
+              <td><a href="pet-detail.html" class="data-table__link">상세</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 페이지네이션 -->
+      <div class="pagination">
+        <button class="pagination__btn pagination__btn--arrow" disabled>«</button>
+        <button class="pagination__btn pagination__btn--arrow" disabled>‹</button>
+        <button class="pagination__btn active">1</button>
+        <button class="pagination__btn">2</button>
+        <button class="pagination__btn">3</button>
+        <button class="pagination__btn">4</button>
+        <button class="pagination__btn">5</button>
+        <button class="pagination__btn pagination__btn--arrow">›</button>
+        <button class="pagination__btn pagination__btn--arrow">»</button>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+</body>
+</html>
