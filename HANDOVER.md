@@ -19,15 +19,15 @@
 | 2 | 유치원관리 | ✅ 완료 | `kindergartens.html`, `kindergarten-detail.html`, `css/kindergartens.css` | #1 |
 | 3 | 반려동물관리 | ✅ 완료 | `pets.html`, `pet-detail.html`, `css/pets.css` | #4 |
 | 4 | 돌봄예약관리 | ✅ 완료 | `reservations.html`, `reservation-detail.html`, `css/reservations.css` | #5 |
-| 5 | 결제관리 | ✅ 완료 | `payments.html`, `payment-detail.html`, `refund-detail.html`, `css/payments.css` | #6 |
-| 6 | 정산관리 | ⬜ 미착수 | — | — |
-| 7 | 채팅관리 | ⬜ 미착수 | — | — |
-| 8 | 후기관리 | ⬜ 미착수 | — | — |
+| 5 | 결제관리 | ✅ 완료 | `payments.html`, `payment-detail.html`, `refund-detail.html`, `css/payments.css` | #10 |
+| 6 | 정산관리 | ✅ 완료 | `settlements.html`, `settlement-info-detail.html`, `settlement-detail.html`, `css/settlements.css` | #11 |
+| 7 | 채팅관리 | ✅ 완료 | `chats.html`, `chat-detail.html`, `report-detail.html`, `css/chats.css` | #13 |
+| 8 | 후기관리 | ⬜ 다음 작업 | — | — |
 | 9 | 교육관리 | ⬜ 미착수 | — | — |
 | 10 | 콘텐츠관리 | ⬜ 미착수 | — | — |
 | 11 | 설정 | ⬜ 미착수 | — | — |
 
-> PR #2 = CSS 리팩터링 (members.css/kindergartens.css → components.css 분리), PR #3 = CSS 구조 리팩터링
+> 문서 동기화 PR: #12 (정산관리 스펙 반영), #14 (채팅관리 스펙 반영)
 
 ---
 
@@ -38,7 +38,7 @@
 ```
 common.css          → 전역 변수, 리셋, 레이아웃(sidebar/main/header), 폰트
   ↓
-components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지, 페이지네이션, 상세카드, info-grid, mini-table, 갤러리 등)
+components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지, 페이지네이션, 상세카드, info-grid, mini-table, 갤러리, 탭바 등)
   ↓
 [페이지전용].css     → 해당 메뉴에만 필요한 추가 배지/스타일
 ```
@@ -53,8 +53,10 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `pets.html`, `pet-detail.html` | common → components → pets |
 | `reservations.html`, `reservation-detail.html` | common → components → pets → reservations |
 | `payments.html`, `payment-detail.html`, `refund-detail.html` | common → components → pets → reservations → payments |
+| `settlements.html`, `settlement-info-detail.html`, `settlement-detail.html` | common → components → pets → reservations → settlements |
+| `chats.html`, `chat-detail.html`, `report-detail.html` | common → components → pets → reservations → chats |
 
-> **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드함
+> **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드. settlements와 chats도 모달·배지 등을 위해 pets.css + reservations.css를 함께 로드함.
 
 ### 3-3. 페이지전용 CSS 원칙
 
@@ -117,27 +119,25 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 </html>
 ```
 
-### 4-2. 사이드바 메뉴 (전체)
-
-현재 링크가 연결된 항목과 아직 `#`인 항목:
+### 4-2. 사이드바 메뉴 (현재 상태)
 
 ```html
 <a href="index.html" class="sidebar__menu-item">대시보드</a>
 <a href="members.html" class="sidebar__menu-item">회원관리</a>
 <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
 <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
-<a href="reservations.html" class="sidebar__menu-item active">돌봄예약관리</a>
-<a href="payments.html" class="sidebar__menu-item">결제관리</a>    ← 5번 연결완료
-<!-- 6번부터 미연결 -->
-<a href="#" class="sidebar__menu-item">정산관리</a>
-<a href="#" class="sidebar__menu-item">채팅관리</a>
+<a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+<a href="payments.html" class="sidebar__menu-item">결제관리</a>
+<a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+<a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+<!-- 8번부터 미연결 -->
 <a href="#" class="sidebar__menu-item">후기관리</a>
 <a href="#" class="sidebar__menu-item">교육관리</a>
 <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
 <a href="#" class="sidebar__menu-item">설정</a>
 ```
 
-> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**의 사이드바도 동일하게 업데이트할 것.
+> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 18개)의 사이드바도 동일하게 업데이트할 것.
 
 ### 4-3. 목록 페이지 패턴
 
@@ -172,7 +172,8 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 </div>
 ```
 
-> 모달 클래스: `modal__btn--delete`(빨강), `modal__btn--confirm-danger`(빨강), `modal__btn--confirm-warning`(주황)
+> 모달 클래스: `modal__btn--delete`(빨강), `modal__btn--confirm-danger`(빨강), `modal__btn--confirm-warning`(주황), `modal__btn--confirm-primary`(파랑)
+> 모달 타이틀 오버라이드: `modal__title--primary`(파랑), `modal__title--warning`(주황) — chats.css에 정의
 > 모달 열기: `onclick="document.getElementById('xxxModal').classList.add('active')"`
 > 모달 닫기: `onclick="document.getElementById('xxxModal').classList.remove('active')"`
 
@@ -189,12 +190,14 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | 날짜 형식 | `yyyy-mm-dd hh:mm` |
 | 돌봄일시 형식 | `yyyy-mm-dd hh:mm ~ yyyy-mm-dd hh:mm (X일)` |
 | 금액 | 우측정렬, 천단위 콤마 + "원" (예: `55,000원`) |
+| 목록 vs 상세 이름 | 목록화면에서는 **닉네임만** 표시, 상세화면에서 **실명+닉네임** 모두 표시 (채팅관리에서 협의, 향후 다른 메뉴에도 적용 고려) |
 
 ### 5-2. JavaScript 관련
 
-- **현재 JS는 최소한만 사용**: 모달 열기/닫기, textarea oninput 활성화 정도의 인라인 JS만
+- **현재 JS는 최소한만 사용**: 모달 열기/닫기, textarea oninput 활성화, 탭 전환 정도의 인라인 JS만
 - `member-detail.html`과 `kindergarten-detail.html`에는 `toggleMask()` JS가 `<script>` 태그로 들어있음 (이전 작업에서 추가됨)
 - `pet-detail.html`과 `reservation-detail.html`에는 해당 JS가 **없음** → 이 불일치는 **현재 상태 그대로 유지**하기로 결정됨
+- 탭 전환 스크립트는 `switchTab(tabId)` 함수로 통일 (`payments.html`, `settlements.html`, `chats.html`에서 사용)
 
 ### 5-3. 환불 프로세스 (결제관리·돌봄예약관리 공통)
 
@@ -204,46 +207,74 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 - 환불 정보 항목: 취소 요청자, 취소 일시, **위약금 비율**, **위약금 결제금액**, **기존 결제 취소(환불) 금액**, 환불 처리 상태, 환불 상세 링크
 
-### 5-4. 배지 컬러 체계
+### 5-4. 뱃지 vs 텍스트 구분 규칙
+
+- **뱃지(badge)**: 상태/유형 식별이 중요하고 빠른 시각적 스캐닝이 필요한 항목에 사용
+- **색상 텍스트**: 보조 정보나 단순 예/아니오 표시에 사용
+- 예: 채팅관리에서 신고 여부(색상 텍스트), 제재 유형(색상 텍스트) vs 채팅방 상태(뱃지), 처리상태(뱃지)
+- 뱃지가 과도하게 많아지지 않도록 주의 (채팅관리: 신규 6종 + 재사용 2종 = 총 8종)
+
+### 5-5. 배지 컬러 체계
 
 | 의미 | 색상 | 예시 클래스 |
 |------|------|-----------|
-| 긍정/완료/활성 | green `#2ECC71` | badge--done, badge--open, badge--neutered |
-| 대기/진행중/경고 | orange `#F5A623` | badge--res-pending, badge--reviewing, badge--warning |
-| 주요/정보 | blue `#339DEE` | badge--guardian, badge--res-confirmed, badge--primary |
+| 긍정/완료/활성 | green `#2ECC71` | badge--done, badge--open, badge--chat-active, badge--rpt-completed |
+| 대기/진행중/경고 | orange `#F5A623` | badge--res-pending, badge--reviewing, badge--rpt-received |
+| 주요/정보 | blue `#339DEE` | badge--guardian, badge--res-confirmed, badge--rpt-processing |
 | 부정/실패/위험 | red `#E05A3A` | badge--res-rejected, badge--res-noshow, badge--suspended |
-| 비활성/해당없음 | gray `#8C9AA5` | badge--withdrawn, badge--not-neutered, badge--res-cancel-g |
+| 비활성/해당없음 | gray `#8C9AA5` | badge--withdrawn, badge--chat-inactive, badge--rpt-dismissed |
 
-### 5-5. 파일 크기 참고
+### 5-6. 정산관리 특이사항
+
+- **탭2 정산내역 레이아웃 순서**: 필터 바 → 상단 요약 영역 → 결과 헤더 → 데이터 테이블 → 페이지네이션 (협의로 확정)
+- **상단 요약 10항목**: 조회 기간, 돌봄 결제금액, 위약금 결제금액, 유효 거래금액, 플랫폼 수수료(20%), 유치원 정산금액, 정산 예정 건수/금액, 정산 완료 건수/금액
+- **거래유형 컬럼**: '돌봄결제'/'위약금' 뱃지로 구분 (위약금 수입 컬럼 삭제, 거래유형으로 대체)
+
+### 5-7. 채팅관리 특이사항
+
+- **목록화면 닉네임 표시**: 채팅내역 12컬럼 (이름 제외, 닉네임만), 신고접수 11컬럼 (이름→닉네임)
+- **메시지 내역 말풍선 UI**: 보호자(좌측 파랑 bubble), 유치원(우측 주황 bubble), 시스템(중앙 회색 bubble), 날짜 구분선, 닉네임·시간·읽음여부 메타 표시
+- **모달**: 채팅방 강제 비활성화(1개), 처리상태 변경/제재 적용/기각 처리(3개)
+
+### 5-8. CSS 리팩터링 방침
+
+- CSS 리팩터링은 **모든 대메뉴 HTML 구현이 완료된 후** 한번에 수행하기로 결정
+- 현재는 각 메뉴 작업 시 페이지전용 CSS에 필요한 스타일을 추가하는 방식으로 진행
+
+---
+
+## 6. 파일 크기 참고
 
 ```
 css/common.css          397줄  (전역변수, 리셋, 레이아웃)
-css/components.css      822줄  (공통 UI 컴포넌트)
+css/components.css      871줄  (공통 UI 컴포넌트 + 탭바)
 css/dashboard.css       273줄  (대시보드 전용)
-css/members.css           6줄  (주석만, 모두 components.css로 이전)
-css/kindergartens.css     6줄  (주석만, 모두 components.css로 이전)
-css/pets.css            191줄  (반려동물+예약상태 배지)
-css/reservations.css    121줄  (돌봄예약 전용 배지/모달)
-css/payments.css         43줄  (결제관리 전용 스타일)
+css/members.css           6줄  (주석만)
+css/kindergartens.css     6줄  (주석만)
+css/pets.css            191줄  (반려동물+예약상태 배지, 모달 기본 스타일)
+css/reservations.css    120줄  (돌봄예약 전용 배지/모달 확장)
+css/payments.css         43줄  (결제관리 전용)
+css/settlements.css     107줄  (정산관리 전용 배지/버튼/요약)
+css/chats.css           162줄  (채팅관리 전용 배지/말풍선/텍스트)
 ```
 
-> **components.css 업데이트**: `.tab-bar`, `.tab-bar__item`, `.tab-content` 탭바 컴포넌트 추가 (결제관리부터 사용, 정산/후기 등에서도 재사용 예정)
+---
+
+## 7. 작업 프로세스 (매 대메뉴마다 반복)
+
+1. **스펙 확인**: `full_spec_with_tables.md` 해당 섹션 읽기
+2. **UX/UI 디자인 초안**을 마크다운으로 작성 → 사용자 검토 → 수정 → OK
+3. **코딩**: `css/[페이지전용].css` + `[목록].html` + `[상세].html` 생성
+4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 18개)에서 해당 메뉴의 `href="#"`을 실제 파일로 변경
+5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
+6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
+7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `main`으로
+8. **사용자 확인 후 머지**
+9. **스펙 동기화**: 협의로 변경/추가된 내용을 `full_spec_with_tables.md`, `README.md`에 반영 → 별도 PR
 
 ---
 
-## 6. 작업 프로세스 (매 대메뉴마다 반복)
-
-1. **UX/UI 디자인 초안**을 마크다운으로 작성 → 사용자 검토 → 수정 → OK
-2. **코딩**: `css/[페이지전용].css` + `[목록].html` + `[상세].html` 생성
-3. **사이드바 링크 업데이트**: 기존 전체 HTML 파일에서 해당 메뉴의 `href="#"`을 실제 파일로 변경
-4. **스크린샷 확인**: Playwright로 캡처 후 시각적 확인
-5. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
-6. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `main`으로
-7. **사용자 확인 후 머지**
-
----
-
-## 7. Git 워크플로우
+## 8. Git 워크플로우
 
 ```bash
 # 1. main 동기화
@@ -266,54 +297,24 @@ git push -f origin genspark_ai_developer
 gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 ```
 
----
-
-## 8. 완료된 작업: 5. 결제관리
-
-### 구현 내용
-- **탭 구조**: `payments.html`에 탭바(결제내역 / 환불·위약금) 구현, 인라인 JS로 탭 전환
-- **결제내역 탭**: 필터바(기간·상태·검색), 15칼럼 테이블 (번호~상세), 결제상태 배지 2종(결제완료/결제취소)
-- **환불/위약금 탭**: 필터바(기간·처리상태·요청자·검색), 17칼럼 테이블, 요청자/처리상태 배지 재사용
-- **payment-detail.html**: 4영역 (결제 기본정보, 결제자 정보, 관련 예약, 환불 정보[조건부]), 결제취소 모달 1개
-- **refund-detail.html**: 5영역 (환불 기본정보, 위약금 산정, 환불 처리 정보, 위약금 결제 정보[조건부], 관련 링크), 모달 3개 (직접 환불, 위약금 면제, 직권 취소)
-- **payments.css**: 탭 전환 시 활성 콘텐츠 전용 스타일, 위약금 금액 강조 등
-- **components.css**: `.tab-bar` 컴포넌트 추가 (재사용 가능)
-
-### 환불 정보 표시 구조 (결제 상세)
-| 라벨 | 값 |
-|------|----|
-| 환불 고유번호 | 클릭 시 환불/위약금 상세로 이동 |
-| 환불 요청자 | 보호자 / 유치원 |
-| 환불(기존 결제 취소) 요청일시 | |
-| 환불(기존 결제 취소) 금액 | |
-| 위약금 결제금액 | |
-| 처리상태 | 배지 |
-
-### 위약금 산정 표시 구조 (환불 상세)
-| 라벨 | 값 |
-|------|----|
-| 등원 예정일시 | |
-| 취소 요청일시 | |
-| 등원까지 남은시간 | 시간 단위 (예: 42시간 30분) |
-| 위약금 적용 규정 | 예: "24~72시간 전 취소 — 50% 환불" |
-| 위약금 비율 | 강조 표시 |
-| 위약금 금액 | 강조 표시 |
-| 환불(기존 결제 취소) 금액 | 볼드 |
+> **인증 실패 시**: `setup_github_environment` 도구 실행 후 재시도
 
 ---
 
-## 9. 다음 작업: 6. 정산관리
+## 9. 다음 작업: 8. 후기관리
 
-`full_spec_with_tables.md`의 `## 6. 정산관리` 섹션 참조.
+`full_spec_with_tables.md`의 `## 8. 후기관리` 섹션 참조.
 
 **예상 특징**:
-- 탭 구조 재사용 가능 (components.css `.tab-bar`)
-- 정산 목록, 정산 상세 페이지
-- 정산 관련 배지 (승인/대기/실패 등)
+- 탭 구조 재사용 (보호자 후기 / 유치원 후기)
+- 후기 목록, 후기 상세 페이지
+- 만족도 배지 (`badge--satis-best`, `badge--satis-good`, `badge--satis-bad` — pets.css에 이미 정의됨)
+- 후기 내용 미리보기 (목록), 전문 표시 (상세)
+- 후기 삭제/숨김 처리 모달
 
 ---
 
-## 9. 서버 실행 방법
+## 10. 서버 실행 방법
 
 ```bash
 cd /home/user/webapp && python3 -m http.server 8080
