@@ -1,0 +1,107 @@
+/* ============================================
+   정산관리 (Settlements) — 전용 CSS
+   공통 UI 컴포넌트는 components.css 에 정의
+   탭 바 컴포넌트는 components.css 에 정의
+   이니시스 등록상태 배지는 components.css 에 정의
+   결제/환불 배지는 reservations.css 에 정의
+   액터 배지는 reservations.css 에 정의
+   이 파일은 정산관리 페이지에만 필요한 추가 스타일
+   ============================================ */
+
+/* ── 정산상태 배지 ── */
+.badge--stl-scheduled { background: rgba(245, 166, 35, 0.10);  color: #F5A623; }
+.badge--stl-completed { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }
+.badge--stl-hold      { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }
+
+/* ── 거래유형 배지 ── */
+.badge--stl-care    { background: rgba(51, 157, 238, 0.10);  color: #339DEE; }
+.badge--stl-penalty { background: rgba(245, 166, 35, 0.10);  color: #F5A623; }
+
+/* ── 일괄 정산완료 버튼 (result-header 내) ── */
+.btn-batch-settle {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-right: 8px;
+}
+
+.btn-batch-settle:hover {
+  background: var(--primary-hover);
+}
+
+/* ── 강제 승인 버튼 (초록) ── */
+.btn-action--confirm {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2ECC71;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-action--confirm:hover {
+  background: #27AE60;
+}
+
+/* ── 보류 해제 버튼 (아웃라인) ── */
+.btn-action--outline {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-action--outline:hover {
+  background: var(--surface-base);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+/* ── 정산금액 강조 (상세 화면) ── */
+.settlement-amount-highlight {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ── 상단 요약 2행 래퍼 ── */
+.summary-section {
+  margin-bottom: 24px;
+}
+
+.summary-section .stat-cards {
+  margin-bottom: 12px;
+}
+
+.summary-section .stat-cards:last-child {
+  margin-bottom: 0;
+}
+
+/* ── 체크박스 칼럼 ── */
+.data-table__checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+.data-table__checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}

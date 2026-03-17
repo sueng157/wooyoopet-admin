@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 정산정보 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pets.css">
+  <link rel="stylesheet" href="css/reservations.css">
+  <link rel="stylesheet" href="css/settlements.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item active">정산관리</a>
+      <a href="#" class="sidebar__menu-item">채팅관리</a>
+      <a href="#" class="sidebar__menu-item">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">정산정보 상세</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 상단 네비게이션 -->
+      <div class="detail-top">
+        <a href="settlements.html" class="btn-back">← 정산정보 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--primary" onclick="document.getElementById('reRegisterModal').classList.add('active')">이니시스 재등록</button>
+          <button class="btn-action btn-action--confirm" onclick="document.getElementById('forceApproveModal').classList.add('active')">강제 승인</button>
+          <button class="btn-action btn-action--danger" onclick="document.getElementById('forceRejectModal').classList.add('active')">강제 거절</button>
+        </div>
+      </div>
+
+      <!-- 영역 1: 운영자 기본정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">운영자 기본정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">운영자 성명</div>
+          <div class="info-grid__value">홍길동</div>
+
+          <div class="info-grid__label">생년월일</div>
+          <div class="info-grid__value">1985-03-15</div>
+
+          <div class="info-grid__label">주민등록번호</div>
+          <div class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value">850315-1******</span>
+              <button class="masked-field__toggle">[전체보기]</button>
+            </span>
+          </div>
+
+          <div class="info-grid__label">핸드폰</div>
+          <div class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value">010-****-1234</span>
+              <button class="masked-field__toggle">[전체보기]</button>
+            </span>
+          </div>
+
+          <div class="info-grid__label">이메일</div>
+          <div class="info-grid__value">hong@email.com</div>
+
+          <div class="info-grid__label">회원번호</div>
+          <div class="info-grid__value"><a href="member-detail.html" class="data-table__link">M-00000123</a></div>
+        </div>
+      </div>
+
+      <!-- 영역 2: 사업자 정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">사업자 정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">사업자 유형</div>
+          <div class="info-grid__value"><span class="badge badge--kindergarten">사업자</span></div>
+
+          <div class="info-grid__label">사업자등록번호</div>
+          <div class="info-grid__value">123-45-67890</div>
+
+          <div class="info-grid__label">상호명</div>
+          <div class="info-grid__value">밤톨이네 펫케어</div>
+
+          <div class="info-grid__label">업종·업태</div>
+          <div class="info-grid__value">서비스업 / 반려동물 돌봄</div>
+        </div>
+      </div>
+
+      <!-- 영역 3: 계좌 정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">계좌 정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">정산 은행</div>
+          <div class="info-grid__value">국민은행</div>
+
+          <div class="info-grid__label">계좌번호</div>
+          <div class="info-grid__value">123456789012</div>
+
+          <div class="info-grid__label">예금주</div>
+          <div class="info-grid__value">홍길동</div>
+        </div>
+      </div>
+
+      <!-- 영역 4: 이니시스 서브몰 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">이니시스 서브몰</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">판매자 ID</div>
+          <div class="info-grid__value">wooyoo_sub_001</div>
+
+          <div class="info-grid__label">서브몰 코드</div>
+          <div class="info-grid__value">INI-SUB-20260315</div>
+
+          <div class="info-grid__label">등록상태</div>
+          <div class="info-grid__value"><span class="badge badge--registered">완료</span></div>
+
+          <div class="info-grid__label">실패 사유</div>
+          <div class="info-grid__value">—</div>
+
+          <div class="info-grid__label">등록 요청일시</div>
+          <div class="info-grid__value">2026-03-10 14:00</div>
+
+          <div class="info-grid__label">등록 완료일시</div>
+          <div class="info-grid__value">2026-03-10 14:30</div>
+        </div>
+      </div>
+
+      <!-- 영역 5: 유치원 정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">유치원 정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">유치원명</div>
+          <div class="info-grid__value">밤톨이네</div>
+
+          <div class="info-grid__label">유치원번호</div>
+          <div class="info-grid__value"><a href="kindergarten-detail.html" class="data-table__link">K-00000045</a></div>
+
+          <div class="info-grid__label">영업상태</div>
+          <div class="info-grid__value"><span class="badge badge--open">영업중</span></div>
+        </div>
+      </div>
+
+      <!-- 영역 6: 처리 이력 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">처리 이력</h3>
+        </div>
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>변경일시</th>
+              <th>이전 상태</th>
+              <th>변경 상태</th>
+              <th>처리 주체</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026-03-10 14:30</td>
+              <td><span class="badge badge--registering">요청중</span></td>
+              <td><span class="badge badge--registered">완료</span></td>
+              <td><span class="badge badge--actor-system">시스템</span></td>
+              <td>이니시스 자동 승인</td>
+            </tr>
+            <tr>
+              <td>2026-03-10 14:00</td>
+              <td><span class="badge badge--unregistered">미등록</span></td>
+              <td><span class="badge badge--registering">요청중</span></td>
+              <td><span class="badge badge--actor-system">시스템</span></td>
+              <td>정산정보 제출 시 자동 요청</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /.content -->
+  </div><!-- /.main -->
+</div><!-- /.layout -->
+
+<!-- ==================== 모달 ==================== -->
+
+<!-- 모달 1: 이니시스 재등록 -->
+<div class="modal-overlay" id="reRegisterModal">
+  <div class="modal">
+    <div class="modal__title">이니시스 재등록 요청</div>
+    <div class="modal__message">해당 유치원의 서브몰 등록을 다시 요청합니다.</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('reRegisterModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">재등록 요청</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달 2: 강제 승인 -->
+<div class="modal-overlay" id="forceApproveModal">
+  <div class="modal">
+    <div class="modal__title">관리자 강제 승인</div>
+    <div class="modal__warning">이니시스 등록 절차를 건너뛰고 강제로 승인합니다.</div>
+    <div class="modal__label">승인 사유 <span style="color:#E05A3A;">*</span></div>
+    <textarea class="modal__textarea" id="approveReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('approveBtn').disabled = this.value.trim() === ''"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceApproveModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-warning" id="approveBtn" disabled>강제 승인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달 3: 강제 거절 -->
+<div class="modal-overlay" id="forceRejectModal">
+  <div class="modal">
+    <div class="modal__title">관리자 강제 거절</div>
+    <div class="modal__warning">정산정보 등록을 거절합니다. 유치원은 정산정보를 다시 제출해야 합니다.</div>
+    <div class="modal__label">거절 사유 <span style="color:#E05A3A;">*</span></div>
+    <textarea class="modal__textarea" id="rejectReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('rejectBtn').disabled = this.value.trim() === ''"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceRejectModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-danger" id="rejectBtn" disabled>강제 거절</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

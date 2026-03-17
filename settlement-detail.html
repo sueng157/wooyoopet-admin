@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 정산내역 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pets.css">
+  <link rel="stylesheet" href="css/reservations.css">
+  <link rel="stylesheet" href="css/settlements.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item active">정산관리</a>
+      <a href="#" class="sidebar__menu-item">채팅관리</a>
+      <a href="#" class="sidebar__menu-item">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">정산내역 상세</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 상단 네비게이션 -->
+      <div class="detail-top">
+        <a href="settlements.html" class="btn-back">← 정산내역 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--primary" onclick="document.getElementById('settleCompleteModal').classList.add('active')">정산완료 처리</button>
+          <button class="btn-action btn-action--warning" onclick="document.getElementById('settleHoldModal').classList.add('active')">정산보류</button>
+          <button class="btn-action btn-action--outline" onclick="document.getElementById('holdReleaseModal').classList.add('active')">보류 해제</button>
+        </div>
+      </div>
+
+      <!-- 영역 1: 정산 기본정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">정산 기본정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">정산 고유번호</div>
+          <div class="info-grid__value">STL-00001234</div>
+
+          <div class="info-grid__label">정산 예정일</div>
+          <div class="info-grid__value">2026-03-20</div>
+
+          <div class="info-grid__label">정산상태</div>
+          <div class="info-grid__value"><span class="badge badge--stl-scheduled">정산예정</span></div>
+
+          <div class="info-grid__label">정산 완료일</div>
+          <div class="info-grid__value">—</div>
+
+          <div class="info-grid__label">보류 사유</div>
+          <div class="info-grid__value">—</div>
+        </div>
+      </div>
+
+      <!-- 영역 2: 금액 상세 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">금액 상세</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">거래유형</div>
+          <div class="info-grid__value"><span class="badge badge--stl-care">돌봄결제</span></div>
+
+          <div class="info-grid__label">결제금액</div>
+          <div class="info-grid__value"><span class="payment-amount-highlight">55,000원</span></div>
+
+          <div class="info-grid__label">수수료율</div>
+          <div class="info-grid__value">20%</div>
+
+          <div class="info-grid__label">수수료 금액</div>
+          <div class="info-grid__value">11,000원</div>
+
+          <div class="info-grid__label">정산금액</div>
+          <div class="info-grid__value"><span class="settlement-amount-highlight">44,000원</span></div>
+        </div>
+      </div>
+
+      <!-- 영역 3: 유치원 계좌정보 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">유치원 계좌정보</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">유치원명</div>
+          <div class="info-grid__value">밤톨이네</div>
+
+          <div class="info-grid__label">운영자 성명</div>
+          <div class="info-grid__value">홍길동</div>
+
+          <div class="info-grid__label">정산 은행</div>
+          <div class="info-grid__value">국민은행</div>
+
+          <div class="info-grid__label">계좌번호</div>
+          <div class="info-grid__value">123456789012</div>
+
+          <div class="info-grid__label">예금주</div>
+          <div class="info-grid__value">홍길동</div>
+
+          <div class="info-grid__label">서브몰 코드</div>
+          <div class="info-grid__value">INI-SUB-20260315</div>
+        </div>
+      </div>
+
+      <!-- 영역 4: 관련 링크 -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h3 class="detail-card__title">관련 링크</h3>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">결제번호</div>
+          <div class="info-grid__value"><a href="payment-detail.html" class="data-table__link">PAY-00001234</a></div>
+
+          <div class="info-grid__label">예약번호</div>
+          <div class="info-grid__value"><a href="reservation-detail.html" class="data-table__link">R-00001234</a></div>
+
+          <div class="info-grid__label">보호자 회원번호</div>
+          <div class="info-grid__value"><a href="member-detail.html" class="data-table__link">M-00000456</a></div>
+
+          <div class="info-grid__label">유치원번호</div>
+          <div class="info-grid__value"><a href="kindergarten-detail.html" class="data-table__link">K-00000045</a></div>
+
+          <div class="info-grid__label">환불번호</div>
+          <div class="info-grid__value">—</div>
+        </div>
+      </div>
+
+    </div><!-- /.content -->
+  </div><!-- /.main -->
+</div><!-- /.layout -->
+
+<!-- ==================== 모달 ==================== -->
+
+<!-- 모달 1: 정산완료 처리 -->
+<div class="modal-overlay" id="settleCompleteModal">
+  <div class="modal">
+    <div class="modal__title">정산완료 처리</div>
+    <div class="modal__message">선택한 건의 정산을 완료 처리합니다.</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('settleCompleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">정산완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달 2: 정산보류 -->
+<div class="modal-overlay" id="settleHoldModal">
+  <div class="modal">
+    <div class="modal__title">정산보류</div>
+    <div class="modal__warning">해당 정산을 보류합니다. 보류 사유를 입력하세요.</div>
+    <div class="modal__label">보류 사유 <span style="color:#E05A3A;">*</span></div>
+    <textarea class="modal__textarea" id="holdReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('holdBtn').disabled = this.value.trim() === ''"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('settleHoldModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-warning" id="holdBtn" disabled>정산보류</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달 3: 보류 해제 -->
+<div class="modal-overlay" id="holdReleaseModal">
+  <div class="modal">
+    <div class="modal__title">보류 해제</div>
+    <div class="modal__message">정산 보류를 해제하고 정산예정 상태로 복원합니다.</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('holdReleaseModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">보류 해제</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

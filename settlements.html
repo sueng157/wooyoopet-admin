@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 정산관리</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pets.css">
+  <link rel="stylesheet" href="css/reservations.css">
+  <link rel="stylesheet" href="css/settlements.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item active">정산관리</a>
+      <a href="#" class="sidebar__menu-item">채팅관리</a>
+      <a href="#" class="sidebar__menu-item">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">정산관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 탭 바 -->
+      <div class="tab-bar">
+        <button class="tab-bar__item active" onclick="switchTab('tab-info')">정산정보</button>
+        <button class="tab-bar__item" onclick="switchTab('tab-history')">정산내역</button>
+      </div>
+
+      <!-- ==================== 탭1: 정산정보 ==================== -->
+      <div class="tab-content active" id="tab-info">
+
+        <!-- 필터 바 -->
+        <div class="filter-bar">
+          <!-- 1행: 기간 -->
+          <div class="filter-row">
+            <span class="filter-label">기간</span>
+            <input type="date" class="filter-input" value="2025-01-01">
+            <span class="filter-label" style="min-width:auto; text-align:center;">~</span>
+            <input type="date" class="filter-input" value="2026-03-17">
+          </div>
+          <!-- 2행: 이니시스 등록상태 -->
+          <div class="filter-row">
+            <span class="filter-label">등록상태</span>
+            <select class="filter-select">
+              <option>전체</option>
+              <option>미등록</option>
+              <option>요청중</option>
+              <option>완료</option>
+              <option>실패</option>
+            </select>
+          </div>
+          <!-- 3행: 검색 -->
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <select class="filter-select" style="max-width:160px;">
+              <option>유치원명</option>
+              <option>운영자 성명</option>
+            </select>
+            <input type="text" class="filter-input" placeholder="검색어를 입력하세요">
+            <button class="btn-search">검색</button>
+          </div>
+        </div>
+
+        <!-- 결과 헤더 -->
+        <div class="result-header">
+          <div class="result-header__count">검색 결과 <strong>245</strong>건</div>
+          <button class="btn-excel">📥 내역 다운로드</button>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="data-table-wrap data-table-wrap--scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>유치원명</th>
+                <th>운영자 성명</th>
+                <th>핸드폰</th>
+                <th>사업자 여부</th>
+                <th>사업자등록번호</th>
+                <th>판매자 ID</th>
+                <th>정산 은행</th>
+                <th>계좌번호</th>
+                <th>예금주</th>
+                <th>이니시스 등록상태</th>
+                <th>실패 사유</th>
+                <th>신청일</th>
+                <th>처리일</th>
+                <th>상세</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>밤톨이네</td>
+                <td>홍길동</td>
+                <td>010-****-1234</td>
+                <td><span class="badge badge--kindergarten">사업자</span></td>
+                <td>123-45-67890</td>
+                <td>wooyoo_sub_001</td>
+                <td>국민은행</td>
+                <td>1234-****-**56</td>
+                <td>홍길동</td>
+                <td><span class="badge badge--registered">완료</span></td>
+                <td>—</td>
+                <td>2026-03-10</td>
+                <td>2026-03-10</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>사랑이네</td>
+                <td>이영희</td>
+                <td>010-****-5678</td>
+                <td><span class="badge badge--guardian">개인</span></td>
+                <td>—</td>
+                <td>wooyoo_sub_002</td>
+                <td>신한은행</td>
+                <td>9876-****-**34</td>
+                <td>이영희</td>
+                <td><span class="badge badge--registering">요청중</span></td>
+                <td>—</td>
+                <td>2026-03-12</td>
+                <td>—</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>행복한강아지</td>
+                <td>박서연</td>
+                <td>010-****-9012</td>
+                <td><span class="badge badge--kindergarten">사업자</span></td>
+                <td>234-56-78901</td>
+                <td>wooyoo_sub_003</td>
+                <td>카카오뱅크</td>
+                <td>3333-****-**78</td>
+                <td>박서연</td>
+                <td><span class="badge badge--reg-failed">실패</span></td>
+                <td>서류 미비</td>
+                <td>2026-03-08</td>
+                <td>2026-03-09</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>뽀뚜이네</td>
+                <td>최지훈</td>
+                <td>010-****-3456</td>
+                <td><span class="badge badge--guardian">개인</span></td>
+                <td>—</td>
+                <td>wooyoo_sub_004</td>
+                <td>신한은행</td>
+                <td>5555-****-**90</td>
+                <td>최지훈</td>
+                <td><span class="badge badge--registered">완료</span></td>
+                <td>—</td>
+                <td>2026-03-05</td>
+                <td>2026-03-05</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>코코네</td>
+                <td>정하늘</td>
+                <td>010-****-7890</td>
+                <td><span class="badge badge--kindergarten">사업자</span></td>
+                <td>345-67-89012</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td><span class="badge badge--unregistered">미등록</span></td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>별이네</td>
+                <td>한수정</td>
+                <td>010-****-2345</td>
+                <td><span class="badge badge--guardian">개인</span></td>
+                <td>—</td>
+                <td>wooyoo_sub_006</td>
+                <td>우리은행</td>
+                <td>7777-****-**21</td>
+                <td>한수정</td>
+                <td><span class="badge badge--registered">완료</span></td>
+                <td>—</td>
+                <td>2026-03-01</td>
+                <td>2026-03-01</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>두부네</td>
+                <td>김민수</td>
+                <td>010-****-6789</td>
+                <td><span class="badge badge--kindergarten">사업자</span></td>
+                <td>456-78-90123</td>
+                <td>wooyoo_sub_007</td>
+                <td>국민은행</td>
+                <td>8888-****-**43</td>
+                <td>김민수</td>
+                <td><span class="badge badge--reg-failed">실패</span></td>
+                <td>계좌 불일치</td>
+                <td>2026-02-28</td>
+                <td>2026-03-01</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>몽이네</td>
+                <td>이서준</td>
+                <td>010-****-1111</td>
+                <td><span class="badge badge--guardian">개인</span></td>
+                <td>—</td>
+                <td>wooyoo_sub_008</td>
+                <td>하나은행</td>
+                <td>1111-****-**65</td>
+                <td>이서준</td>
+                <td><span class="badge badge--registered">완료</span></td>
+                <td>—</td>
+                <td>2026-02-25</td>
+                <td>2026-02-25</td>
+                <td><a href="settlement-info-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pagination">
+          <button class="pagination__btn disabled">&laquo;</button>
+          <button class="pagination__btn disabled">&lsaquo;</button>
+          <button class="pagination__btn active">1</button>
+          <button class="pagination__btn">2</button>
+          <button class="pagination__btn">3</button>
+          <button class="pagination__btn">4</button>
+          <button class="pagination__btn">5</button>
+          <button class="pagination__btn">&rsaquo;</button>
+          <button class="pagination__btn">&raquo;</button>
+        </div>
+
+      </div>
+
+      <!-- ==================== 탭2: 정산내역 ==================== -->
+      <div class="tab-content" id="tab-history">
+
+        <!-- 필터 바 -->
+        <div class="filter-bar">
+          <!-- 1행: 기간 -->
+          <div class="filter-row">
+            <span class="filter-label">기간</span>
+            <input type="date" class="filter-input" value="2026-01-01">
+            <span class="filter-label" style="min-width:auto; text-align:center;">~</span>
+            <input type="date" class="filter-input" value="2026-03-17">
+          </div>
+          <!-- 2행: 정산상태 -->
+          <div class="filter-row">
+            <span class="filter-label">정산상태</span>
+            <select class="filter-select">
+              <option>전체</option>
+              <option>정산예정</option>
+              <option>정산완료</option>
+              <option>정산보류</option>
+            </select>
+          </div>
+          <!-- 3행: 검색 -->
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <select class="filter-select" style="max-width:160px;">
+              <option>유치원명</option>
+              <option>보호자 이름</option>
+            </select>
+            <input type="text" class="filter-input" placeholder="검색어를 입력하세요">
+            <button class="btn-search">검색</button>
+          </div>
+        </div>
+
+        <!-- 상단 요약 영역 -->
+        <div class="summary-section">
+          <!-- 1행: 5col -->
+          <div class="stat-cards">
+            <div class="stat-card">
+              <div class="stat-card__label">조회 기간</div>
+              <div class="stat-card__value" style="font-size:14px;">2026-01-01 ~ 2026-03-17</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">돌봄 결제금액</div>
+              <div class="stat-card__value">12,500,000<span class="stat-card__unit">원</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">위약금 결제금액</div>
+              <div class="stat-card__value">1,800,000<span class="stat-card__unit">원</span></div>
+            </div>
+            <div class="stat-card stat-card--highlight">
+              <div class="stat-card__label">유효 거래금액</div>
+              <div class="stat-card__value">14,300,000<span class="stat-card__unit">원</span></div>
+            </div>
+            <div class="stat-card stat-card--fee">
+              <div class="stat-card__label">플랫폼 수수료 (20%)</div>
+              <div class="stat-card__value">2,860,000<span class="stat-card__unit">원</span></div>
+            </div>
+          </div>
+          <!-- 2행: 5col -->
+          <div class="stat-cards">
+            <div class="stat-card stat-card--settlement">
+              <div class="stat-card__label">유치원 정산금액</div>
+              <div class="stat-card__value">11,440,000<span class="stat-card__unit">원</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">정산 예정 건수</div>
+              <div class="stat-card__value">45<span class="stat-card__unit">건</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">정산 예정 금액</div>
+              <div class="stat-card__value">4,950,000<span class="stat-card__unit">원</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">정산 완료 건수</div>
+              <div class="stat-card__value">312<span class="stat-card__unit">건</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">정산 완료 금액</div>
+              <div class="stat-card__value">6,490,000<span class="stat-card__unit">원</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 결과 헤더 -->
+        <div class="result-header">
+          <div class="result-header__count">검색 결과 <strong>357</strong>건</div>
+          <div>
+            <button class="btn-batch-settle">✅ 일괄 정산완료</button>
+            <button class="btn-excel">📥 내역 다운로드</button>
+          </div>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="data-table-wrap data-table-wrap--scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="data-table__checkbox"><input type="checkbox"></th>
+                <th>번호</th>
+                <th>정산 예정일</th>
+                <th>유치원명</th>
+                <th>운영자 성명</th>
+                <th>보호자 이름</th>
+                <th>예약번호</th>
+                <th>거래유형</th>
+                <th>결제금액</th>
+                <th>수수료율</th>
+                <th>수수료 금액</th>
+                <th>정산금액</th>
+                <th>정산계좌</th>
+                <th>정산상태</th>
+                <th>완료일</th>
+                <th>상세</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>1</td>
+                <td>2026-03-20</td>
+                <td>밤톨이네</td>
+                <td>홍길동</td>
+                <td>김민수</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001234</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">55,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">11,000원</td>
+                <td style="text-align:right;">44,000원</td>
+                <td>국민 1234-****-**56</td>
+                <td><span class="badge badge--stl-scheduled">정산예정</span></td>
+                <td>—</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>2</td>
+                <td>2026-03-20</td>
+                <td>사랑이네</td>
+                <td>이영희</td>
+                <td>이영희</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001230</a></td>
+                <td><span class="badge badge--stl-penalty">위약금</span></td>
+                <td style="text-align:right;">27,500원</td>
+                <td>20%</td>
+                <td style="text-align:right;">5,500원</td>
+                <td style="text-align:right;">22,000원</td>
+                <td>신한 9876-****-**34</td>
+                <td><span class="badge badge--stl-scheduled">정산예정</span></td>
+                <td>—</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>3</td>
+                <td>2026-03-18</td>
+                <td>행복한강아지</td>
+                <td>박서연</td>
+                <td>박서연</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001225</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">35,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">7,000원</td>
+                <td style="text-align:right;">28,000원</td>
+                <td>카카오 3333-****-**78</td>
+                <td><span class="badge badge--stl-completed">정산완료</span></td>
+                <td>2026-03-18</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>4</td>
+                <td>2026-03-18</td>
+                <td>뽀뚜이네</td>
+                <td>최지훈</td>
+                <td>최지훈</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001218</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">120,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">24,000원</td>
+                <td style="text-align:right;">96,000원</td>
+                <td>신한 5555-****-**90</td>
+                <td><span class="badge badge--stl-completed">정산완료</span></td>
+                <td>2026-03-18</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>5</td>
+                <td>2026-03-15</td>
+                <td>밤톨이네</td>
+                <td>홍길동</td>
+                <td>정하늘</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001210</a></td>
+                <td><span class="badge badge--stl-penalty">위약금</span></td>
+                <td style="text-align:right;">12,500원</td>
+                <td>20%</td>
+                <td style="text-align:right;">2,500원</td>
+                <td style="text-align:right;">10,000원</td>
+                <td>국민 1234-****-**56</td>
+                <td><span class="badge badge--stl-hold">정산보류</span></td>
+                <td>—</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>6</td>
+                <td>2026-03-15</td>
+                <td>별이네</td>
+                <td>한수정</td>
+                <td>한수정</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001198</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">70,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">14,000원</td>
+                <td style="text-align:right;">56,000원</td>
+                <td>우리 7777-****-**21</td>
+                <td><span class="badge badge--stl-completed">정산완료</span></td>
+                <td>2026-03-15</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>7</td>
+                <td>2026-03-13</td>
+                <td>두부네</td>
+                <td>김민수</td>
+                <td>김민수</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001190</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">15,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">3,000원</td>
+                <td style="text-align:right;">12,000원</td>
+                <td>국민 8888-****-**43</td>
+                <td><span class="badge badge--stl-scheduled">정산예정</span></td>
+                <td>—</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td class="data-table__checkbox"><input type="checkbox"></td>
+                <td>8</td>
+                <td>2026-03-10</td>
+                <td>몽이네</td>
+                <td>이서준</td>
+                <td>이서준</td>
+                <td><a href="reservation-detail.html" class="data-table__link">R-00001182</a></td>
+                <td><span class="badge badge--stl-care">돌봄결제</span></td>
+                <td style="text-align:right;">20,000원</td>
+                <td>20%</td>
+                <td style="text-align:right;">4,000원</td>
+                <td style="text-align:right;">16,000원</td>
+                <td>하나 1111-****-**65</td>
+                <td><span class="badge badge--stl-completed">정산완료</span></td>
+                <td>2026-03-10</td>
+                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pagination">
+          <button class="pagination__btn disabled">&laquo;</button>
+          <button class="pagination__btn disabled">&lsaquo;</button>
+          <button class="pagination__btn active">1</button>
+          <button class="pagination__btn">2</button>
+          <button class="pagination__btn">3</button>
+          <button class="pagination__btn">4</button>
+          <button class="pagination__btn">5</button>
+          <button class="pagination__btn">&rsaquo;</button>
+          <button class="pagination__btn">&raquo;</button>
+        </div>
+
+      </div>
+
+    </div><!-- /.content -->
+  </div><!-- /.main -->
+</div><!-- /.layout -->
+
+<!-- 탭 전환 스크립트 -->
+<script>
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-bar__item').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+</script>
+
+</body>
+</html>
