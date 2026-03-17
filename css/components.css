@@ -820,3 +820,53 @@
   color: var(--text-primary);
   white-space: nowrap;
 }
+
+/* ── 탭 바 ── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.tab-bar__item {
+  font-family: var(--font-family);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-weak);
+  background: none;
+  border: none;
+  padding: 12px 24px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.tab-bar__item:hover {
+  color: var(--text-secondary);
+}
+
+.tab-bar__item.active {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.tab-bar__item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── 탭 콘텐츠 ── */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}

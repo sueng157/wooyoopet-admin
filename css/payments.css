@@ -1,0 +1,44 @@
+/* ============================================
+   결제관리 (Payments) — 전용 CSS
+   공통 UI 컴포넌트는 components.css 에 정의
+   탭 바 컴포넌트는 components.css 에 정의
+   예약상태 배지는 pets.css 에 정의
+   환불/취소 관련 배지는 reservations.css 에 정의
+   이 파일은 결제관리 페이지에만 필요한 추가 스타일
+   ============================================ */
+
+/* ── 결제금액 강조 (상세 화면) ── */
+.payment-amount-highlight {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── 위약금 산정 영역 하이라이트 ── */
+.penalty-calc-highlight {
+  background: rgba(245, 166, 35, 0.04);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin-top: 4px;
+}
+
+/* ── 모달 확인 버튼 (primary 동작) ── */
+.modal__btn--confirm-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+}
+
+.modal__btn--confirm-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── 모달 제목 색상 변형 ── */
+.modal__title--primary {
+  color: var(--primary);
+}
+
+.modal__title--warning {
+  color: #F5A623;
+}

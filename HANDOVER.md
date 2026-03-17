@@ -19,7 +19,7 @@
 | 2 | 유치원관리 | ✅ 완료 | `kindergartens.html`, `kindergarten-detail.html`, `css/kindergartens.css` | #1 |
 | 3 | 반려동물관리 | ✅ 완료 | `pets.html`, `pet-detail.html`, `css/pets.css` | #4 |
 | 4 | 돌봄예약관리 | ✅ 완료 | `reservations.html`, `reservation-detail.html`, `css/reservations.css` | #5 |
-| 5 | 결제관리 | ⬜ 미착수 | — | — |
+| 5 | 결제관리 | ✅ 완료 | `payments.html`, `payment-detail.html`, `refund-detail.html`, `css/payments.css` | #6 |
 | 6 | 정산관리 | ⬜ 미착수 | — | — |
 | 7 | 채팅관리 | ⬜ 미착수 | — | — |
 | 8 | 후기관리 | ⬜ 미착수 | — | — |
@@ -52,6 +52,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `kindergartens.html`, `kindergarten-detail.html` | common → components → kindergartens |
 | `pets.html`, `pet-detail.html` | common → components → pets |
 | `reservations.html`, `reservation-detail.html` | common → components → pets → reservations |
+| `payments.html`, `payment-detail.html`, `refund-detail.html` | common → components → pets → reservations → payments |
 
 > **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드함
 
@@ -126,7 +127,8 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
 <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
 <a href="reservations.html" class="sidebar__menu-item active">돌봄예약관리</a>
-<a href="#" class="sidebar__menu-item">결제관리</a>          ← 5번부터 미연결
+<a href="payments.html" class="sidebar__menu-item">결제관리</a>    ← 5번 연결완료
+<!-- 6번부터 미연결 -->
 <a href="#" class="sidebar__menu-item">정산관리</a>
 <a href="#" class="sidebar__menu-item">채팅관리</a>
 <a href="#" class="sidebar__menu-item">후기관리</a>
@@ -222,7 +224,10 @@ css/members.css           6줄  (주석만, 모두 components.css로 이전)
 css/kindergartens.css     6줄  (주석만, 모두 components.css로 이전)
 css/pets.css            191줄  (반려동물+예약상태 배지)
 css/reservations.css    121줄  (돌봄예약 전용 배지/모달)
+css/payments.css         43줄  (결제관리 전용 스타일)
 ```
+
+> **components.css 업데이트**: `.tab-bar`, `.tab-bar__item`, `.tab-content` 탭바 컴포넌트 추가 (결제관리부터 사용, 정산/후기 등에서도 재사용 예정)
 
 ---
 
@@ -263,16 +268,48 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 
 ---
 
-## 8. 다음 작업: 5. 결제관리
+## 8. 완료된 작업: 5. 결제관리
 
-`full_spec_with_tables.md`의 `## 5. 결제관리` 섹션 참조.
+### 구현 내용
+- **탭 구조**: `payments.html`에 탭바(결제내역 / 환불·위약금) 구현, 인라인 JS로 탭 전환
+- **결제내역 탭**: 필터바(기간·상태·검색), 15칼럼 테이블 (번호~상세), 결제상태 배지 2종(결제완료/결제취소)
+- **환불/위약금 탭**: 필터바(기간·처리상태·요청자·검색), 17칼럼 테이블, 요청자/처리상태 배지 재사용
+- **payment-detail.html**: 4영역 (결제 기본정보, 결제자 정보, 관련 예약, 환불 정보[조건부]), 결제취소 모달 1개
+- **refund-detail.html**: 5영역 (환불 기본정보, 위약금 산정, 환불 처리 정보, 위약금 결제 정보[조건부], 관련 링크), 모달 3개 (직접 환불, 위약금 면제, 직권 취소)
+- **payments.css**: 탭 전환 시 활성 콘텐츠 전용 스타일, 위약금 금액 강조 등
+- **components.css**: `.tab-bar` 컴포넌트 추가 (재사용 가능)
 
-**핵심 특징**:
-- **탭 구조**: 탭1 "결제내역" + 탭2 "환불/위약금" (한 페이지에서 탭 전환)
-- **파일 4개 예상**: `payments.html`(목록, 탭 2개), `payment-detail.html`(결제 상세), `refund-detail.html`(환불 상세), `css/payments.css`
-- 환불/위약금 배지는 `reservations.css`에 이미 정의된 것 재사용 가능
+### 환불 정보 표시 구조 (결제 상세)
+| 라벨 | 값 |
+|------|----|
+| 환불 고유번호 | 클릭 시 환불/위약금 상세로 이동 |
+| 환불 요청자 | 보호자 / 유치원 |
+| 환불(기존 결제 취소) 요청일시 | |
+| 환불(기존 결제 취소) 금액 | |
+| 위약금 결제금액 | |
+| 처리상태 | 배지 |
 
-> UX/UI 디자인 초안은 이전 채팅에서 사용자에게 제출하여 검토 대기 중이었으나, 채팅 전환으로 인해 **다시 초안부터 시작**해야 합니다. `full_spec_with_tables.md`에서 스펙을 읽고 초안을 작성해주세요.
+### 위약금 산정 표시 구조 (환불 상세)
+| 라벨 | 값 |
+|------|----|
+| 등원 예정일시 | |
+| 취소 요청일시 | |
+| 등원까지 남은시간 | 시간 단위 (예: 42시간 30분) |
+| 위약금 적용 규정 | 예: "24~72시간 전 취소 — 50% 환불" |
+| 위약금 비율 | 강조 표시 |
+| 위약금 금액 | 강조 표시 |
+| 환불(기존 결제 취소) 금액 | 볼드 |
+
+---
+
+## 9. 다음 작업: 6. 정산관리
+
+`full_spec_with_tables.md`의 `## 6. 정산관리` 섹션 참조.
+
+**예상 특징**:
+- 탭 구조 재사용 가능 (components.css `.tab-bar`)
+- 정산 목록, 정산 상세 페이지
+- 정산 관련 배지 (승인/대기/실패 등)
 
 ---
 

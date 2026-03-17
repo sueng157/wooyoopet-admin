@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 결제 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pets.css">
+  <link rel="stylesheet" href="css/reservations.css">
+  <link rel="stylesheet" href="css/payments.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item active">결제관리</a>
+      <a href="#" class="sidebar__menu-item">정산관리</a>
+      <a href="#" class="sidebar__menu-item">채팅관리</a>
+      <a href="#" class="sidebar__menu-item">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">결제 상세</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 상단 네비게이션 -->
+      <div class="detail-top">
+        <a href="payments.html" class="btn-back">← 결제내역 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--outline-primary">영수증 조회</button>
+          <button class="btn-action btn-action--danger" onclick="document.getElementById('cancelPaymentModal').classList.add('active')">결제취소</button>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ①: 결제 기본정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">결제 기본정보</h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">결제 고유번호</div>
+          <div class="info-grid__value">PAY-00001234</div>
+
+          <div class="info-grid__label">PG 거래번호</div>
+          <div class="info-grid__value">INI-20260315-0001</div>
+
+          <div class="info-grid__label">승인번호</div>
+          <div class="info-grid__value">12345678</div>
+
+          <div class="info-grid__label">결제일시</div>
+          <div class="info-grid__value">2026-03-15 09:15</div>
+
+          <div class="info-grid__label">결제금액</div>
+          <div class="info-grid__value"><span class="payment-amount-highlight">55,000원</span></div>
+
+          <div class="info-grid__label">결제수단</div>
+          <div class="info-grid__value">신용카드</div>
+
+          <div class="info-grid__label">카드사</div>
+          <div class="info-grid__value">삼성카드</div>
+
+          <div class="info-grid__label">카드번호</div>
+          <div class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value">1234-****-****-5678</span>
+              <button class="masked-field__toggle">[전체보기]</button>
+            </span>
+          </div>
+
+          <div class="info-grid__label">서브몰 ID</div>
+          <div class="info-grid__value">wooyoo1</div>
+
+          <div class="info-grid__label">결제상태</div>
+          <div class="info-grid__value"><span class="badge badge--pay-completed">결제완료</span></div>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ②: 결제자 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">결제자 정보</h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">보호자 이름</div>
+          <div class="info-grid__value">김민수</div>
+
+          <div class="info-grid__label">보호자 닉네임</div>
+          <div class="info-grid__value">강아지파파#1234</div>
+
+          <div class="info-grid__label">보호자 연락처</div>
+          <div class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value">010-****-1234</span>
+              <button class="masked-field__toggle">[전체보기]</button>
+            </span>
+          </div>
+
+          <div class="info-grid__label">회원번호</div>
+          <div class="info-grid__value"><a href="member-detail.html" class="info-grid__value--link">M-00000456</a></div>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ③: 관련 예약 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">관련 예약 정보</h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">예약번호</div>
+          <div class="info-grid__value"><a href="reservation-detail.html" class="info-grid__value--link">R-00001234</a></div>
+
+          <div class="info-grid__label">유치원명</div>
+          <div class="info-grid__value">밤톨이네</div>
+
+          <div class="info-grid__label">반려동물명</div>
+          <div class="info-grid__value">코코</div>
+
+          <div class="info-grid__label">등원 예정일시</div>
+          <div class="info-grid__value">2026-03-18 09:00</div>
+
+          <div class="info-grid__label">하원 예정일시</div>
+          <div class="info-grid__value">2026-03-18 18:00</div>
+
+          <div class="info-grid__label">예약 상태</div>
+          <div class="info-grid__value"><span class="badge badge--res-confirmed">예약확정</span></div>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ④: 환불 정보 (조건부) ========== -->
+      <div class="detail-card conditional-section">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">환불 정보 <span class="conditional-section__badge">환불 발생</span></h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-grid__label">환불 고유번호</div>
+          <div class="info-grid__value"><a href="refund-detail.html" class="info-grid__value--link">RF-00000567</a></div>
+
+          <div class="info-grid__label">환불 요청자</div>
+          <div class="info-grid__value"><span class="badge badge--cancel-requester-guardian">보호자</span></div>
+
+          <div class="info-grid__label">환불(기존 결제 취소) 요청일시</div>
+          <div class="info-grid__value">2026-03-16 14:30</div>
+
+          <div class="info-grid__label">환불(기존 결제 취소) 금액</div>
+          <div class="info-grid__value"><span class="payment-amount-highlight">55,000원</span></div>
+
+          <div class="info-grid__label">위약금 결제금액</div>
+          <div class="info-grid__value">27,500원</div>
+
+          <div class="info-grid__label">처리상태</div>
+          <div class="info-grid__value"><span class="badge badge--refund-complete">환불완료</span></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ========== 모달: 결제취소 ========== -->
+<div class="modal-overlay" id="cancelPaymentModal">
+  <div class="modal">
+    <div class="modal__title">결제 취소</div>
+    <div class="modal__warning">
+      이 작업은 되돌릴 수 없습니다.<br>
+      해당 결제를 취소하면 연동된 예약도 자동으로 취소 처리됩니다.
+    </div>
+    <div class="modal__label">취소 사유 <span>*</span></div>
+    <textarea class="modal__textarea" id="cancelPaymentReason" placeholder="결제를 취소하는 사유를 입력하세요" oninput="document.getElementById('cancelPaymentBtn').disabled = this.value.trim().length === 0"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('cancelPaymentModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-danger" id="cancelPaymentBtn" disabled>결제취소</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
