@@ -870,3 +870,113 @@
 .tab-content.active {
   display: block;
 }
+
+/* ── 모달 (공통) ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.15);
+  padding: 32px;
+  width: 480px;
+  max-width: 90vw;
+}
+
+.modal__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #E05A3A;
+  margin-bottom: 16px;
+}
+
+.modal__message {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.modal__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.modal__label span {
+  color: #E05A3A;
+}
+
+.modal__textarea {
+  width: 100%;
+  min-height: 100px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  outline: none;
+  resize: vertical;
+  transition: box-shadow 0.15s ease;
+}
+
+.modal__textarea:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modal__btn {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.modal__btn:hover {
+  opacity: 0.8;
+}
+
+.modal__btn--cancel {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.modal__btn--delete {
+  background: #E05A3A;
+  color: #ffffff;
+  border: none;
+}
+
+.modal__btn--delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

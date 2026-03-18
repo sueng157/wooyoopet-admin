@@ -1,7 +1,7 @@
 /* ============================================
    채팅관리 (Chats) — 전용 CSS
    공통 UI 컴포넌트는 components.css 에 정의
-   모달 기본 스타일은 pets.css 에 정의
+   모달 기본 스타일은 components.css 에 정의
    모달 셀렉트·경고 텍스트는 reservations.css 에 정의
    badge--guardian / badge--kindergarten 은 components.css 재사용
    이 파일은 채팅관리 페이지에만 필요한 추가 스타일

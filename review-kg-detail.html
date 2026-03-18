@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 유치원 후기 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/reviews.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item active">후기관리</a>
+      <a href="#" class="sidebar__menu-item">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">후기관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 상단 액션바 -->
+      <div class="detail-top">
+        <a href="reviews.html" class="btn-back">&larr; 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--danger" onclick="document.getElementById('hideModal').classList.add('active')">숨김 처리</button>
+          <button class="btn-action btn-action--primary" onclick="document.getElementById('unhideModal').classList.add('active')">숨김 해제</button>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ① 후기 기본정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">후기 기본정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">후기 고유번호</span>
+          <span class="info-grid__value">RV-00000890</span>
+
+          <span class="info-grid__label">작성일시</span>
+          <span class="info-grid__value">2025-12-15 18:10</span>
+
+          <span class="info-grid__label">만족도</span>
+          <span class="info-grid__value"><span class="badge badge--satis-best">최고예요!</span></span>
+
+          <span class="info-grid__label">선택 태그</span>
+          <span class="info-grid__value">
+            <div class="review-tags-wrap">
+              <span class="review-tag-pill">사람을 좋아하고 애교가 많아요</span>
+              <span class="review-tag-pill">거의 짖지 않았어요</span>
+              <span class="review-tag-pill">아이 청결 상태가 좋았어요</span>
+              <span class="review-tag-pill">다음에도 맡아주고 싶어요</span>
+            </div>
+          </span>
+
+          <span class="info-grid__label">후기 내용</span>
+          <span class="info-grid__value">
+            <div class="review-full-content">코코가 오늘도 유치원에서 다른 강아지들과 잘 어울렸습니다. 사람을 정말 좋아하고 애교가 넘치는 아이예요. 유치원에 도착하자마자 꼬리를 살랑살랑 흔들며 다가왔습니다. 사료도 남기지 않고 깨끗하게 먹었고, 산책 시간에도 즐거워했습니다. 다른 강아지들과 장난도 치면서 밝고 건강한 모습을 보여주었습니다. 다음 방문도 기대됩니다!</div>
+          </span>
+
+          <span class="info-grid__label">보호자 전용</span>
+          <span class="info-grid__value"><span class="badge badge--guardian-only-no">공개</span></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ② 작성자 정보 (유치원) ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">작성자 정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">유치원명</span>
+          <span class="info-grid__value">밤톨이네</span>
+
+          <span class="info-grid__label">운영자 성명</span>
+          <span class="info-grid__value">이정훈</span>
+
+          <span class="info-grid__label">운영자 연락처</span>
+          <span class="info-grid__value">
+            <span class="masked-field">
+              <span class="masked-field__value">010-****-5678</span>
+              <button class="masked-field__toggle">[전체보기]</button>
+            </span>
+          </span>
+
+          <span class="info-grid__label">유치원번호</span>
+          <span class="info-grid__value"><a href="kindergarten-detail.html" class="info-grid__value--link">K-00000123</a></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ③ 대상 반려동물 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">대상 반려동물</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">반려동물명</span>
+          <span class="info-grid__value">코코</span>
+
+          <span class="info-grid__label">견종</span>
+          <span class="info-grid__value">비숑프리제</span>
+
+          <span class="info-grid__label">크기 구분</span>
+          <span class="info-grid__value">소형</span>
+
+          <span class="info-grid__label">반려동물번호</span>
+          <span class="info-grid__value"><a href="pet-detail.html" class="info-grid__value--link">PT-000045</a></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ④ 대상 보호자 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">대상 보호자</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">보호자 닉네임</span>
+          <span class="info-grid__value">코코맘</span>
+
+          <span class="info-grid__label">보호자 이름</span>
+          <span class="info-grid__value">김민수</span>
+
+          <span class="info-grid__label">회원번호</span>
+          <span class="info-grid__value"><a href="member-detail.html" class="info-grid__value--link">M-00002345</a></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ⑤ 관련 돌봄 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">관련 돌봄 정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">예약번호</span>
+          <span class="info-grid__value"><a href="reservation-detail.html" class="info-grid__value--link">R-00001234</a></span>
+
+          <span class="info-grid__label">등원일시</span>
+          <span class="info-grid__value">2025-12-10 09:00</span>
+
+          <span class="info-grid__label">하원일시</span>
+          <span class="info-grid__value">2025-12-11 18:00</span>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ========== 숨김 처리 모달 ========== -->
+<div class="modal-overlay" id="hideModal">
+  <div class="modal">
+    <div class="modal__title">후기 숨김 처리</div>
+    <div class="modal__message">
+      이 후기를 숨김 처리하면 앱에서 더 이상 노출되지 않습니다.<br>
+      숨김 처리 사유를 입력해 주세요.
+    </div>
+    <div class="modal__label">숨김 사유 <span>*</span></div>
+    <textarea class="modal__textarea" id="hideReason" placeholder="숨김 처리 사유를 입력하세요" oninput="document.getElementById('hideBtn').disabled = !this.value.trim()"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('hideModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--delete" id="hideBtn" disabled>숨김 처리</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 숨김 해제 모달 ========== -->
+<div class="modal-overlay" id="unhideModal">
+  <div class="modal">
+    <div class="modal__title modal__title--primary">후기 숨김 해제</div>
+    <div class="modal__message">
+      이 후기의 숨김을 해제하면 다시 앱에서 노출됩니다.<br>
+      숨김 해제를 진행하시겠습니까?
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('unhideModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary">숨김 해제</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

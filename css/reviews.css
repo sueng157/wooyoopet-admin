@@ -1,0 +1,98 @@
+/* ============================================
+   후기관리 (Reviews) — 전용 CSS
+   common.css → components.css → reviews.css
+   모달 기본 스타일은 components.css 에 정의
+   이 파일은 후기관리 페이지에만 필요한 스타일
+   ============================================ */
+
+/* ── 후기 만족도 배지 ── */
+.badge--satis-best  { background: rgba(46, 204, 113, 0.10);  color: #2ECC71; }  /* 최고예요! */
+.badge--satis-good  { background: rgba(51, 157, 238, 0.10);  color: #339DEE; }  /* 좋았어요 */
+.badge--satis-bad   { background: rgba(224, 90, 58, 0.10);   color: #E05A3A; }  /* 아쉬워요 */
+
+/* ── 보호자 전용 배지 ── */
+.badge--guardian-only-yes { background: rgba(245, 166, 35, 0.10); color: #F5A623; }
+.badge--guardian-only-no  { background: rgba(0, 0, 0, 0.04);     color: #8C9AA5; }
+
+/* ── 후기 숨김/노출 상태 배지 ── */
+.badge--review-hidden  { background: rgba(224, 90, 58, 0.10);  color: #E05A3A; }
+.badge--review-visible { background: rgba(46, 204, 113, 0.10); color: #2ECC71; }
+
+/* ── 후기 선택 태그 (pill) ── */
+.review-tag-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  background: rgba(51, 157, 238, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+/* ── 태그 더보기 (+N) ── */
+.review-tag-more {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-weak);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* ── 후기 내용 1줄 말줄임 (목록용) ── */
+.review-content {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ── 이미지 수 텍스트 ── */
+.review-img-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.review-img-count--zero {
+  color: var(--text-weak);
+}
+
+/* ── 후기 전문 (상세용) ── */
+.review-full-content {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+/* ── 상세 태그 래퍼 (여러 줄 허용) ── */
+.review-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── 모달 제목 변형 (숨김 처리 = coral, 숨김 해제 = primary) ── */
+.modal__title--primary {
+  color: var(--primary);
+}
+
+/* ── 모달 확인 버튼 (primary) ── */
+.modal__btn--confirm-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+}
+
+.modal__btn--confirm-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
