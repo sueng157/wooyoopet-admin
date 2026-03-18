@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 약관 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/contents.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item">교육관리</a>
+      <a href="contents.html" class="sidebar__menu-item active">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar"><svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+        <div class="sidebar__profile-info"><span class="sidebar__admin-name">홍길동</span><span class="sidebar__admin-role">관리자</span></div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="header"><h1 class="header__title">콘텐츠관리</h1><div class="header__right"><span class="header__admin-name">홍길동 관리자</span><span class="header__logout">로그아웃</span></div></header>
+
+    <div class="content">
+
+      <div class="detail-top">
+        <a href="contents.html" class="btn-back">← 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('versionModal').classList.add('active')">새 버전 발행</button>
+          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('privateModal').classList.add('active')">비공개 전환</button>
+          <button class="btn-action btn-action--outline-coral" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-card__header"><span class="detail-card__title">약관 정보</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">약관 고유번호</span>
+          <span class="info-grid__value">TRM-00000001</span>
+
+          <span class="info-grid__label">약관 제목</span>
+          <span class="info-grid__value"><input type="text" class="cnt-input" value="서비스 이용약관"></span>
+
+          <span class="info-grid__label">필수 여부</span>
+          <span class="info-grid__value">
+            <select class="cnt-select"><option selected>필수</option><option>선택</option></select>
+          </span>
+
+          <span class="info-grid__label">버전</span>
+          <span class="info-grid__value"><input type="text" class="cnt-input cnt-input--short" value="v1.2"></span>
+
+          <span class="info-grid__label">시행일</span>
+          <span class="info-grid__value"><input type="date" class="cnt-input cnt-input--short" value="2026-03-01"></span>
+
+          <span class="info-grid__label">공개 상태</span>
+          <span class="info-grid__value">
+            <select class="cnt-select"><option selected>공개</option><option>비공개</option></select>
+          </span>
+
+          <span class="info-grid__label">약관 본문</span>
+          <span class="info-grid__value cnt-full-width">
+            <textarea class="cnt-textarea cnt-textarea--tall" rows="16">제1조 (목적)
+이 약관은 우유펫(이하 "회사")이 제공하는 반려동물 돌봄 중개 서비스(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+
+제2조 (정의)
+① "서비스"란 회사가 제공하는 반려동물 돌봄 중개 플랫폼을 말합니다.
+② "회원"이란 이 약관에 따라 이용계약을 체결하고 서비스를 이용하는 자를 말합니다.
+③ "보호자"란 반려동물의 돌봄을 요청하는 회원을 말합니다.
+④ "유치원"이란 반려동물 돌봄 서비스를 제공하는 회원(파트너)을 말합니다.
+
+제3조 (약관의 효력 및 변경)
+① 이 약관은 서비스 화면에 게시하거나 기타 방법으로 공지함으로써 효력이 발생합니다.
+② 회사는 관련 법령에 위배되지 않는 범위에서 이 약관을 개정할 수 있습니다.</textarea>
+          </span>
+
+          <span class="info-grid__label">등록일</span>
+          <span class="info-grid__value">2025-12-01</span>
+
+          <span class="info-grid__label">수정일</span>
+          <span class="info-grid__value">2026-03-01</span>
+        </div>
+      </div>
+
+      <div class="detail-bottom-actions">
+        <button class="btn-action btn-action--primary">저장</button>
+      </div>
+
+      <!-- 버전 이력 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">버전 이력</span></div>
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>버전</th>
+              <th>시행일</th>
+              <th>종료일</th>
+              <th>수정 사유</th>
+              <th>본문 보기</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>v1.1</td>
+              <td>2026-01-15</td>
+              <td>2026-02-28</td>
+              <td>환불 조항 변경</td>
+              <td><span class="mini-table__link">보기</span></td>
+            </tr>
+            <tr>
+              <td>v1.0</td>
+              <td>2025-12-01</td>
+              <td>2026-01-14</td>
+              <td>최초 등록</td>
+              <td><span class="mini-table__link">보기</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="versionModal">
+  <div class="modal">
+    <div class="modal__title">새 버전 발행</div>
+    <div class="modal__message">새 버전을 발행하시겠습니까? 기존 버전은 이력에 보관되고 새 버전이 현재 적용 버전으로 전환됩니다.</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('versionModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary">발행</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="privateModal">
+  <div class="modal">
+    <div class="modal__title">비공개 전환</div>
+    <div class="modal__message">이 약관을 비공개로 전환하시겠습니까?</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('privateModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-warning">비공개 전환</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal__title">약관 삭제</div>
+    <div class="modal__message">이 약관에 동의한 회원이 존재하여 삭제할 수 없습니다. 비공개로 전환하여 노출을 중단할 수 있습니다.</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">닫기</button>
+      <button class="modal__btn modal__btn--delete" disabled style="opacity:0.4;cursor:not-allowed">삭제</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

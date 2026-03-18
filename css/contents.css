@@ -1,0 +1,313 @@
+/* ============================================
+   콘텐츠관리 (Contents) — 전용 CSS
+   common.css → components.css → contents.css
+   이 파일은 콘텐츠관리 페이지에만 필요한 스타일
+   ============================================ */
+
+/* ── 배너 / 콘텐츠 전용 배지 ── */
+
+/* 노출 상태 배지 */
+.badge--cnt-exposing  { background: rgba(46,204,113,0.10);  color: #2ECC71; }  /* 노출중 */
+.badge--cnt-scheduled { background: rgba(51,157,238,0.10);  color: #339DEE; }  /* 예정 */
+.badge--cnt-ended     { background: rgba(0,0,0,0.04);       color: #8C9AA5; }  /* 종료 */
+.badge--cnt-private   { background: rgba(0,0,0,0.04);       color: #8C9AA5; }  /* 비공개 */
+.badge--cnt-public    { background: rgba(46,204,113,0.10);  color: #2ECC71; }  /* 공개 */
+
+/* 필수/선택 배지 */
+.badge--cnt-required  { background: rgba(224,90,58,0.10);   color: #E05A3A; }  /* 필수 */
+.badge--cnt-optional  { background: rgba(0,0,0,0.04);       color: #8C9AA5; }  /* 선택 */
+
+/* 대상 배지 */
+.badge--cnt-target-all      { background: rgba(0,0,0,0.04);       color: #8C9AA5; }  /* 전체 */
+.badge--cnt-target-guardian  { background: rgba(51,157,238,0.10);  color: #339DEE; }  /* 보호자 */
+.badge--cnt-target-kg        { background: rgba(245,166,35,0.10);  color: #F5A623; }  /* 유치원 */
+
+/* ── FAQ 카테고리 라벨 ── */
+.cnt-category {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.cnt-category--payment { background: rgba(51,157,238,0.08);  color: #339DEE; }  /* 결제 */
+.cnt-category--care    { background: rgba(46,204,113,0.08);  color: #2ECC71; }  /* 돌봄 */
+.cnt-category--refund  { background: rgba(245,166,35,0.08);  color: #F5A623; }  /* 환불 */
+.cnt-category--member  { background: rgba(124,92,252,0.08);  color: #7C5CFC; }  /* 회원 */
+.cnt-category--kg      { background: rgba(224,90,58,0.08);   color: #E05A3A; }  /* 유치원 */
+
+/* ── 순서 변경 화살표 (교육관리와 동일 패턴) ── */
+.order-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.order-arrows__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-weak);
+  font-size: 10px;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+
+.order-arrows__btn:hover {
+  background: rgba(51,157,238,0.08);
+  color: var(--primary);
+}
+
+/* ── 배너 썸네일 (목록) ── */
+.cnt-thumb {
+  width: 72px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cnt-thumb__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-weak);
+  background: var(--surface-base);
+  border: 1px dashed rgba(0,0,0,0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* ── 링크 셀 (목록 테이블) ── */
+.cnt-link-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── 고정 핀 셀 ── */
+.cnt-pin-cell {
+  text-align: center;
+  font-size: 14px;
+}
+
+/* ── 이미지 프리뷰 (배너 상세/등록) ── */
+.cnt-image-preview {
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cnt-image-preview--banner {
+  width: 100%;
+  max-width: 360px;
+  height: 100px;
+}
+
+.cnt-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cnt-image-preview__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-weak);
+  background: var(--surface-base);
+  border: 2px dashed rgba(0,0,0,0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* ── 이미지 액션 (교체/삭제 버튼 그룹) ── */
+.cnt-image-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── 폼 인풋 (상세/등록 공통) ── */
+.cnt-input {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  width: 100%;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.cnt-input:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.cnt-input--short {
+  width: 200px;
+}
+
+/* ── 셀렉트 (상세/등록) ── */
+.cnt-select {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238C9AA5' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  min-width: 140px;
+  transition: box-shadow 0.15s ease;
+}
+
+.cnt-select:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* ── 라디오 / 체크박스 라벨 ── */
+.cnt-radio,
+.cnt-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.cnt-radio input,
+.cnt-checkbox input {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* ── 텍스트 에리어 ── */
+.cnt-textarea {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  width: 100%;
+  resize: vertical;
+  outline: none;
+  line-height: 1.7;
+  transition: box-shadow 0.15s ease;
+}
+
+.cnt-textarea:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.cnt-textarea--tall {
+  min-height: 360px;
+}
+
+/* ── 파일 업로드 행 ── */
+.cnt-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cnt-file-name {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* ── full-width info-grid 오버라이드 (본문, 답변 등 넓은 필드) ── */
+.cnt-full-width {
+  grid-column: 1 / -1 !important;
+}
+
+/* ── 버전 이력 (약관 상세) — mini-table 확장 ── */
+/* mini-table 은 components.css 에 정의되어 있으므로
+   여기서는 약관 전용 간격만 조정 */
+
+/* ── 모달 confirm 색상 변형 ── */
+.modal__btn--confirm-warning {
+  background: var(--warning);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.modal__btn--confirm-warning:hover {
+  opacity: 0.85;
+}
+
+.modal__btn--confirm-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.modal__btn--confirm-primary:hover {
+  opacity: 0.85;
+}
+
+/* ── 목록 table scroll wrapper ── */
+.data-table-wrap--scroll {
+  overflow-x: auto;
+}
+
+/* ── 배너 테이블 이미지 컬럼 최소 폭 ── */
+.data-table-wrap--scroll .data-table td .cnt-thumb {
+  margin: 0 auto;
+}

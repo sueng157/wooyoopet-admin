@@ -499,27 +499,6 @@
   color: #E05A3A;
 }
 
-/* ── 새 교육 주제 등록 버튼 (결과 헤더 영역) ── */
-.btn-add-new {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-family);
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  background: var(--gradient);
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.btn-add-new:hover {
-  opacity: 0.85;
-}
-
 /* ── 진행률 (이수현황 테이블 내 인라인) ── */
 .edu-progress-inline {
   display: flex;

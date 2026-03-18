@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 새 FAQ 등록</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/contents.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item">교육관리</a>
+      <a href="contents.html" class="sidebar__menu-item active">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar"><svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+        <div class="sidebar__profile-info"><span class="sidebar__admin-name">홍길동</span><span class="sidebar__admin-role">관리자</span></div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="header"><h1 class="header__title">콘텐츠관리</h1><div class="header__right"><span class="header__admin-name">홍길동 관리자</span><span class="header__logout">로그아웃</span></div></header>
+
+    <div class="content">
+
+      <div class="detail-top">
+        <a href="contents.html" class="btn-back">← 목록으로</a>
+        <div class="detail-actions">
+          
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-card__header"><span class="detail-card__title">새 FAQ 등록</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">카테고리</span>
+          <span class="info-grid__value">
+            <select class="cnt-select"><option>결제</option><option>돌봄</option><option>환불</option><option>회원</option><option>유치원</option></select>
+          </span>
+
+          <span class="info-grid__label">질문</span>
+          <span class="info-grid__value"><input type="text" class="cnt-input" placeholder="질문을 입력하세요"></span>
+
+          <span class="info-grid__label">답변</span>
+          <span class="info-grid__value cnt-full-width">
+            <textarea class="cnt-textarea" rows="10" placeholder="답변을 입력하세요"></textarea>
+          </span>
+
+          <span class="info-grid__label">대상</span>
+          <span class="info-grid__value">
+            <select class="cnt-select"><option>전체</option><option>보호자</option><option>유치원</option></select>
+          </span>
+
+          <span class="info-grid__label">노출 순서</span>
+          <span class="info-grid__value"><input type="number" class="cnt-input cnt-input--short" placeholder="1"></span>
+
+          <span class="info-grid__label">공개 상태</span>
+          <span class="info-grid__value">
+            <select class="cnt-select"><option>비공개</option><option>공개</option></select>
+          </span>
+        </div>
+      </div>
+
+      <div class="detail-bottom-actions">
+        <button class="btn-action btn-action--primary">등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

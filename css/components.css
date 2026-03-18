@@ -133,6 +133,34 @@
   text-decoration: underline;
 }
 
+.result-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── 새 등록 버튼 (결과 헤더 공통) ── */
+.btn-add-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--gradient);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.btn-add-new:hover {
+  opacity: 0.85;
+}
+
 .btn-excel__icon {
   width: 16px;
   height: 16px;
