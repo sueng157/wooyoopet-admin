@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 이수현황 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/educations.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item active">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <header class="header">
+      <h1 class="header__title">교육관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- 상단 액션바 -->
+      <div class="detail-top">
+        <a href="educations.html" class="btn-back">&larr; 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('forceCompleteModal').classList.add('active')">강제 이수 처리</button>
+          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('resetCompletionModal').classList.add('active')">이수 초기화</button>
+          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('resetChecklistModal').classList.add('active')">체크리스트 확인 초기화</button>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ① 유치원 기본정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">유치원 기본정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">유치원명</span>
+          <span class="info-grid__value">밤톨이네</span>
+
+          <span class="info-grid__label">유치원 고유번호</span>
+          <span class="info-grid__value"><a href="kindergarten-detail.html" class="data-table__link">K-00000123</a></span>
+
+          <span class="info-grid__label">운영자 성명</span>
+          <span class="info-grid__value">이정훈</span>
+
+          <span class="info-grid__label">운영자 연락처</span>
+          <span class="info-grid__value"><span class="masked">010-****-5678</span></span>
+
+          <span class="info-grid__label">회원 고유번호</span>
+          <span class="info-grid__value"><a href="member-detail.html" class="data-table__link">M-00002345</a></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ② 이수 전체 요약 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">이수 전체 요약</h2>
+        </div>
+        <div class="stat-cards--3col">
+          <div class="stat-card">
+            <div class="stat-card__label">전체 교육 주제 수</div>
+            <div class="stat-card__value">8</div>
+            <div class="stat-card__unit">건</div>
+          </div>
+          <div class="stat-card stat-card--highlight">
+            <div class="stat-card__label">이수 완료 수</div>
+            <div class="stat-card__value">8</div>
+            <div class="stat-card__unit">건</div>
+          </div>
+          <div class="stat-card stat-card--highlight">
+            <div class="stat-card__label">진행률</div>
+            <div class="stat-card__value">100%</div>
+          </div>
+        </div>
+        <div class="info-grid" style="margin-top:16px;">
+          <span class="info-grid__label">이수 상태</span>
+          <span class="info-grid__value"><span class="badge badge--completed">이수완료</span></span>
+
+          <span class="info-grid__label">전체 이수 완료일</span>
+          <span class="info-grid__value">2025-12-08 16:42</span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ③ 교육별 이수 상세 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">교육별 이수 상세</h2>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>교육 순서</th>
+                <th>교육 주제명</th>
+                <th>이수 여부</th>
+                <th>이수 일시</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>첫 만남의 예절</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-02 09:15</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>안전한 돌봄 환경</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-02 09:32</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>건강한 식사 관리</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-03 10:05</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>위생과 청결</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-03 10:28</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>응급 상황 대처</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-05 14:11</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>보호자 커뮤니케이션</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-05 14:40</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>반려동물 행동 이해</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-07 11:22</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>돌봄 일지 작성법</td>
+                <td><span class="badge badge--completed">이수</span></td>
+                <td>2025-12-08 16:42</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ④ 체크리스트 확인 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">체크리스트 확인 정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">확인 여부</span>
+          <span class="info-grid__value"><span class="badge badge--completed">확인완료</span></span>
+
+          <span class="info-grid__label">확인 완료일시</span>
+          <span class="info-grid__value">2025-12-01 08:50</span>
+
+          <span class="info-grid__label">확인한 체크리스트 버전</span>
+          <span class="info-grid__value">v3</span>
+
+          <span class="info-grid__label">최신 버전 일치 여부</span>
+          <span class="info-grid__value"><span class="badge badge--version-match">일치</span></span>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ⑤ 서약서 동의 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">서약서 동의 정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">동의 여부</span>
+          <span class="info-grid__value"><span class="badge badge--pledge-yes">동의</span></span>
+
+          <span class="info-grid__label">동의 일시</span>
+          <span class="info-grid__value">2025-12-05 09:10</span>
+
+          <span class="info-grid__label">동의한 서약서 버전</span>
+          <span class="info-grid__value">v2</span>
+
+          <span class="info-grid__label">최신 버전 일치 여부</span>
+          <span class="info-grid__value"><span class="badge badge--version-match">일치</span></span>
+
+          <span class="info-grid__label">서약서 내용 미리보기</span>
+          <span class="info-grid__value"><a href="education-pledge-detail.html" class="data-table__link">미리보기</a></span>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ========== 강제 이수 처리 모달 ========== -->
+<div class="modal-overlay" id="forceCompleteModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--primary);">강제 이수 처리</div>
+    <div class="modal__message">
+      특수한 사유로 이수를 강제 처리합니다.<br>
+      아래에 사유를 입력해주세요.
+    </div>
+    <textarea class="modal__textarea" placeholder="강제 이수 처리 사유를 입력하세요"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceCompleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--confirm-primary">강제 이수 처리</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 이수 초기화 모달 ========== -->
+<div class="modal-overlay" id="resetCompletionModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--warning);">이수 초기화</div>
+    <div class="modal__message">
+      이수 기록을 초기화하면 해당 유치원은 교육을 <strong style="color:var(--coral);">처음부터 다시</strong> 이수해야 합니다.<br>
+      아래에 사유를 입력해주세요.
+    </div>
+    <textarea class="modal__textarea" placeholder="이수 초기화 사유를 입력하세요"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('resetCompletionModal').classList.remove('active')">취소</button>
+      <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">이수 초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 체크리스트 확인 초기화 모달 ========== -->
+<div class="modal-overlay" id="resetChecklistModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--warning);">체크리스트 확인 초기화</div>
+    <div class="modal__message">
+      체크리스트 확인 기록을 초기화하면 해당 유치원은 체크리스트를 <strong style="color:var(--coral);">다시 확인</strong>해야 합니다.<br>
+      아래에 사유를 입력해주세요.
+    </div>
+    <textarea class="modal__textarea" placeholder="체크리스트 확인 초기화 사유를 입력하세요"></textarea>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('resetChecklistModal').classList.remove('active')">취소</button>
+      <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">체크리스트 초기화</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

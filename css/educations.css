@@ -1,0 +1,570 @@
+/* ============================================
+   교육관리 (Educations) — 전용 CSS
+   common.css → components.css → educations.css
+   이 파일은 교육관리 페이지에만 필요한 스타일
+   ============================================ */
+
+/* ── 탭2 섹션 카드 (체크리스트 / 서약서 목록) ── */
+.edu-section-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.edu-section-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.edu-section-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── 순서 변경 화살표 버튼 ── */
+.order-arrows {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.order-arrows__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 14px;
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-weak);
+  font-size: 9px;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+
+.order-arrows__btn:hover {
+  background: rgba(51, 157, 238, 0.08);
+  color: var(--primary);
+}
+
+/* ── 이미지 업로드 프리뷰 영역 ── */
+.edu-img-preview {
+  width: 320px;
+  height: 180px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.edu-img-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edu-img-preview__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-weak);
+  font-size: 12px;
+}
+
+.edu-img-preview__placeholder svg {
+  width: 32px;
+  height: 32px;
+  fill: var(--text-weak);
+  opacity: 0.5;
+}
+
+.edu-img-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.edu-img-actions__btn {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.edu-img-actions__btn:hover {
+  background: rgba(51, 157, 238, 0.06);
+}
+
+.edu-img-actions__btn--delete {
+  color: var(--text-weak);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.edu-img-actions__btn--delete:hover {
+  color: var(--coral);
+  border-color: var(--coral);
+  background: rgba(224, 90, 58, 0.04);
+}
+
+/* ── 원칙 설명 글머리 기호 목록 ── */
+.edu-bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.edu-bullet-list__item {
+  position: relative;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 6px 0 6px 18px;
+  line-height: 1.6;
+}
+
+.edu-bullet-list__item::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.edu-bullet-list__add {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: opacity 0.15s ease;
+}
+
+.edu-bullet-list__add:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+/* ── 퀴즈 정답/오답 해설 블록 ── */
+.edu-explanation {
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.edu-explanation--correct {
+  background: rgba(46, 204, 113, 0.06);
+  color: #1e8c4c;
+}
+
+.edu-explanation--wrong {
+  background: rgba(224, 90, 58, 0.06);
+  color: #b84428;
+}
+
+/* ── 퀴즈 선택지 행 (버튼 + 텍스트) ── */
+.edu-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.edu-choice-row__text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── 퀴즈 정답 토글 버튼 ── */
+.edu-answer-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-weak);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.edu-answer-toggle:hover {
+  border-color: rgba(51, 157, 238, 0.3);
+  color: var(--primary);
+  background: rgba(51, 157, 238, 0.04);
+}
+
+.edu-answer-toggle.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 1px 4px rgba(51, 157, 238, 0.25);
+}
+
+/* ── 체크리스트 / 서약서 항목 테이블 ── */
+.edu-items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.edu-items-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-weak);
+  text-align: left;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.edu-items-table thead th:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  width: 60px;
+}
+
+.edu-items-table thead th:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  width: 50px;
+  text-align: center;
+}
+
+.edu-items-table tbody td {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 12px 12px;
+  vertical-align: top;
+}
+
+.edu-items-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.edu-items-table tbody tr:hover {
+  background: rgba(51, 157, 238, 0.03);
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+  cursor: grab;
+  color: var(--text-weak);
+  font-size: 14px;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  color: var(--primary);
+}
+
+/* 사용 상태 토글 */
+.edu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.edu-toggle__track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.edu-toggle__track--on {
+  background: var(--primary);
+}
+
+.edu-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.edu-toggle__track--on .edu-toggle__thumb {
+  left: 18px;
+}
+
+.edu-toggle__label {
+  color: var(--text-weak);
+}
+
+.edu-toggle__label--on {
+  color: var(--primary);
+}
+
+/* 삭제 버튼 */
+.edu-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-weak);
+  transition: all 0.15s ease;
+}
+
+.edu-delete-btn:hover {
+  color: var(--coral);
+  border-color: var(--coral);
+  background: rgba(224, 90, 58, 0.04);
+}
+
+.edu-delete-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* ── 서약서 하위 항목 (글머리 기호) ── */
+.edu-sub-items {
+  padding: 8px 0 4px 24px;
+}
+
+.edu-sub-items__item {
+  position: relative;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 0 4px 16px;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.edu-sub-items__item::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--text-weak);
+  font-weight: 700;
+}
+
+.edu-sub-items__text {
+  flex: 1;
+}
+
+.edu-sub-items__delete {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-weak);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.edu-sub-items__delete:hover {
+  color: var(--coral);
+}
+
+.edu-sub-items__add {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0 4px 16px;
+  transition: opacity 0.15s ease;
+}
+
+.edu-sub-items__add:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+/* ── 항목 추가 행 ── */
+.edu-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.edu-add-row__btn {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.edu-add-row__btn:hover {
+  background: rgba(51, 157, 238, 0.04);
+}
+
+/* ── 잠금 상태 (이전 버전 열람 전용) ── */
+.edu-locked-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warning);
+  background: rgba(245, 166, 35, 0.06);
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-top: 16px;
+}
+
+.edu-locked-notice svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--warning);
+  flex-shrink: 0;
+}
+
+/* ── 서약서 본문 텍스트 영역 ── */
+.edu-pledge-body {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  background: var(--surface-base);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── 버전 적용 배지 ── */
+.badge--version-current {
+  background: rgba(46, 204, 113, 0.10);
+  color: #2ECC71;
+}
+
+.badge--version-old {
+  background: rgba(0, 0, 0, 0.04);
+  color: #8C9AA5;
+}
+
+/* ── 버전 일치/불일치 ── */
+.badge--version-match {
+  background: rgba(46, 204, 113, 0.10);
+  color: #2ECC71;
+}
+
+.badge--version-mismatch {
+  background: rgba(224, 90, 58, 0.10);
+  color: #E05A3A;
+}
+
+/* ── 새 교육 주제 등록 버튼 (결과 헤더 영역) ── */
+.btn-add-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--gradient);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-add-new:hover {
+  opacity: 0.85;
+}
+
+/* ── 진행률 (이수현황 테이블 내 인라인) ── */
+.edu-progress-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edu-progress-inline__track {
+  width: 60px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.edu-progress-inline__fill {
+  height: 100%;
+  background: var(--gradient);
+  border-radius: 3px;
+}
+
+.edu-progress-inline__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── 서약서 항목 텍스트 (상위 항목) ── */
+.edu-pledge-item-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* ── 모달 확인 버튼 (Primary) ── */
+.modal__btn--confirm-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+}
+
+.modal__btn--confirm-primary:disabled {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-weak);
+  cursor: not-allowed;
+}

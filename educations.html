@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 교육관리</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/educations.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item active">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <!-- 헤더 -->
+    <header class="header">
+      <h1 class="header__title">교육관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <!-- 콘텐츠 영역 -->
+    <div class="content">
+
+      <!-- 탭 바 -->
+      <div class="tab-bar">
+        <button class="tab-bar__item active" onclick="switchTab('topics')">교육 주제 관리</button>
+        <button class="tab-bar__item" onclick="switchTab('checklist')">체크리스트 / 활동 서약서</button>
+        <button class="tab-bar__item" onclick="switchTab('status')">이수현황</button>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 탭 1: 교육 주제 관리                                         -->
+      <!-- ============================================================ -->
+      <div class="tab-content active" id="tab-topics">
+
+        <!-- 필터 바 -->
+        <div class="filter-bar">
+          <div class="filter-row">
+            <span class="filter-label">공개 상태</span>
+            <select class="filter-select">
+              <option>전체</option>
+              <option>공개</option>
+              <option>비공개</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <input type="text" class="filter-input filter-input--search" placeholder="교육 주제명">
+            <button class="btn-search">검색</button>
+          </div>
+        </div>
+
+        <!-- 결과 헤더 -->
+        <div class="result-header">
+          <span class="result-header__count">검색 결과 <strong>8</strong>건</span>
+          <a href="education-create.html" class="btn-add-new">+ 새 교육 주제 등록</a>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>교육 순서</th>
+                <th>교육 주제명</th>
+                <th>이수 완료 인원</th>
+                <th>공개 상태</th>
+                <th>등록일</th>
+                <th>수정일</th>
+                <th>편집</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  1
+                </td>
+                <td>첫 만남의 예절</td>
+                <td>245건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-01</td>
+                <td>2025-12-15</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  2
+                </td>
+                <td>안전한 돌봄 환경</td>
+                <td>238건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-01</td>
+                <td>2025-12-10</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  3
+                </td>
+                <td>건강한 식사 관리</td>
+                <td>230건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-02</td>
+                <td>2025-12-12</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  4
+                </td>
+                <td>위생과 청결</td>
+                <td>225건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-02</td>
+                <td>2025-12-08</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  5
+                </td>
+                <td>응급 상황 대처</td>
+                <td>220건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-03</td>
+                <td>2025-12-14</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  6
+                </td>
+                <td>보호자 커뮤니케이션</td>
+                <td>215건</td>
+                <td><span class="badge badge--completed">공개</span></td>
+                <td>2025-12-03</td>
+                <td>2025-12-11</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  7
+                </td>
+                <td>반려동물 행동 이해</td>
+                <td>210건</td>
+                <td><span class="badge badge--not-started">비공개</span></td>
+                <td>2025-12-04</td>
+                <td>2025-12-09</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>
+                  <div class="order-arrows">
+                    <button class="order-arrows__btn" title="위로">▲</button>
+                    <button class="order-arrows__btn" title="아래로">▼</button>
+                  </div>
+                  8
+                </td>
+                <td>돌봄 일지 작성법</td>
+                <td>0건</td>
+                <td><span class="badge badge--not-started">비공개</span></td>
+                <td>2025-12-15</td>
+                <td>2025-12-15</td>
+                <td><a href="education-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pagination">
+          <button class="pagination__btn pagination__btn--arrow" disabled>&laquo;</button>
+          <button class="pagination__btn pagination__btn--arrow" disabled>&lsaquo;</button>
+          <button class="pagination__btn active">1</button>
+          <button class="pagination__btn pagination__btn--arrow">&rsaquo;</button>
+          <button class="pagination__btn pagination__btn--arrow">&raquo;</button>
+        </div>
+
+      </div><!-- /tab-topics -->
+
+      <!-- ============================================================ -->
+      <!-- 탭 2: 체크리스트 / 활동 서약서                               -->
+      <!-- ============================================================ -->
+      <div class="tab-content" id="tab-checklist">
+
+        <!-- 섹션 A: 유치원 체크리스트 -->
+        <div class="edu-section-card">
+          <div class="edu-section-card__header">
+            <h2 class="edu-section-card__title">유치원 체크리스트</h2>
+            <a href="education-checklist-create.html" class="btn-add-new">+ 새 버전 생성</a>
+          </div>
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>버전 번호</th>
+                <th>항목 수</th>
+                <th>적용 상태</th>
+                <th>작성일시</th>
+                <th>작성자</th>
+                <th>편집</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>v3</td>
+                <td>22개</td>
+                <td><span class="badge badge--version-current">현재 적용중</span></td>
+                <td>2025-12-15 14:00</td>
+                <td>홍길동</td>
+                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>v2</td>
+                <td>20개</td>
+                <td><span class="badge badge--version-old">이전 버전</span></td>
+                <td>2025-11-20 10:30</td>
+                <td>홍길동</td>
+                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>v1</td>
+                <td>18개</td>
+                <td><span class="badge badge--version-old">이전 버전</span></td>
+                <td>2025-10-01 09:00</td>
+                <td>홍길동</td>
+                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 섹션 B: 유치원 파트너 활동 서약서 -->
+        <div class="edu-section-card">
+          <div class="edu-section-card__header">
+            <h2 class="edu-section-card__title">유치원 파트너 활동 서약서</h2>
+            <a href="education-pledge-create.html" class="btn-add-new">+ 새 버전 생성</a>
+          </div>
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>버전 번호</th>
+                <th>서약 항목 수</th>
+                <th>적용 상태</th>
+                <th>작성일시</th>
+                <th>작성자</th>
+                <th>편집</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>v2</td>
+                <td>8개</td>
+                <td><span class="badge badge--version-current">현재 적용중</span></td>
+                <td>2025-12-10 11:00</td>
+                <td>홍길동</td>
+                <td><a href="education-pledge-detail.html" class="mini-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>v1</td>
+                <td>6개</td>
+                <td><span class="badge badge--version-old">이전 버전</span></td>
+                <td>2025-10-01 09:00</td>
+                <td>홍길동</td>
+                <td><a href="education-pledge-detail.html" class="mini-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /tab-checklist -->
+
+      <!-- ============================================================ -->
+      <!-- 탭 3: 이수현황                                               -->
+      <!-- ============================================================ -->
+      <div class="tab-content" id="tab-status">
+
+        <!-- 필터 바 -->
+        <div class="filter-bar">
+          <div class="filter-row">
+            <span class="filter-label">이수 상태</span>
+            <select class="filter-select">
+              <option>전체</option>
+              <option>미시작</option>
+              <option>진행중</option>
+              <option>이수완료</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <input type="text" class="filter-input filter-input--search" placeholder="유치원명, 운영자 성명">
+            <button class="btn-search">검색</button>
+          </div>
+        </div>
+
+        <!-- 결과 헤더 -->
+        <div class="result-header">
+          <span class="result-header__count">검색 결과 <strong>320</strong>건</span>
+          <button class="btn-excel">
+            <svg class="btn-excel__icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 12l-4-4h2.5V3h3v5H12L8 12zm-6 2h12v1.5H2V14z"/>
+            </svg>
+            내역 다운로드
+          </button>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <div class="data-table-wrap data-table-wrap--scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>유치원명</th>
+                <th>운영자 성명</th>
+                <th>운영자 연락처</th>
+                <th>전체 교육 수</th>
+                <th>이수 완료 수</th>
+                <th>진행률</th>
+                <th>체크리스트</th>
+                <th>서약서 동의</th>
+                <th>서약서 동의일시</th>
+                <th>이수 완료일</th>
+                <th>이수 상태</th>
+                <th>편집</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>밤톨이네</td>
+                <td>이정훈</td>
+                <td><span class="masked">010-****-5678</span></td>
+                <td>8</td>
+                <td>8</td>
+                <td>
+                  <div class="edu-progress-inline">
+                    <div class="edu-progress-inline__track">
+                      <div class="edu-progress-inline__fill" style="width:100%"></div>
+                    </div>
+                    <span class="edu-progress-inline__text">100%</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--completed">확인완료</span></td>
+                <td><span class="badge badge--pledge-yes">동의</span></td>
+                <td>2025-12-05</td>
+                <td>2025-12-08</td>
+                <td><span class="badge badge--completed">이수완료</span></td>
+                <td><a href="education-status-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>사랑이네</td>
+                <td>박수진</td>
+                <td><span class="masked">010-****-1234</span></td>
+                <td>8</td>
+                <td>5</td>
+                <td>
+                  <div class="edu-progress-inline">
+                    <div class="edu-progress-inline__track">
+                      <div class="edu-progress-inline__fill" style="width:63%"></div>
+                    </div>
+                    <span class="edu-progress-inline__text">63%</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--completed">확인완료</span></td>
+                <td><span class="badge badge--pledge-no">미동의</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td><span class="badge badge--in-progress">진행중</span></td>
+                <td><a href="education-status-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>해피도그</td>
+                <td>김하늘</td>
+                <td><span class="masked">010-****-9876</span></td>
+                <td>8</td>
+                <td>0</td>
+                <td>
+                  <div class="edu-progress-inline">
+                    <div class="edu-progress-inline__track">
+                      <div class="edu-progress-inline__fill" style="width:0%"></div>
+                    </div>
+                    <span class="edu-progress-inline__text">0%</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--not-started">미확인</span></td>
+                <td><span class="badge badge--pledge-no">미동의</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td><span class="badge badge--not-started">미시작</span></td>
+                <td><a href="education-status-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>하늘정원</td>
+                <td>최민영</td>
+                <td><span class="masked">010-****-4567</span></td>
+                <td>8</td>
+                <td>8</td>
+                <td>
+                  <div class="edu-progress-inline">
+                    <div class="edu-progress-inline__track">
+                      <div class="edu-progress-inline__fill" style="width:100%"></div>
+                    </div>
+                    <span class="edu-progress-inline__text">100%</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--completed">확인완료</span></td>
+                <td><span class="badge badge--pledge-yes">동의</span></td>
+                <td>2025-12-03</td>
+                <td>2025-12-06</td>
+                <td><span class="badge badge--completed">이수완료</span></td>
+                <td><a href="education-status-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>멍멍하우스</td>
+                <td>정서윤</td>
+                <td><span class="masked">010-****-3456</span></td>
+                <td>8</td>
+                <td>3</td>
+                <td>
+                  <div class="edu-progress-inline">
+                    <div class="edu-progress-inline__track">
+                      <div class="edu-progress-inline__fill" style="width:38%"></div>
+                    </div>
+                    <span class="edu-progress-inline__text">38%</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--not-started">미확인</span></td>
+                <td><span class="badge badge--pledge-no">미동의</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td><span class="badge badge--in-progress">진행중</span></td>
+                <td><a href="education-status-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pagination">
+          <button class="pagination__btn pagination__btn--arrow" disabled>&laquo;</button>
+          <button class="pagination__btn pagination__btn--arrow" disabled>&lsaquo;</button>
+          <button class="pagination__btn active">1</button>
+          <button class="pagination__btn">2</button>
+          <button class="pagination__btn">3</button>
+          <button class="pagination__btn">4</button>
+          <button class="pagination__btn">5</button>
+          <button class="pagination__btn pagination__btn--arrow">&rsaquo;</button>
+          <button class="pagination__btn pagination__btn--arrow">&raquo;</button>
+        </div>
+
+      </div><!-- /tab-status -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-bar__item').forEach(function(btn) { btn.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
+  if (tabName === 'topics') {
+    document.querySelector('.tab-bar__item:nth-child(1)').classList.add('active');
+    document.getElementById('tab-topics').classList.add('active');
+  } else if (tabName === 'checklist') {
+    document.querySelector('.tab-bar__item:nth-child(2)').classList.add('active');
+    document.getElementById('tab-checklist').classList.add('active');
+  } else {
+    document.querySelector('.tab-bar__item:nth-child(3)').classList.add('active');
+    document.getElementById('tab-status').classList.add('active');
+  }
+}
+</script>
+
+</body>
+</html>

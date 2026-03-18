@@ -22,8 +22,8 @@
 | 5 | 결제관리 | ✅ 완료 | `payments.html`, `payment-detail.html`, `refund-detail.html`, `css/payments.css` | #10 |
 | 6 | 정산관리 | ✅ 완료 | `settlements.html`, `settlement-info-detail.html`, `settlement-detail.html`, `css/settlements.css` | #11 |
 | 7 | 채팅관리 | ✅ 완료 | `chats.html`, `chat-detail.html`, `report-detail.html`, `css/chats.css` | #13 |
-| 8 | 후기관리 | ⬜ 다음 작업 | — | — |
-| 9 | 교육관리 | ⬜ 미착수 | — | — |
+| 8 | 후기관리 | ✅ 완료 | `reviews.html`, `review-detail.html`, `review-kg-detail.html`, `css/reviews.css` | #16 |
+| 9 | 교육관리 | ✅ 완료 | `educations.html`, `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html`, `css/educations.css` | #19 |
 | 10 | 콘텐츠관리 | ⬜ 미착수 | — | — |
 | 11 | 설정 | ⬜ 미착수 | — | — |
 
@@ -55,6 +55,11 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `payments.html`, `payment-detail.html`, `refund-detail.html` | common → components → pets → reservations → payments |
 | `settlements.html`, `settlement-info-detail.html`, `settlement-detail.html` | common → components → pets → reservations → settlements |
 | `chats.html`, `chat-detail.html`, `report-detail.html` | common → components → pets → reservations → chats |
+| `reviews.html`, `review-detail.html`, `review-kg-detail.html` | common → components → reviews |
+| `educations.html`, `education-detail.html`, `education-create.html` | common → components → educations |
+| `education-checklist-detail.html`, `education-checklist-create.html` | common → components → educations |
+| `education-pledge-detail.html`, `education-pledge-create.html` | common → components → educations |
+| `education-status-detail.html` | common → components → educations |
 
 > **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드. settlements와 chats도 모달·배지 등을 위해 pets.css + reservations.css를 함께 로드함.
 
@@ -130,14 +135,13 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 <a href="payments.html" class="sidebar__menu-item">결제관리</a>
 <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
 <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
-<!-- 8번부터 미연결 -->
-<a href="#" class="sidebar__menu-item">후기관리</a>
-<a href="#" class="sidebar__menu-item">교육관리</a>
+<a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+<a href="educations.html" class="sidebar__menu-item">교육관리</a>
 <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
 <a href="#" class="sidebar__menu-item">설정</a>
 ```
 
-> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 18개)의 사이드바도 동일하게 업데이트할 것.
+> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 29개)의 사이드바도 동일하게 업데이트할 것.
 
 ### 4-3. 목록 페이지 패턴
 
@@ -197,7 +201,14 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 - **현재 JS는 최소한만 사용**: 모달 열기/닫기, textarea oninput 활성화, 탭 전환 정도의 인라인 JS만
 - `member-detail.html`과 `kindergarten-detail.html`에는 `toggleMask()` JS가 `<script>` 태그로 들어있음 (이전 작업에서 추가됨)
 - `pet-detail.html`과 `reservation-detail.html`에는 해당 JS가 **없음** → 이 불일치는 **현재 상태 그대로 유지**하기로 결정됨
-- 탭 전환 스크립트는 `switchTab(tabId)` 함수로 통일 (`payments.html`, `settlements.html`, `chats.html`에서 사용)
+- 탭 전환 스크립트는 `switchTab(tabId)` 함수로 통일 (`payments.html`, `settlements.html`, `chats.html`, `educations.html`에서 사용)
+
+### 5-9. 교육관리 JS 작업 예정 사항
+
+- **퀴즈 정답 토글 버튼** (`edu-answer-toggle`): 현재 HTML/CSS로 겉모양(비활성/활성 상태)만 구현됨. JS 작업 시 아래 기능 구현 필요:
+  - 선택지 A/B 각각의 `정답` 버튼 클릭 시 해당 버튼에 `active` 클래스 추가
+  - 동시에 상대편 버튼의 `active` 클래스 제거 (한 번에 하나만 활성화)
+  - 대상 페이지: `education-detail.html`, `education-create.html`
 
 ### 5-3. 환불 프로세스 (결제관리·돌봄예약관리 공통)
 
@@ -256,6 +267,8 @@ css/reservations.css    120줄  (돌봄예약 전용 배지/모달 확장)
 css/payments.css         43줄  (결제관리 전용)
 css/settlements.css     107줄  (정산관리 전용 배지/버튼/요약)
 css/chats.css           162줄  (채팅관리 전용 배지/말풍선/텍스트)
+css/reviews.css          68줄  (후기관리 전용 배지/태그/모달)
+css/educations.css      550줄+ (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
 ```
 
 ---
@@ -301,16 +314,13 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 
 ---
 
-## 9. 다음 작업: 8. 후기관리
+## 9. 다음 작업: 10. 콘텐츠관리
 
-`full_spec_with_tables.md`의 `## 8. 후기관리` 섹션 참조.
+`full_spec_with_tables.md`의 `## 10. 콘텐츠관리` 섹션 참조.
 
 **예상 특징**:
-- 탭 구조 재사용 (보호자 후기 / 유치원 후기)
-- 후기 목록, 후기 상세 페이지
-- 만족도 배지 (`badge--satis-best`, `badge--satis-good`, `badge--satis-bad` — pets.css에 이미 정의됨)
-- 후기 내용 미리보기 (목록), 전문 표시 (상세)
-- 후기 삭제/숨김 처리 모달
+- 탭 구조 재사용 (배너, 공지사항, FAQ, 약관)
+- 각 탭별 목록, 상세/등록 페이지
 
 ---
 

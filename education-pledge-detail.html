@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 활동 서약서 버전 상세</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/educations.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ========== 사이드바 ========== -->
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item active">교육관리</a>
+      <a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+      <a href="#" class="sidebar__menu-item">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar">
+          <svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="sidebar__profile-info">
+          <span class="sidebar__admin-name">홍길동</span>
+          <span class="sidebar__admin-role">관리자</span>
+        </div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <!-- ========== 메인 콘텐츠 ========== -->
+  <div class="main">
+
+    <header class="header">
+      <h1 class="header__title">교육관리</h1>
+      <div class="header__right">
+        <span class="header__admin-name">홍길동 관리자</span>
+        <span class="header__logout">로그아웃</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- 상단 액션바 -->
+      <div class="detail-top">
+        <a href="educations.html" class="btn-back">&larr; 목록으로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--outline-primary" onclick="alert('미리보기: 모바일 앱에서 보이는 서약서 형태로 미리봅니다.')">미리보기</button>
+          <button class="btn-action btn-action--primary" onclick="document.getElementById('saveModal').classList.add('active')">저장</button>
+        </div>
+      </div>
+
+      <!-- ========== 버전 정보 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">버전 정보</h2>
+        </div>
+        <div class="info-grid">
+          <span class="info-grid__label">버전 번호</span>
+          <span class="info-grid__value">v2</span>
+
+          <span class="info-grid__label">적용 상태</span>
+          <span class="info-grid__value"><span class="badge badge--version-current">현재 적용중</span></span>
+
+          <span class="info-grid__label">작성일시</span>
+          <span class="info-grid__value">2025-12-10 11:00</span>
+
+          <span class="info-grid__label">작성자</span>
+          <span class="info-grid__value">홍길동</span>
+        </div>
+      </div>
+
+      <!-- ========== 서약서 제목 / 본문 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">서약서 내용</h2>
+        </div>
+        <div class="info-grid info-grid--wide">
+          <span class="info-grid__label">서약서 제목</span>
+          <span class="info-grid__value" style="font-weight:600;">우유펫 유치원 파트너 활동 서약서</span>
+
+          <span class="info-grid__label">서약서 본문</span>
+          <span class="info-grid__value">
+            <div class="edu-pledge-body">본인은 우유펫 플랫폼을 통해 반려동물 돌봄 서비스를 제공함에 있어, 아래의 사항을 성실히 이행할 것을 서약합니다. 본 서약서에 명시된 내용을 위반할 경우, 우유펫의 서비스 이용 제한 및 파트너 자격 박탈 등의 조치가 취해질 수 있음을 인지합니다.</div>
+          </span>
+        </div>
+      </div>
+
+      <!-- ========== 서약 항목 ========== -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">서약 항목</h2>
+        </div>
+
+        <table class="edu-items-table">
+          <thead>
+            <tr>
+              <th>순서</th>
+              <th>항목 내용</th>
+              <th>삭제</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 항목 1: 하위 항목 있음 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 1</td>
+              <td>
+                <div class="edu-pledge-item-text">반려동물의 안전과 건강을 최우선으로 합니다</div>
+                <div class="edu-sub-items">
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">정기적으로 반려동물의 건강 상태를 확인합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">돌봄 공간 내 위험 요소를 사전에 제거합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">반려동물의 이상 징후 발견 시 즉시 보호자에게 연락합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 2: 하위 항목 있음 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 2</td>
+              <td>
+                <div class="edu-pledge-item-text">청결한 돌봄 환경을 유지합니다</div>
+                <div class="edu-sub-items">
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">매일 돌봄 공간을 청소하고 소독합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">배변 처리를 즉시 시행합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 3: 하위 항목 없음 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 3</td>
+              <td>
+                <div class="edu-pledge-item-text">보호자와 성실하게 소통합니다</div>
+                <div class="edu-sub-items">
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 4 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 4</td>
+              <td>
+                <div class="edu-pledge-item-text">돌봄 예약 시간을 성실히 준수합니다</div>
+                <div class="edu-sub-items">
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">예약 시간 최소 10분 전에 준비를 완료합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">불가피한 사정 발생 시 최소 24시간 전에 알립니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 5 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 5</td>
+              <td>
+                <div class="edu-pledge-item-text">돌봄 일지를 정확하게 작성합니다</div>
+                <div class="edu-sub-items">
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 6 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 6</td>
+              <td>
+                <div class="edu-pledge-item-text">개인정보 보호 의무를 준수합니다</div>
+                <div class="edu-sub-items">
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">보호자의 개인정보를 외부에 유출하지 않습니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 7 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 7</td>
+              <td>
+                <div class="edu-pledge-item-text">우유펫 플랫폼 정책을 준수합니다</div>
+                <div class="edu-sub-items">
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+            <!-- 항목 8 -->
+            <tr>
+              <td><span class="drag-handle">↕</span> 8</td>
+              <td>
+                <div class="edu-pledge-item-text">응급 상황 발생 시 즉각 대응합니다</div>
+                <div class="edu-sub-items">
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">가까운 동물병원 연락처를 항상 비치합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <div class="edu-sub-items__item">
+                    <span class="edu-sub-items__text">응급 처치 키트를 준비하고 사용법을 숙지합니다</span>
+                    <button class="edu-sub-items__delete">삭제</button>
+                  </div>
+                  <button class="edu-sub-items__add">+ 하위 항목 추가</button>
+                </div>
+              </td>
+              <td style="text-align:center;">
+                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 항목 추가 -->
+        <div class="edu-add-row">
+          <button class="edu-add-row__btn">+ 항목 추가</button>
+        </div>
+
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ========== 저장 경고 모달 ========== -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--warning);">활동 서약서 수정 저장</div>
+    <div class="modal__message">
+      서약서를 수정하면 <strong>새 버전이 자동 생성</strong>되며,<br>
+      기존 동의 유치원에 <strong style="color:var(--coral);">재동의가 필요</strong>합니다.<br><br>
+      수정하시겠습니까?
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('saveModal').classList.remove('active')">취소</button>
+      <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">저장</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
