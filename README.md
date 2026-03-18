@@ -30,7 +30,7 @@ python3 -m http.server 8080
 | 7 | 채팅관리 | `chats.html` | `chat-detail.html`, `report-detail.html` | ✅ |
 | 8 | 후기관리 | `reviews.html` | `review-detail.html`, `review-kg-detail.html` | ✅ |
 | 9 | 교육관리 | `educations.html` | `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html` | ✅ |
-| 10 | 콘텐츠관리 | — | — | ⬜ |
+| 10 | 콘텐츠관리 | `contents.html` | `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html` | ✅ |
 | 11 | 설정 | — | — | ⬜ |
 
 ---
@@ -51,7 +51,8 @@ webapp/
 │   ├── settlements.css     # 정산관리 전용 배지/버튼
 │   ├── chats.css           # 채팅관리 전용 배지/말풍선 UI
 │   ├── reviews.css         # 후기관리 전용 배지/태그/모달
-│   └── educations.css      # 교육관리 전용 이미지/퀴즈/토글/체크리스트/서약서
+│   ├── educations.css      # 교육관리 전용 이미지/퀴즈/토글/체크리스트/서약서
+│   └── contents.css        # 콘텐츠관리 전용 배지/카테고리/폼/이미지 프리뷰
 ├── assets/
 │   └── images/
 │       └── logo.png
@@ -84,6 +85,15 @@ webapp/
 ├── education-pledge-detail.html
 ├── education-pledge-create.html
 ├── education-status-detail.html
+├── contents.html
+├── content-banner-detail.html
+├── content-banner-create.html
+├── content-notice-detail.html
+├── content-notice-create.html
+├── content-faq-detail.html
+├── content-faq-create.html
+├── content-terms-detail.html
+├── content-terms-create.html
 ├── full_spec_with_tables.md   # 전체 기능 명세서
 ├── HANDOVER.md                # 개발 인수인계서 (CSS 구조, 규칙, 작업 프로세스)
 └── README.md

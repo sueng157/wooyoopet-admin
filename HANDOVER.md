@@ -24,10 +24,10 @@
 | 7 | 채팅관리 | ✅ 완료 | `chats.html`, `chat-detail.html`, `report-detail.html`, `css/chats.css` | #13 |
 | 8 | 후기관리 | ✅ 완료 | `reviews.html`, `review-detail.html`, `review-kg-detail.html`, `css/reviews.css` | #16 |
 | 9 | 교육관리 | ✅ 완료 | `educations.html`, `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html`, `css/educations.css` | #19 |
-| 10 | 콘텐츠관리 | ⬜ 미착수 | — | — |
+| 10 | 콘텐츠관리 | ✅ 완료 | `contents.html`, `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html`, `css/contents.css` | #24 |
 | 11 | 설정 | ⬜ 미착수 | — | — |
 
-> 문서 동기화 PR: #12 (정산관리 스펙 반영), #14 (채팅관리 스펙 반영)
+> 문서 동기화 PR: #12 (정산관리 스펙 반영), #14 (채팅관리 스펙 반영), #20 (후기+교육 완료 반영), #21 (노쇼 제재 보호자/유치원 분리)
 
 ---
 
@@ -60,6 +60,10 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `education-checklist-detail.html`, `education-checklist-create.html` | common → components → educations |
 | `education-pledge-detail.html`, `education-pledge-create.html` | common → components → educations |
 | `education-status-detail.html` | common → components → educations |
+| `contents.html`, `content-banner-detail.html`, `content-banner-create.html` | common → components → contents |
+| `content-notice-detail.html`, `content-notice-create.html` | common → components → contents |
+| `content-faq-detail.html`, `content-faq-create.html` | common → components → contents |
+| `content-terms-detail.html`, `content-terms-create.html` | common → components → contents |
 
 > **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드. settlements와 chats도 모달·배지 등을 위해 pets.css + reservations.css를 함께 로드함.
 
@@ -68,6 +72,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 - `components.css`에 이미 정의된 스타일은 절대 중복 작성 금지
 - 페이지전용 CSS에는 **해당 메뉴에서만 쓰는 배지/스타일만** 작성
 - 리팩터링 후 `members.css`와 `kindergartens.css`는 주석 6줄만 남아있음 (모두 components.css로 이전됨)
+- `btn-add-new`(새 등록 버튼)와 `result-header__actions`는 `components.css`에 공통 정의 (PR #24에서 `educations.css` → `components.css`로 이동)
 
 ### 3-4. CSS Variables (common.css :root)
 
@@ -137,11 +142,11 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
 <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
 <a href="educations.html" class="sidebar__menu-item">교육관리</a>
-<a href="#" class="sidebar__menu-item">콘텐츠관리</a>
+<a href="contents.html" class="sidebar__menu-item">콘텐츠관리</a>
 <a href="#" class="sidebar__menu-item">설정</a>
 ```
 
-> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 29개)의 사이드바도 동일하게 업데이트할 것.
+> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 38개)의 사이드바도 동일하게 업데이트할 것.
 
 ### 4-3. 목록 페이지 패턴
 
@@ -210,6 +215,15 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
   - 동시에 상대편 버튼의 `active` 클래스 제거 (한 번에 하나만 활성화)
   - 대상 페이지: `education-detail.html`, `education-create.html`
 
+### 5-10. 콘텐츠관리 규칙
+
+| 규칙 | 내용 |
+|------|------|
+| 배너 이미지 크기 | 360×100px (또는 720×200px) |
+| 공지사항 | 대상(전체/보호자/유치원), 상단 고정, 푸시 알림 발송 기능 |
+| FAQ | 카테고리(결제/돌봄/환불/회원/유치원), 순서 변경 |
+| 약관 | 필수/선택, 버전 관리, 새 버전 발행, 동의 회원 존재 시 삭제 불가 |
+
 ### 5-3. 환불 프로세스 (결제관리·돌봄예약관리 공통)
 
 ```
@@ -258,7 +272,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 ```
 css/common.css          397줄  (전역변수, 리셋, 레이아웃)
-css/components.css      871줄  (공통 UI 컴포넌트 + 탭바)
+css/components.css     1010줄  (공통 UI 컴포넌트 + 탭바 + btn-add-new)
 css/dashboard.css       273줄  (대시보드 전용)
 css/members.css           6줄  (주석만)
 css/kindergartens.css     6줄  (주석만)
@@ -268,7 +282,8 @@ css/payments.css         43줄  (결제관리 전용)
 css/settlements.css     107줄  (정산관리 전용 배지/버튼/요약)
 css/chats.css           162줄  (채팅관리 전용 배지/말풍선/텍스트)
 css/reviews.css          68줄  (후기관리 전용 배지/태그/모달)
-css/educations.css      550줄+ (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
+css/educations.css      549줄  (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
+css/contents.css        313줄  (콘텐츠관리 전용 — 배지/카테고리/폼/이미지 프리뷰)
 ```
 
 ---
@@ -278,7 +293,7 @@ css/educations.css      550줄+ (교육관리 전용 — 이미지/퀴즈/토글
 1. **스펙 확인**: `full_spec_with_tables.md` 해당 섹션 읽기
 2. **UX/UI 디자인 초안**을 마크다운으로 작성 → 사용자 검토 → 수정 → OK
 3. **코딩**: `css/[페이지전용].css` + `[목록].html` + `[상세].html` 생성
-4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 29개)에서 해당 메뉴의 `href="#"`을 실제 파일로 변경
+4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 38개)에서 해당 메뉴의 `href="#"`을 실제 파일로 변경
 5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
 6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
 7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `main`으로
@@ -314,13 +329,14 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 
 ---
 
-## 9. 다음 작업: 10. 콘텐츠관리
+## 9. 다음 작업: 11. 설정
 
-`full_spec_with_tables.md`의 `## 10. 콘텐츠관리` 섹션 참조.
+`full_spec_with_tables.md`의 `## 11. 설정` 섹션 참조.
 
 **예상 특징**:
-- 탭 구조 재사용 (배너, 공지사항, FAQ, 약관)
-- 각 탭별 목록, 상세/등록 페이지
+- 탭 구조 재사용 (앱 설정, 관리자 계정)
+- 노쇼 제재 규칙 (보호자 3단계 / 유치원 2단계, PR #21에서 스펙 반영 완료)
+- 자동 처리 설정 (돌봄 자동 완료, 노쇼 자동 판정)
 
 ---
 
