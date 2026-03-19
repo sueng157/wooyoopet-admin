@@ -1,7 +1,8 @@
 # 우유펫(WOOYOOPET) 관리자 대시보드
 
 반려동물 돌봄 플랫폼 **우유펫**의 관리자 백오피스 대시보드입니다.  
-현재 HTML + CSS 정적 UI를 구현하는 단계이며, JavaScript/백엔드 연동은 이후 작업입니다.
+**전 메뉴(0~11번) HTML + CSS 정적 UI 구현이 완료**되었으며, JavaScript/백엔드 연동은 이후 작업입니다.  
+총 **HTML 42개**, **CSS 14개** (common + components + 메뉴별 12개).
 
 ---
 
@@ -31,7 +32,7 @@ python3 -m http.server 8080
 | 8 | 후기관리 | `reviews.html` | `review-detail.html`, `review-kg-detail.html` | ✅ |
 | 9 | 교육관리 | `educations.html` | `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html` | ✅ |
 | 10 | 콘텐츠관리 | `contents.html` | `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html` | ✅ |
-| 11 | 설정 | — | — | ⬜ |
+| 11 | 설정 | `settings.html` | `setting-admin-detail.html`, `setting-admin-create.html`, `setting-feedback-detail.html` | ✅ |
 
 ---
 
@@ -52,7 +53,8 @@ webapp/
 │   ├── chats.css           # 채팅관리 전용 배지/말풍선 UI
 │   ├── reviews.css         # 후기관리 전용 배지/태그/모달
 │   ├── educations.css      # 교육관리 전용 이미지/퀴즈/토글/체크리스트/서약서
-│   └── contents.css        # 콘텐츠관리 전용 배지/카테고리/폼/이미지 프리뷰
+│   ├── contents.css        # 콘텐츠관리 전용 배지/카테고리/폼/이미지 프리뷰
+│   └── settings.css        # 설정 전용 배지/폼/인풋/셀렉트
 ├── assets/
 │   └── images/
 │       └── logo.png
@@ -94,6 +96,10 @@ webapp/
 ├── content-faq-create.html
 ├── content-terms-detail.html
 ├── content-terms-create.html
+├── settings.html
+├── setting-admin-detail.html
+├── setting-admin-create.html
+├── setting-feedback-detail.html
 ├── full_spec_with_tables.md   # 전체 기능 명세서
 ├── HANDOVER.md                # 개발 인수인계서 (CSS 구조, 규칙, 작업 프로세스)
 └── README.md

@@ -25,9 +25,9 @@
 | 8 | 후기관리 | ✅ 완료 | `reviews.html`, `review-detail.html`, `review-kg-detail.html`, `css/reviews.css` | #16 |
 | 9 | 교육관리 | ✅ 완료 | `educations.html`, `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html`, `css/educations.css` | #19 |
 | 10 | 콘텐츠관리 | ✅ 완료 | `contents.html`, `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html`, `css/contents.css` | #24 |
-| 11 | 설정 | ⬜ 미착수 | — | — |
+| 11 | 설정 | ✅ 완료 | `settings.html`, `setting-admin-detail.html`, `setting-admin-create.html`, `setting-feedback-detail.html`, `css/settings.css` | #26 |
 
-> 문서 동기화 PR: #12 (정산관리 스펙 반영), #14 (채팅관리 스펙 반영), #20 (후기+교육 완료 반영), #21 (노쇼 제재 보호자/유치원 분리)
+> 문서 동기화 PR: #12 (정산관리 스펙 반영), #14 (채팅관리 스펙 반영), #20 (후기+교육 완료 반영), #21 (노쇼 제재 보호자/유치원 분리), #27 (결제관리 사이드바 링크 수정)
 
 ---
 
@@ -64,6 +64,9 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `content-notice-detail.html`, `content-notice-create.html` | common → components → contents |
 | `content-faq-detail.html`, `content-faq-create.html` | common → components → contents |
 | `content-terms-detail.html`, `content-terms-create.html` | common → components → contents |
+| `settings.html` | common → components → settings |
+| `setting-admin-detail.html`, `setting-admin-create.html` | common → components → settings |
+| `setting-feedback-detail.html` | common → components → settings |
 
 > **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드. settlements와 chats도 모달·배지 등을 위해 pets.css + reservations.css를 함께 로드함.
 
@@ -143,10 +146,10 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 <a href="reviews.html" class="sidebar__menu-item">후기관리</a>
 <a href="educations.html" class="sidebar__menu-item">교육관리</a>
 <a href="contents.html" class="sidebar__menu-item">콘텐츠관리</a>
-<a href="#" class="sidebar__menu-item">설정</a>
+<a href="settings.html" class="sidebar__menu-item">설정</a>
 ```
 
-> **새 대메뉴 작업 시**: 해당 메뉴의 `href="#"`을 실제 파일명으로 변경 + `active` 클래스 부여, 그리고 **기존 모든 HTML 파일**(현재 38개)의 사이드바도 동일하게 업데이트할 것.
+> **사이드바 완료**: 전 메뉴(0~11) 모든 `href`가 실제 파일로 연결 완료. 현재 총 42개 HTML 파일에 동일 사이드바 적용. 새 페이지 추가 시 42개 파일 모두 동기화 필요.
 
 ### 4-3. 목록 페이지 패턴
 
@@ -224,6 +227,22 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | FAQ | 카테고리(결제/돌봄/환불/회원/유치원), 순서 변경 |
 | 약관 | 필수/선택, 버전 관리, 새 버전 발행, 동의 회원 존재 시 삭제 불가 |
 
+### 5-11. 설정(11번 메뉴) 규칙
+
+| 규칙 | 내용 |
+|------|------|
+| 탭 구조 | 앱설정 / 관리자 계정 / 의견·피드백 3개 탭 |
+| 앱설정 카드 | 6개 영역 (앱버전, 서비스점검, 수수료, 환불규정, 노쇼제재, 자동처리) |
+| 노쇼 제재 | 보호자(1~3회)·유치원(1~2회) 통합 1개 카드, 통합 변경 이력 테이블 |
+| 자동 처리 | 하원 후 자동 완료 시간만 (노쇼 자동 판정 시간 삭제 — 노쇼는 신고 기반) |
+| 서비스 점검 이력 | 4열 미니테이블 (변경일, 점검 시작일시, 점검 종료일시, 변경 사유) |
+| 규칙 추가 버튼 | 자동 처리 설정에 [+ 규칙 추가] 버튼 배치 (JS 작업 시 동적 규칙 추가) |
+| 앱 버전 형식 | x.x.x (Semantic Versioning), 텍스트 입력 → JS 작업 시 정규식 검증 예정 |
+| 최소 지원 버전 힌트 | “※ 이 버전 미만 사용자에게 강제 업데이트 안내” 텍스트 표시 |
+| 관리자 계정 | 목록(10열) + 상세/수정 + 신규등록, 권한 11개 메뉴별 설정 |
+| 피드백 상세 | 의견내용/탈퇴정보 카드 동시 표시 (JS 연동 시 type에 따라 토글) |
+| 모달 | 앱설정 저장 6개, 관리자 저장/비밀번호초기화/비활성화/삭제/삭제금지 5개, 피드백 확인/메모 2개 |
+
 ### 5-3. 환불 프로세스 (결제관리·돌봄예약관리 공통)
 
 ```
@@ -276,14 +295,15 @@ css/components.css     1010줄  (공통 UI 컴포넌트 + 탭바 + btn-add-new)
 css/dashboard.css       273줄  (대시보드 전용)
 css/members.css           6줄  (주석만)
 css/kindergartens.css     6줄  (주석만)
-css/pets.css            191줄  (반려동물+예약상태 배지, 모달 기본 스타일)
+css/pets.css             84줄  (반려동물 전용 배지)
 css/reservations.css    120줄  (돌봄예약 전용 배지/모달 확장)
 css/payments.css         43줄  (결제관리 전용)
 css/settlements.css     107줄  (정산관리 전용 배지/버튼/요약)
-css/chats.css           162줄  (채팅관리 전용 배지/말풍선/텍스트)
-css/reviews.css          68줄  (후기관리 전용 배지/태그/모달)
+css/chats.css           200줄  (채팅관리 전용 배지/말풍선/텍스트)
+css/reviews.css          98줄  (후기관리 전용 배지/태그/모달)
 css/educations.css      549줄  (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
 css/contents.css        313줄  (콘텐츠관리 전용 — 배지/카테고리/폼/이미지 프리뷰)
+css/settings.css        245줄  (설정 전용 — 배지/폼/인풋/셀렉트/라디오/텍스트에어리어)
 ```
 
 ---
@@ -293,7 +313,7 @@ css/contents.css        313줄  (콘텐츠관리 전용 — 배지/카테고리/
 1. **스펙 확인**: `full_spec_with_tables.md` 해당 섹션 읽기
 2. **UX/UI 디자인 초안**을 마크다운으로 작성 → 사용자 검토 → 수정 → OK
 3. **코딩**: `css/[페이지전용].css` + `[목록].html` + `[상세].html` 생성
-4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 38개)에서 해당 메뉴의 `href="#"`을 실제 파일로 변경
+4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 42개)의 사이드바를 동기화
 5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
 6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
 7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `main`으로
@@ -329,14 +349,15 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 
 ---
 
-## 9. 다음 작업: 11. 설정
+## 9. 다음 작업
 
-`full_spec_with_tables.md`의 `## 11. 설정` 섹션 참조.
+전체 HTML/CSS 정적 UI 구현이 완료되었습니다 (메뉴 0~11번, HTML 42개, CSS 14개).
 
-**예상 특징**:
-- 탭 구조 재사용 (앱 설정, 관리자 계정)
-- 노쇼 제재 규칙 (보호자 3단계 / 유치원 2단계, PR #21에서 스펙 반영 완료)
-- 자동 처리 설정 (돌봄 자동 완료, 노쇼 자동 판정)
+**다음 단계 옵션**:
+1. **CSS 리팩터링** — 전 메뉴 완료 후 한번에 수행하기로 결정됨 (섹션 5-8 참조)
+2. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
+3. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
+4. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증
 
 ---
 
