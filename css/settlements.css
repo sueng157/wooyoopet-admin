@@ -33,16 +33,11 @@
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
-  background: #2ECC71;
+  background: var(--success);
   border: none;
   border-radius: var(--radius-sm);
   padding: 8px 16px;
   cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-action--confirm:hover {
-  background: #27AE60;
 }
 
 /* ── 보류 해제 버튼 (아웃라인) ── */
@@ -84,15 +79,4 @@
   margin-bottom: 0;
 }
 
-/* ── 체크박스 칼럼 ── */
-.data-table__checkbox {
-  width: 40px;
-  text-align: center;
-}
-
-.data-table__checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--primary);
-}
+/* ── 체크박스 칼럼 → components.css 에 통합 ── */

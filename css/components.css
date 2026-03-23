@@ -178,6 +178,19 @@
   overflow-x: auto;
 }
 
+/* ── 테이블 체크박스 칼럼 ── */
+.data-table__checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+.data-table__checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -278,18 +291,18 @@
 
 /* 신선도 퍼센트 색상 */
 .freshness--good {
-  color: #2ECC71;
+  color: var(--success);
   font-weight: 700;
 }
 
 .freshness--bad {
-  color: #E05A3A;
+  color: var(--danger);
   font-weight: 700;
 }
 
 /* 동의/미동의 */
-.text-agreed    { color: #2ECC71; font-weight: 500; }
-.text-disagreed { color: #8C9AA5; }
+.text-agreed    { color: var(--success); font-weight: 500; }
+.text-disagreed { color: var(--text-weak); }
 
 /* ── 페이지네이션 ── */
 .pagination {
@@ -392,12 +405,12 @@
 
 .btn-action--danger {
   background: rgba(224, 90, 58, 0.10);
-  color: #E05A3A;
+  color: var(--danger);
 }
 
 .btn-action--success {
   background: rgba(46, 204, 113, 0.10);
-  color: #2ECC71;
+  color: var(--success);
 }
 
 .btn-action--primary {
@@ -424,8 +437,8 @@
 
 .btn-action--outline-warning {
   background: transparent;
-  color: #F5A623;
-  border: 1px solid #F5A623;
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 
 .btn-action--filled-danger {
@@ -514,6 +527,12 @@
 .stat-cards--3col {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat-cards--4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -1143,4 +1162,77 @@
 
 .form-textarea--tall {
   min-height: 360px;
+}
+
+/* ============================================
+   순서 변경 화살표 (FAQ·배너·교육 등 공통)
+   ============================================ */
+.order-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.order-arrows__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-weak);
+  font-size: 10px;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+
+.order-arrows__btn:hover {
+  background: rgba(51,157,238,0.08);
+  color: var(--primary);
+}
+
+/* ── 후기 선택 태그 (pill) ── */
+.review-tag-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  background: rgba(51, 157, 238, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+/* ── 텍스트 말줄임 (테이블 셀용) ── */
+.review-content,
+.message-preview {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ── 전체보기 링크 ── */
+.view-all-link {
+  display: block;
+  text-align: center;
+  padding: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+  opacity: 0.75;
 }

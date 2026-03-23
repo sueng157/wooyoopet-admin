@@ -6,19 +6,7 @@
    이 파일은 후기관리 페이지에만 필요한 스타일
    ============================================ */
 
-/* ── 후기 선택 태그 (pill) ── */
-.review-tag-pill {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--primary);
-  background: rgba(51, 157, 238, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-right: 4px;
-  margin-bottom: 2px;
-  white-space: nowrap;
-}
+/* ── 후기 태그·말줄임 → components.css 에 통합 ── */
 
 /* ── 태그 더보기 (+N) ── */
 .review-tag-more {
@@ -32,15 +20,7 @@
   white-space: nowrap;
 }
 
-/* ── 후기 내용 1줄 말줄임 (목록용) ── */
-.review-content {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  vertical-align: middle;
-}
+/* ── 후기 내용 1줄 말줄임 → components.css 에 통합 ── */
 
 /* ── 이미지 수 텍스트 ── */
 .review-img-count {

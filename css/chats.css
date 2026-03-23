@@ -8,22 +8,14 @@
    ============================================ */
 
 /* ── 신고 여부 색상 텍스트 ── */
-.report-yes { color: #E05A3A; font-weight: 600; }
-.report-no  { color: #8C9AA5; }
+.report-yes { color: var(--danger); font-weight: 600; }
+.report-no  { color: var(--text-weak); }
 
 /* ── 제재 유형 색상 텍스트 ── */
-.sanction-text--warn   { color: #F5A623; font-weight: 600; }
-.sanction-text--danger { color: #E05A3A; font-weight: 600; }
+.sanction-text--warn   { color: var(--warning); font-weight: 600; }
+.sanction-text--danger { color: var(--danger); font-weight: 600; }
 
-/* ── 마지막 메시지 말줄임 (목록 셀) ── */
-.message-preview {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  vertical-align: middle;
-}
+/* ── 마지막 메시지 말줄임 → components.css 에 통합 ── */
 
 /* ── 첨부 이미지 썸네일 (신고 상세) ── */
 .attachment-thumb {
@@ -161,7 +153,7 @@
 }
 
 .chat-meta__read {
-  color: #2ECC71;
+  color: var(--success);
 }
 
 .chat-meta__unread {
