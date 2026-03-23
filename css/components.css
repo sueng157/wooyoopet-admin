@@ -1026,3 +1026,121 @@
   margin-bottom: 16px;
   line-height: 1.6;
 }
+
+/* ── 폼 컴포넌트 (공통) ── */
+.form-input {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  width: 100%;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.form-input:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.form-input--short {
+  width: 200px;
+}
+
+.form-input--xs {
+  width: 80px;
+  text-align: center;
+}
+
+.form-input--date {
+  width: 160px;
+}
+
+.form-input--time {
+  width: 130px;
+}
+
+.form-input[readonly] {
+  color: var(--text-weak);
+  cursor: default;
+}
+
+/* ── 폼 셀렉트 ── */
+.form-select {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238C9AA5' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  min-width: 140px;
+  transition: box-shadow 0.15s ease;
+}
+
+.form-select:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* ── 폼 라디오 / 체크박스 ── */
+.form-radio,
+.form-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.form-radio input,
+.form-checkbox input {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* ── 폼 텍스트에리어 ── */
+.form-textarea {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  width: 100%;
+  resize: vertical;
+  outline: none;
+  line-height: 1.7;
+  transition: box-shadow 0.15s ease;
+}
+
+.form-textarea:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.form-textarea--short {
+  min-height: 80px;
+}
+
+.form-textarea--mid {
+  min-height: 160px;
+}
+
+.form-textarea--tall {
+  min-height: 360px;
+}

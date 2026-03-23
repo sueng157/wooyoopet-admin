@@ -299,7 +299,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 ```
 css/common.css          407줄  (전역변수, 리셋, 레이아웃 + 배지 CSS 변수 16개 + 대시보드 전용 배지 5개)
-css/components.css     1028줄  (공통 UI 컴포넌트 + 7색 배지 + 모달 변형 + 탭바 + btn-add-new)
+css/components.css     1146줄  (공통 UI 컴포넌트 + 7색 배지 + 모달 변형 + 탭바 + btn-add-new + form-* 폼 컴포넌트)
 css/dashboard.css       273줄  (대시보드 전용)
 css/members.css           6줄  (주석만)
 css/kindergartens.css     6줄  (주석만)
@@ -310,9 +310,9 @@ css/settlements.css      98줄  (정산관리 전용 버튼/요약)
 css/chats.css           171줄  (채팅관리 전용 말풍선/텍스트)
 css/reviews.css          71줄  (후기관리 전용 태그)
 css/educations.css      516줄  (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
-css/contents.css        264줄  (콘텐츠관리 전용 — 카테고리/폼/이미지 프리뷰)
-css/settings.css        219줄  (설정 전용 — 폼/인풋/셀렉트)
-총 3,162줄 (리팩터링 전 3,453줄 대비 -8.4%)
+css/contents.css        174줄  (콘텐츠관리 전용 — 카테고리/이미지 프리뷰, 폼은 form-* 사용)
+css/settings.css        109줄  (설정 전용 — 인풋그룹/힌트/권한셀렉트, 폼은 form-* 사용)
+총 3,080줄 (리팩터링 전 3,453줄 대비 -10.8%)
 ```
 
 ---
@@ -363,7 +363,7 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 전체 HTML/CSS 정적 UI 구현이 완료되었습니다 (메뉴 0~11번, HTML 42개, CSS 14개).
 
 **다음 단계 옵션**:
-1. **CSS 리팩터링 Phase 4~6** — Phase 1~3 완료 (PR #30, #31). 잔여: 폼 통합, 컴포넌트 승격, 정리 (`CSS_REFACTORING_PLAN.md` 참조)
+1. **CSS 리팩터링 Phase 5~6** — Phase 1~4 완료 (PR #30, #31, #32, #33). 잔여: 컴포넌트 승격, 정리 (`CSS_REFACTORING_PLAN.md` 참조)
 2. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
 3. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
 4. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증
