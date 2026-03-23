@@ -330,14 +330,6 @@ ul, ol {
   padding: 24px;
 }
 
-/* ── Badge (기본 정의는 components.css) ── */
-/* 대시보드 전용 배지 (dashboard.html 에서만 사용) */
-.badge--reservation { background: var(--badge-blue-bg);   color: var(--badge-blue-fg); }
-.badge--payment    { background: var(--badge-green-bg);  color: var(--badge-green-fg); }
-.badge--cancel     { background: var(--badge-orange-bg); color: var(--badge-orange-fg); }
-.badge--signup     { background: var(--badge-blue-bg);   color: var(--badge-blue-fg); }
-.badge--report     { background: var(--badge-red-bg);    color: var(--badge-red-fg); }
-
 /* ── Pill (증감 표시) ── */
 .pill {
   display: inline-flex;

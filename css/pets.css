@@ -5,43 +5,7 @@
    이 파일은 반려동물관리 페이지 전용 스타일
    ============================================ */
 
-/* ── 후기 선택 태그 (pill) ── */
-.review-tag-pill {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--primary);
-  background: rgba(51, 157, 238, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-right: 4px;
-  margin-bottom: 2px;
-  white-space: nowrap;
-}
-
-/* ── 후기 내용 1줄 말줄임 ── */
-.review-content {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── 전체보기 링크 ── */
-.view-all-link {
-  display: block;
-  text-align: center;
-  padding: 12px 0 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary);
-  cursor: pointer;
-}
-
-.view-all-link:hover {
-  text-decoration: underline;
-  opacity: 0.75;
-}
+/* ── 후기 태그·말줄임·전체보기 → components.css 에 통합 ── */
 
 /* ── 모달 기본 스타일은 components.css 에 정의 ──
    pets.css 에서는 모달 추가 변형이 필요할 때만 작성 */
