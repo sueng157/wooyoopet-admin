@@ -4,58 +4,8 @@
    이 파일은 교육관리 페이지에만 필요한 스타일
    ============================================ */
 
-/* ── 탭2 섹션 카드 (체크리스트 / 서약서 목록) ── */
-.edu-section-card {
-  background: var(--surface-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  padding: 24px;
-  margin-bottom: 16px;
-}
-
-.edu-section-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.edu-section-card__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* ── 순서 변경 화살표 버튼 ── */
-.order-arrows {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 1px;
-  vertical-align: middle;
-  margin-right: 4px;
-}
-
-.order-arrows__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 14px;
-  background: none;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 3px;
-  cursor: pointer;
-  color: var(--text-weak);
-  font-size: 9px;
-  line-height: 1;
-  transition: background 0.15s ease, color 0.15s ease;
-  padding: 0;
-}
-
-.order-arrows__btn:hover {
-  background: rgba(51, 157, 238, 0.08);
-  color: var(--primary);
-}
+/* ── 탭2 섹션 카드 → detail-card 사용 (components.css) ── */
+/* ── 순서 변경 화살표 → order-arrows 사용 (components.css) ── */
 
 /* ── 이미지 업로드 프리뷰 영역 ── */
 .edu-img-preview {

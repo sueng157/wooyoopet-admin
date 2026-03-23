@@ -15,15 +15,7 @@
 .sanction-text--warn   { color: #F5A623; font-weight: 600; }
 .sanction-text--danger { color: #E05A3A; font-weight: 600; }
 
-/* ── 마지막 메시지 말줄임 (목록 셀) ── */
-.message-preview {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  vertical-align: middle;
-}
+/* ── 마지막 메시지 말줄임 → components.css 에 통합 ── */
 
 /* ── 첨부 이미지 썸네일 (신고 상세) ── */
 .attachment-thumb {

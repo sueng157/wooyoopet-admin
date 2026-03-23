@@ -84,15 +84,4 @@
   margin-bottom: 0;
 }
 
-/* ── 체크박스 칼럼 ── */
-.data-table__checkbox {
-  width: 40px;
-  text-align: center;
-}
-
-.data-table__checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--primary);
-}
+/* ── 체크박스 칼럼 → components.css 에 통합 ── */

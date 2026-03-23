@@ -20,35 +20,7 @@
 .cnt-category--member  { background: rgba(124,92,252,0.08);  color: #7C5CFC; }  /* 회원 */
 .cnt-category--kg      { background: rgba(224,90,58,0.08);   color: #E05A3A; }  /* 유치원 */
 
-/* ── 순서 변경 화살표 (교육관리와 동일 패턴) ── */
-.order-arrows {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  vertical-align: middle;
-}
-
-.order-arrows__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: none;
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text-weak);
-  font-size: 10px;
-  line-height: 1;
-  transition: background 0.15s ease, color 0.15s ease;
-  padding: 0;
-}
-
-.order-arrows__btn:hover {
-  background: rgba(51,157,238,0.08);
-  color: var(--primary);
-}
+/* ── 순서 변경 화살표 → order-arrows 사용 (components.css) ── */
 
 /* ── 배너 썸네일 (목록) ── */
 .cnt-thumb {
@@ -163,10 +135,7 @@
 
 /* ── 모달 변형 스타일은 components.css 에 통합 ── */
 
-/* ── 목록 table scroll wrapper ── */
-.data-table-wrap--scroll {
-  overflow-x: auto;
-}
+/* ── 목록 table scroll wrapper → components.css 에 정의됨 ── */
 
 /* ── 배너 테이블 이미지 컬럼 최소 폭 ── */
 .data-table-wrap--scroll .data-table td .cnt-thumb {
