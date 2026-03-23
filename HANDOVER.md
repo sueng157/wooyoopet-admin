@@ -94,9 +94,13 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 --text-weak: #8C9AA5;
 --radius-card: 14px;
 --radius-sm: 8px;
---radius-badge: 6px;
+--radius-badge: 20px;
 --shadow-card: 0 2px 12px rgba(0,0,0,0.04);
 --font-family: 'Pretendard', sans-serif;
+
+/* 배지 전용 변수 (Phase 1에서 추가) */
+--badge-blue-fg/bg, --badge-green-fg/bg, --badge-orange-fg/bg,
+--badge-red-fg/bg, --badge-gray-fg/bg, --badge-brown-fg/bg, --badge-pink-fg/bg
 ```
 
 ---
@@ -294,20 +298,21 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 ## 6. 파일 크기 참고
 
 ```
-css/common.css          397줄  (전역변수, 리셋, 레이아웃)
-css/components.css     1010줄  (공통 UI 컴포넌트 + 탭바 + btn-add-new)
+css/common.css          407줄  (전역변수, 리셋, 레이아웃 + 배지 CSS 변수 16개 + 대시보드 전용 배지 5개)
+css/components.css     1028줄  (공통 UI 컴포넌트 + 7색 배지 + 모달 변형 + 탭바 + btn-add-new)
 css/dashboard.css       273줄  (대시보드 전용)
 css/members.css           6줄  (주석만)
 css/kindergartens.css     6줄  (주석만)
-css/pets.css             84줄  (반려동물 전용 배지)
-css/reservations.css    120줄  (돌봄예약 전용 배지/모달 확장)
-css/payments.css         43줄  (결제관리 전용)
-css/settlements.css     107줄  (정산관리 전용 배지/버튼/요약)
-css/chats.css           200줄  (채팅관리 전용 배지/말풍선/텍스트)
-css/reviews.css          98줄  (후기관리 전용 배지/태그/모달)
-css/educations.css      549줄  (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
-css/contents.css        313줄  (콘텐츠관리 전용 — 배지/카테고리/폼/이미지 프리뷰)
-css/settings.css        245줄  (설정 전용 — 배지/폼/인풋/셀렉트/라디오/텍스트에어리어)
+css/pets.css             47줄  (반려동물 전용)
+css/reservations.css     31줄  (돌봄예약 전용)
+css/payments.css         25줄  (결제관리 전용)
+css/settlements.css      98줄  (정산관리 전용 버튼/요약)
+css/chats.css           171줄  (채팅관리 전용 말풍선/텍스트)
+css/reviews.css          71줄  (후기관리 전용 태그)
+css/educations.css      516줄  (교육관리 전용 — 이미지/퀴즈/토글/체크리스트/서약서)
+css/contents.css        264줄  (콘텐츠관리 전용 — 카테고리/폼/이미지 프리뷰)
+css/settings.css        219줄  (설정 전용 — 폼/인풋/셀렉트)
+총 3,162줄 (리팩터링 전 3,453줄 대비 -8.4%)
 ```
 
 ---
@@ -358,7 +363,7 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 전체 HTML/CSS 정적 UI 구현이 완료되었습니다 (메뉴 0~11번, HTML 42개, CSS 14개).
 
 **다음 단계 옵션**:
-1. **CSS 리팩터링** — 전 메뉴 완료 후 한번에 수행하기로 결정됨 (섹션 5-8 참조)
+1. **CSS 리팩터링 Phase 4~6** — Phase 1~3 완료 (PR #30, #31). 잔여: 폼 통합, 컴포넌트 승격, 정리 (`CSS_REFACTORING_PLAN.md` 참조)
 2. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
 3. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
 4. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증

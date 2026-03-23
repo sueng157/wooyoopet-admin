@@ -42,19 +42,19 @@ python3 -m http.server 8080
 webapp/
 ├── css/
 │   ├── common.css          # 전역 변수, 리셋, 레이아웃, 폰트
-│   ├── components.css      # 공통 UI 컴포넌트 (필터바, 테이블, 배지, 페이지네이션 등)
+│   ├── components.css      # 공통 UI 컴포넌트 (필터바, 테이블, 7색 배지, 모달 변형, 페이지네이션 등)
 │   ├── dashboard.css       # 대시보드 전용
 │   ├── members.css         # 회원관리 전용 (현재 주석만)
 │   ├── kindergartens.css   # 유치원관리 전용 (현재 주석만)
-│   ├── pets.css            # 반려동물관리 전용 배지
-│   ├── reservations.css    # 돌봄예약관리 전용 배지/모달
+│   ├── pets.css            # 반려동물관리 전용
+│   ├── reservations.css    # 돌봄예약관리 전용
 │   ├── payments.css        # 결제관리 전용
-│   ├── settlements.css     # 정산관리 전용 배지/버튼
-│   ├── chats.css           # 채팅관리 전용 배지/말풍선 UI
-│   ├── reviews.css         # 후기관리 전용 배지/태그/모달
+│   ├── settlements.css     # 정산관리 전용 버튼/요약
+│   ├── chats.css           # 채팅관리 전용 말풍선 UI
+│   ├── reviews.css         # 후기관리 전용 태그
 │   ├── educations.css      # 교육관리 전용 이미지/퀴즈/토글/체크리스트/서약서
-│   ├── contents.css        # 콘텐츠관리 전용 배지/카테고리/폼/이미지 프리뷰
-│   └── settings.css        # 설정 전용 배지/폼/인풋/셀렉트
+│   ├── contents.css        # 콘텐츠관리 전용 카테고리/폼/이미지 프리뷰
+│   └── settings.css        # 설정 전용 폼/인풋/셀렉트
 ├── assets/
 │   └── images/
 │       └── logo.png
@@ -101,6 +101,7 @@ webapp/
 ├── setting-admin-create.html
 ├── setting-feedback-detail.html
 ├── full_spec_with_tables.md   # 전체 기능 명세서
+├── CSS_REFACTORING_PLAN.md    # CSS 리팩터링 계획서 (Phase 1~3 완료, 4~6 예정)
 ├── HANDOVER.md                # 개발 인수인계서 (CSS 구조, 규칙, 작업 프로세스)
 └── README.md
 ```
