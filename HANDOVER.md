@@ -158,13 +158,14 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 ### 4-3. 목록 페이지 패턴
 
 - `filter-bar` > `filter-row`(행 단위) > `filter-label` + `filter-input`/`filter-select`
-- `result-header` > `result-header__count` + `btn-excel`
+- `result-header` > `result-header__count` + `btn-excel` (SVG 다운로드 아이콘 + "내역 다운로드" 텍스트로 전 페이지 통일, PR #37)
 - `data-table-wrap data-table-wrap--scroll` > `data-table`
 - `pagination`
 
 ### 4-4. 상세 페이지 패턴
 
-- `detail-top` > `btn-back` + `detail-actions`(버튼들)
+- 상단 헤더: `header__title`에 breadcrumb — `대메뉴 › 탭이름 › 상세/등록` (대메뉴에 `<a href>` 링크 포함, PR #37)
+- `detail-top` > `btn-back`(`← 탭이름 목록으로` 형태로 전 페이지 통일, PR #37) + `detail-actions`(버튼들)
 - `detail-card` > `detail-card__header` > `detail-card__title`
 - `info-grid` > `info-grid__label` + `info-grid__value`
 - 조건부 영역: `detail-card conditional-section` + `conditional-section__badge`
@@ -363,10 +364,12 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 전체 HTML/CSS 정적 UI 구현이 완료되었습니다 (메뉴 0~11번, HTML 42개, CSS 14개).
 
 **다음 단계 옵션**:
-1. **CSS 리팩터링 완료** — Phase 1~6 전체 완료 (PR #30, #31, #32, #33, #34). 총 CSS 3,453줄 → 2,998줄 (-13.2%)
-2. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
-3. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
-4. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증
+1. **CSS 리팩터링 완료** — Phase 1~6 전체 완료 (PR #30~#34, #35). 총 CSS 3,453줄 → 2,998줄 (-13.2%)
+2. **문서 동기화** — README·스펙에 리팩터링 결과 반영 (PR #36)
+3. **UI 일관성 통일** — 다운로드 버튼(9개), 테이블 링크/헤더 "상세" 통일(54링크+17헤더), 상세 페이지 헤더 breadcrumb + 뒤로가기 텍스트 통일(30파일) (PR #37)
+4. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
+5. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
+6. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증
 
 ---
 
