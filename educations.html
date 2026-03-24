@@ -66,9 +66,9 @@
 
       <!-- 탭 바 -->
       <div class="tab-bar">
-        <button class="tab-bar__item active" onclick="switchTab('topics')">교육 주제 관리</button>
-        <button class="tab-bar__item" onclick="switchTab('checklist')">체크리스트 / 활동 서약서</button>
-        <button class="tab-bar__item" onclick="switchTab('status')">이수현황</button>
+        <button class="tab-bar__item active" data-tab-target="tab-topics">교육 주제 관리</button>
+        <button class="tab-bar__item" data-tab-target="tab-checklist">체크리스트 / 활동 서약서</button>
+        <button class="tab-bar__item" data-tab-target="tab-status">이수현황</button>
       </div>
 
       <!-- ============================================================ -->
@@ -537,23 +537,7 @@
   </div><!-- /main -->
 </div><!-- /layout -->
 
-<script>
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-bar__item').forEach(function(btn) { btn.classList.remove('active'); });
-  document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
-  if (tabName === 'topics') {
-    document.querySelector('.tab-bar__item:nth-child(1)').classList.add('active');
-    document.getElementById('tab-topics').classList.add('active');
-  } else if (tabName === 'checklist') {
-    document.querySelector('.tab-bar__item:nth-child(2)').classList.add('active');
-    document.getElementById('tab-checklist').classList.add('active');
-  } else {
-    document.querySelector('.tab-bar__item:nth-child(3)').classList.add('active');
-    document.getElementById('tab-status').classList.add('active');
-  }
-}
-</script>
-
 <script src="js/common.js"></script>
+<script src="js/components.js"></script>
 </body>
 </html>

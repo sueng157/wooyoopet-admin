@@ -68,8 +68,8 @@
 
       <!-- 탭 바 -->
       <div class="tab-bar">
-        <button class="tab-bar__item active" onclick="switchTab('tab-chat-history')">채팅내역</button>
-        <button class="tab-bar__item" onclick="switchTab('tab-reports')">신고접수</button>
+        <button class="tab-bar__item active" data-tab-target="tab-chat-history">채팅내역</button>
+        <button class="tab-bar__item" data-tab-target="tab-reports">신고접수</button>
       </div>
 
       <!-- ==================== 탭1: 채팅내역 ==================== -->
@@ -459,16 +459,7 @@
   </div><!-- /.main -->
 </div><!-- /.layout -->
 
-<!-- 탭 전환 스크립트 -->
-<script>
-function switchTab(tabId) {
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.tab-bar__item').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  event.currentTarget.classList.add('active');
-}
-</script>
-
 <script src="js/common.js"></script>
+<script src="js/components.js"></script>
 </body>
 </html>

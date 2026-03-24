@@ -64,9 +64,9 @@
 
       <!-- 탭 바 -->
       <div class="tab-bar">
-        <button class="tab-bar__item active" onclick="switchTab('app')">앱설정</button>
-        <button class="tab-bar__item" onclick="switchTab('admin')">관리자 계정</button>
-        <button class="tab-bar__item" onclick="switchTab('feedback')">의견/피드백</button>
+        <button class="tab-bar__item active" data-tab-target="tab-app">앱설정</button>
+        <button class="tab-bar__item" data-tab-target="tab-admin">관리자 계정</button>
+        <button class="tab-bar__item" data-tab-target="tab-feedback">의견/피드백</button>
       </div>
 
       <!-- ============================================================ -->
@@ -83,29 +83,29 @@
           <div class="info-grid">
             <span class="info-grid__label">최신 버전 (iOS)</span>
             <span class="info-grid__value">
-              <input type="text" class="form-input form-input--short" value="3.2.1" placeholder="예: 3.2.1">
+              <input type="text" class="form-input form-input--short" value="3.2.1" placeholder="예: 3.2.1" data-validate="version">
             </span>
 
             <span class="info-grid__label">최신 버전 (Android)</span>
             <span class="info-grid__value">
-              <input type="text" class="form-input form-input--short" value="3.2.0" placeholder="예: 3.2.0">
+              <input type="text" class="form-input form-input--short" value="3.2.0" placeholder="예: 3.2.0" data-validate="version">
             </span>
 
             <span class="info-grid__label">최소 지원 버전 (iOS)</span>
             <span class="info-grid__value">
-              <input type="text" class="form-input form-input--short" value="2.8.0" placeholder="예: 2.8.0">
+              <input type="text" class="form-input form-input--short" value="2.8.0" placeholder="예: 2.8.0" data-validate="version">
               <div class="stg-hint">※ 이 버전 미만 사용자에게 강제 업데이트 안내</div>
             </span>
 
             <span class="info-grid__label">최소 지원 버전 (Android)</span>
             <span class="info-grid__value">
-              <input type="text" class="form-input form-input--short" value="2.7.0" placeholder="예: 2.7.0">
+              <input type="text" class="form-input form-input--short" value="2.7.0" placeholder="예: 2.7.0" data-validate="version">
               <div class="stg-hint">※ 이 버전 미만 사용자에게 강제 업데이트 안내</div>
             </span>
 
             <span class="info-grid__label">업데이트 안내 메시지</span>
             <span class="info-grid__value">
-              <textarea class="form-textarea form-textarea--short" placeholder="업데이트 권유 시 표시할 메시지를 입력하세요">새로운 버전이 출시되었습니다. 더 나은 서비스를 위해 업데이트해 주세요.</textarea>
+              <textarea class="form-textarea form-textarea--short" placeholder="업데이트 권유 시 표시할 메시지를 입력하세요" data-maxlength="200">새로운 버전이 출시되었습니다. 더 나은 서비스를 위해 업데이트해 주세요.</textarea>
             </span>
           </div>
         </div>
@@ -141,7 +141,7 @@
 
             <span class="info-grid__label">점검 안내 메시지</span>
             <span class="info-grid__value">
-              <textarea class="form-textarea form-textarea--short" placeholder="점검 중 앱에 표시할 안내 메시지를 입력하세요">서비스 점검 중입니다. 점검 시간: 02:00 ~ 06:00. 이용에 불편을 드려 죄송합니다.</textarea>
+              <textarea class="form-textarea form-textarea--short" placeholder="점검 중 앱에 표시할 안내 메시지를 입력하세요" data-maxlength="500">서비스 점검 중입니다. 점검 시간: 02:00 ~ 06:00. 이용에 불편을 드려 죄송합니다.</textarea>
             </span>
           </div>
 
@@ -887,23 +887,7 @@
 </div>
 
 
-<script>
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-bar__item').forEach(function(btn) { btn.classList.remove('active'); });
-  document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
-  if (tabName === 'app') {
-    document.querySelector('.tab-bar__item:nth-child(1)').classList.add('active');
-    document.getElementById('tab-app').classList.add('active');
-  } else if (tabName === 'admin') {
-    document.querySelector('.tab-bar__item:nth-child(2)').classList.add('active');
-    document.getElementById('tab-admin').classList.add('active');
-  } else {
-    document.querySelector('.tab-bar__item:nth-child(3)').classList.add('active');
-    document.getElementById('tab-feedback').classList.add('active');
-  }
-}
-</script>
-
 <script src="js/common.js"></script>
+<script src="js/components.js"></script>
 </body>
 </html>
