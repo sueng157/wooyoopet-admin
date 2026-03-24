@@ -97,6 +97,14 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 > **중요**: reservations는 pets.css의 예약상태 배지(badge--res-*)를 재사용하므로 pets.css를 함께 로드. settlements와 chats도 모달·배지 등을 위해 pets.css + reservations.css를 함께 로드함.
 
+### 3-2-b. HTML별 JS 참조 매핑
+
+| HTML | JS 참조 순서 |
+|------|-------------|
+| 전체 42페이지 | common.js → components.js |
+| `education-*.html` (7개) | common.js → components.js → educations.js |
+| `settings.html` | common.js → components.js → settings.js |
+
 ### 3-3. 페이지전용 CSS 원칙
 
 - `components.css`에 이미 정의된 스타일은 절대 중복 작성 금지
@@ -238,17 +246,23 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 ### 5-2. JavaScript 관련
 
-- **현재 JS는 최소한만 사용**: 모달 열기/닫기, textarea oninput 활성화, 탭 전환 정도의 인라인 JS만
-- `member-detail.html`과 `kindergarten-detail.html`에는 `toggleMask()` JS가 `<script>` 태그로 들어있음 (이전 작업에서 추가됨)
-- `pet-detail.html`과 `reservation-detail.html`에는 해당 JS가 **없음** → 이 불일치는 **현재 상태 그대로 유지**하기로 결정됨
-- 탭 전환 스크립트는 `switchTab(tabId)` 함수로 통일 (`payments.html`, `settlements.html`, `chats.html`, `educations.html`에서 사용)
+- **인라인 JS 완전 제거 완료**: 모든 인터랙션은 외부 JS 파일 + `data-*` 속성으로 처리
+- JS 계층 구조: `common.js` → `components.js` → `[페이지전용].js`
+- 42개 전체 페이지에 `common.js` + `components.js` 참조 완료
+- 교육관리 7개 페이지에 추가로 `educations.js` 참조
+- 설정 1개 페이지에 추가로 `settings.js` 참조
 
-### 5-9. 교육관리 JS 작업 예정 사항
+### 5-9. 교육관리 JS (educations.js — 구현 완료)
 
-- **퀴즈 정답 토글 버튼** (`edu-answer-toggle`): 현재 HTML/CSS로 겉모양(비활성/활성 상태)만 구현됨. JS 작업 시 아래 기능 구현 필요:
-  - 선택지 A/B 각각의 `정답` 버튼 클릭 시 해당 버튼에 `active` 클래스 추가
-  - 동시에 상대편 버튼의 `active` 클래스 제거 (한 번에 하나만 활성화)
-  - 대상 페이지: `education-detail.html`, `education-create.html`
+| 기능 | 클래스/요소 | 동작 | 대상 페이지 |
+|------|-----------|------|------------|
+| 퀴즈 정답 토글 | `.edu-answer-toggle` | A/B 중 하나만 `active` | education-create, education-detail |
+| 체크리스트 사용 토글 | `.edu-toggle__track` | `--on` 클래스 토글 | education-checklist-detail |
+| 행 추가 | `.edu-add-row__btn` | 테이블에 새 행 삽입 (체크리스트 4열/서약서 3열 자동 감지) | checklist-create/detail, pledge-create/detail |
+| 행 삭제 | `.edu-delete-btn` | 부모 tr 제거 + 순서 재정렬 | checklist-detail, pledge-detail |
+| 원칙 설명 추가 | `.edu-bullet-list__add` | ul에 입력 가능 li 추가 | education-create, education-detail |
+| 하위 항목 추가 | `.edu-sub-items__add` | 추가 버튼 앞에 하위 항목 삽입 | pledge-detail |
+| 하위 항목 삭제 | `.edu-sub-items__delete` | 해당 `.edu-sub-items__item` 제거 | pledge-detail |
 
 ### 5-10. 콘텐츠관리 규칙
 
@@ -268,7 +282,7 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | 노쇼 제재 | 보호자(1~3회)·유치원(1~2회) 통합 1개 카드, 통합 변경 이력 테이블 |
 | 자동 처리 | 하원 후 자동 완료 시간만 (노쇼 자동 판정 시간 삭제 — 노쇼는 신고 기반) |
 | 서비스 점검 이력 | 4열 미니테이블 (변경일, 점검 시작일시, 점검 종료일시, 변경 사유) |
-| 규칙 추가 버튼 | 자동 처리 설정에 [+ 규칙 추가] 버튼 배치 (JS 작업 시 동적 규칙 추가) |
+| 규칙 추가 버튼 | 자동 처리 설정에 [+ 규칙 추가] 버튼 — `settings.js`에서 동적 추가/삭제 구현 완료 |
 | 앱 버전 형식 | x.x.x (Semantic Versioning), 텍스트 입력 → JS 작업 시 정규식 검증 예정 |
 | 최소 지원 버전 힌트 | “※ 이 버전 미만 사용자에게 강제 업데이트 안내” 텍스트 표시 |
 | 관리자 계정 | 목록(10열) + 상세/수정 + 신규등록, 권한 11개 메뉴별 설정 |
@@ -343,6 +357,16 @@ css/settings.css        109줄  (설정 전용 — 인풋그룹/힌트/권한셀
 총 2,998줄 (리팩터링 전 3,453줄 대비 -13.2%)
 ```
 
+### 6-2. JavaScript 파일 크기
+
+```
+js/common.js            132줄  (모달 시스템, 마스킹 토글, 소개글 토글, textarea→버튼 활성화)
+js/components.js        224줄  (탭 전환, 전체선택 체크박스, 순서 화살표, 버전 검증, 글자수 카운터)
+js/educations.js        162줄  (퀴즈 정답 토글, 체크리스트 토글, 항목 동적 추가/삭제)
+js/settings.js           68줄  (자동 처리 규칙 동적 추가/삭제)
+총 586줄
+```
+
 ---
 
 ## 7. 작업 프로세스 (매 대메뉴마다 반복)
@@ -394,7 +418,7 @@ gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
 1. **CSS 리팩터링 완료** — Phase 1~6 전체 완료 (PR #30~#34, #35). 총 CSS 3,453줄 → 2,998줄 (-13.2%)
 2. **문서 동기화** — README·스펙에 리팩터링 결과 반영 (PR #36)
 3. **UI 일관성 통일** — 다운로드 버튼(9개), 테이블 링크/헤더 "상세" 통일(54링크+17헤더), 상세 페이지 헤더 breadcrumb + 뒤로가기 텍스트 통일(30파일) (PR #37)
-4. **JavaScript 구현** — 모달 동작, 폼 검증, 탭 전환, API 호출, 데이터 바인딩
+4. **JavaScript 구현 (Phase 1~6 완료)** — common.js(모달·마스킹·소개글), components.js(탭·체크박스·화살표·검증·카운터), educations.js(퀴즈·토글·항목 추가/삭제), settings.js(규칙 추가/삭제). 인라인 JS 0건, 42페이지 0 JS에러
 5. **백엔드 연동** — API 서버 구축, CRUD 구현, 인증/권한 처리
 6. **디자인 QA** — 전체 페이지 크로스체크, 일관성 검증
 
