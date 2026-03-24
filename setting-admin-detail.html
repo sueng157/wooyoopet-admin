@@ -66,9 +66,9 @@
       <div class="detail-top">
         <a href="settings.html" class="btn-back">← 관리자 계정 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('resetPwModal').classList.add('active')">비밀번호 초기화</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('deactivateModal').classList.add('active')">비활성화</button>
-          <button class="btn-action btn-action--outline-danger" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+          <button class="btn-action btn-action--outline-primary" data-modal-open="resetPwModal">비밀번호 초기화</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="deactivateModal">비활성화</button>
+          <button class="btn-action btn-action--outline-danger" data-modal-open="deleteModal">삭제</button>
         </div>
       </div>
 
@@ -376,7 +376,7 @@
 
       <!-- 하단 저장 버튼 -->
       <div class="stg-save-row">
-        <button class="btn-action btn-action--primary" onclick="document.getElementById('saveAdminModal').classList.add('active')">저장</button>
+        <button class="btn-action btn-action--primary" data-modal-open="saveAdminModal">저장</button>
       </div>
 
     </div><!-- /content -->
@@ -394,8 +394,8 @@
     <div class="modal__title modal__title--primary">저장 확인</div>
     <div class="modal__message">관리자 정보를 저장하시겠습니까?<br>변경된 내용이 즉시 반영됩니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('saveAdminModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-primary" onclick="document.getElementById('saveAdminModal').classList.remove('active')">저장</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" data-modal-close>저장</button>
     </div>
   </div>
 </div>
@@ -406,8 +406,8 @@
     <div class="modal__title modal__title--primary">비밀번호 초기화</div>
     <div class="modal__message">이 관리자의 비밀번호를 초기화하시겠습니까?<br>초기화된 비밀번호는 등록된 이메일로 발송됩니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('resetPwModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-primary" onclick="document.getElementById('resetPwModal').classList.remove('active')">초기화</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" data-modal-close>초기화</button>
     </div>
   </div>
 </div>
@@ -418,8 +418,8 @@
     <div class="modal__title modal__title--warning">계정 비활성화</div>
     <div class="modal__message">이 관리자 계정을 비활성화하시겠습니까?<br>비활성화된 계정은 로그인할 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deactivateModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-warning" onclick="document.getElementById('deactivateModal').classList.remove('active')">비활성화</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-warning" data-modal-close>비활성화</button>
     </div>
   </div>
 </div>
@@ -430,8 +430,8 @@
     <div class="modal__title">관리자 계정 삭제</div>
     <div class="modal__message">이 관리자 계정을 삭제하시겠습니까?<br>삭제된 계정은 복구할 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--delete" onclick="document.getElementById('deleteModal').classList.remove('active')">삭제</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--delete" data-modal-close>삭제</button>
     </div>
   </div>
 </div>
@@ -442,10 +442,11 @@
     <div class="modal__title">삭제 불가</div>
     <div class="modal__message--warning-box">최고관리자 계정은 삭제할 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteBlockModal').classList.remove('active')">닫기</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>닫기</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

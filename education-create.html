@@ -66,7 +66,7 @@
       <div class="detail-top">
         <a href="educations.html" class="btn-back">← 교육 주제 관리 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('registerModal').classList.add('active')">등록</button>
+          <button class="btn-action btn-action--primary" data-modal-open="registerModal">등록</button>
         </div>
       </div>
 
@@ -210,11 +210,12 @@
       등록 후 비공개 상태로 저장되며, 목록에서 공개로 전환할 수 있습니다.
     </div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('registerModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">등록</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

@@ -66,8 +66,8 @@
       <div class="detail-top">
         <a href="educations.html" class="btn-back">← 교육 주제 관리 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('toggleModal').classList.add('active')">비공개 전환</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="toggleModal">비공개 전환</button>
+          <button class="btn-action btn-action--danger" data-modal-open="deleteModal">삭제</button>
         </div>
       </div>
 
@@ -231,7 +231,7 @@
       비공개로 전환하시겠습니까?
     </div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('toggleModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">비공개 전환</button>
     </div>
   </div>
@@ -247,11 +247,12 @@
       비공개로 전환하여 노출을 중단하는 것을 권장합니다.
     </div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--delete" disabled>삭제 불가</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

@@ -68,8 +68,8 @@
       <div class="detail-top">
         <a href="reviews.html" class="btn-back">← 보호자 후기 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('hideModal').classList.add('active')">숨김 처리</button>
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('unhideModal').classList.add('active')">숨김 해제</button>
+          <button class="btn-action btn-action--danger" data-modal-open="hideModal">숨김 처리</button>
+          <button class="btn-action btn-action--primary" data-modal-open="unhideModal">숨김 해제</button>
         </div>
       </div>
 
@@ -141,8 +141,8 @@
           <span class="info-grid__label">보호자 연락처</span>
           <span class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -204,9 +204,9 @@
       숨김 처리 사유를 입력해 주세요.
     </div>
     <div class="modal__label">숨김 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="hideReason" placeholder="숨김 처리 사유를 입력하세요" oninput="document.getElementById('hideBtn').disabled = !this.value.trim()"></textarea>
+    <textarea class="modal__textarea" id="hideReason" placeholder="숨김 처리 사유를 입력하세요" data-enables="hideBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('hideModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--delete" id="hideBtn" disabled>숨김 처리</button>
     </div>
   </div>
@@ -221,11 +221,12 @@
       숨김 해제를 진행하시겠습니까?
     </div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('unhideModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">숨김 해제</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

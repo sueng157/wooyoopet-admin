@@ -71,7 +71,7 @@
         <a href="payments.html" class="btn-back">← 결제내역 목록으로</a>
         <div class="detail-actions">
           <button class="btn-action btn-action--outline-primary">영수증 조회</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('cancelPaymentModal').classList.add('active')">결제취소</button>
+          <button class="btn-action btn-action--danger" data-modal-open="cancelPaymentModal">결제취소</button>
         </div>
       </div>
 
@@ -105,8 +105,8 @@
           <div class="info-grid__label">카드번호</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">1234-****-****-5678</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="1234-****-****-5678" data-raw="1234-5678-9012-5678">1234-****-****-5678</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
 
@@ -133,8 +133,8 @@
           <div class="info-grid__label">보호자 연락처</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
 
@@ -208,13 +208,14 @@
       해당 결제를 취소하면 연동된 예약도 자동으로 취소 처리됩니다.
     </div>
     <div class="modal__label">취소 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="cancelPaymentReason" placeholder="결제를 취소하는 사유를 입력하세요" oninput="document.getElementById('cancelPaymentBtn').disabled = this.value.trim().length === 0"></textarea>
+    <textarea class="modal__textarea" id="cancelPaymentReason" placeholder="결제를 취소하는 사유를 입력하세요" data-enables="cancelPaymentBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('cancelPaymentModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="cancelPaymentBtn" disabled>결제취소</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

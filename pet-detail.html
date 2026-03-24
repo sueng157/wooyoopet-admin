@@ -69,7 +69,7 @@
         <a href="pets.html" class="btn-back">← 반려동물관리 목록으로</a>
         <div class="detail-actions">
           <button class="btn-action btn-action--primary">정보 수정</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+          <button class="btn-action btn-action--danger" data-modal-open="deleteModal">삭제</button>
         </div>
       </div>
 
@@ -142,7 +142,7 @@
           <span class="info-grid__label">소개글</span>
           <span class="info-grid__value">
             <div class="intro-text" id="introText">사람을 좋아하고 애교가 많은 비숑프리제 코코입니다. 유치원에서도 다른 강아지들과 잘 어울리고 사회성이 좋습니다. 산책을 매우 좋아하며 활동적인 성격입니다. 사료도 잘 먹고 편식이 없어요.</div>
-            <button class="intro-toggle" onclick="document.getElementById('introText').classList.toggle('expanded'); this.textContent = this.textContent === '[더보기]' ? '[접기]' : '[더보기]'">[더보기]</button>
+            <button class="intro-toggle">더보기</button>
           </span>
 
           <span class="info-grid__label">등록일</span>
@@ -165,8 +165,8 @@
           <span class="info-grid__label">보호자 연락처</span>
           <span class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -361,13 +361,14 @@
       이 작업은 되돌릴 수 없습니다.
     </div>
     <div class="modal__label">삭제 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="deleteReason" placeholder="삭제 사유를 입력하세요" oninput="document.getElementById('deleteBtn').disabled = !this.value.trim()"></textarea>
+    <textarea class="modal__textarea" id="deleteReason" placeholder="삭제 사유를 입력하세요" data-enables="deleteBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--delete" id="deleteBtn" disabled>삭제</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

@@ -69,9 +69,9 @@
       <div class="detail-top">
         <a href="reservations.html" class="btn-back">← 돌봄예약관리 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('statusModal').classList.add('active')">상태 변경</button>
-          <button class="btn-action btn-action--outline-danger" onclick="document.getElementById('cancelModal').classList.add('active')">강제 취소/환불</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('noshowModal').classList.add('active')">노쇼 처리</button>
+          <button class="btn-action btn-action--outline-primary" data-modal-open="statusModal">상태 변경</button>
+          <button class="btn-action btn-action--outline-danger" data-modal-open="cancelModal">강제 취소/환불</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="noshowModal">노쇼 처리</button>
         </div>
       </div>
 
@@ -125,8 +125,8 @@
           <span class="info-grid__label">보호자 연락처</span>
           <span class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -188,8 +188,8 @@
           <span class="info-grid__label">운영자 연락처</span>
           <span class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-8888</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-8888" data-raw="010-9999-8888">010-****-8888</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -378,7 +378,7 @@
       변경 사유를 반드시 입력해주세요.
     </div>
     <div class="modal__label">변경할 상태 <span>*</span></div>
-    <select class="modal__select" id="statusSelect">
+    <select class="modal__select" id="statusSelect" data-enables="statusBtn" data-enables-with="statusReason">
       <option value="">상태를 선택하세요</option>
       <option>수락대기</option>
       <option>예약확정</option>
@@ -387,9 +387,9 @@
     </select>
     <div class="modal__label">변경 사유 <span>*</span></div>
     <textarea class="modal__textarea" id="statusReason" placeholder="상태 변경 사유를 입력하세요"
-      oninput="document.getElementById('statusBtn').disabled = !(this.value.trim() && document.getElementById('statusSelect').value)"></textarea>
+      data-enables="statusBtn" data-enables-with="statusSelect"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('statusModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="statusBtn" disabled>상태 변경</button>
     </div>
   </div>
@@ -404,10 +404,9 @@
       되돌릴 수 없으니 신중하게 진행해주세요.
     </div>
     <div class="modal__label">취소 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="cancelReason" placeholder="강제 취소 사유를 입력하세요"
-      oninput="document.getElementById('cancelBtn').disabled = !this.value.trim()"></textarea>
+    <textarea class="modal__textarea" id="cancelReason" placeholder="강제 취소 사유를 입력하세요" data-enables="cancelBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('cancelModal').classList.remove('active')">닫기</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>닫기</button>
       <button class="modal__btn modal__btn--confirm-danger" id="cancelBtn" disabled>강제 취소/환불</button>
     </div>
   </div>
@@ -422,14 +421,14 @@
       노쇼 처리 시 보호자에게 불이익이 발생할 수 있습니다.
     </div>
     <div class="modal__label">노쇼 처리 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="noshowReason" placeholder="노쇼 처리 사유를 입력하세요"
-      oninput="document.getElementById('noshowBtn').disabled = !this.value.trim()"></textarea>
+    <textarea class="modal__textarea" id="noshowReason" placeholder="노쇼 처리 사유를 입력하세요" data-enables="noshowBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('noshowModal').classList.remove('active')">닫기</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>닫기</button>
       <button class="modal__btn modal__btn--confirm-warning" id="noshowBtn" disabled>노쇼 처리</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

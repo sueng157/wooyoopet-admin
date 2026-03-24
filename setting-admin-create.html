@@ -66,7 +66,7 @@
       <div class="detail-top">
         <a href="settings.html" class="btn-back">← 관리자 계정 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('registerModal').classList.add('active')">등록</button>
+          <button class="btn-action btn-action--primary" data-modal-open="registerModal">등록</button>
         </div>
       </div>
 
@@ -263,11 +263,12 @@
     <div class="modal__title modal__title--primary">등록 확인</div>
     <div class="modal__message">새 관리자를 등록하시겠습니까?<br>등록 후 즉시 해당 계정으로 로그인할 수 있습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('registerModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-primary" onclick="document.getElementById('registerModal').classList.remove('active')">등록</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" data-modal-close>등록</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

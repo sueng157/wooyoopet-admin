@@ -87,7 +87,7 @@
       </div>
 
       <div class="detail-bottom-actions">
-        <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('pushModal').classList.add('active')">푸시 알림 발송</button>
+        <button class="btn-action btn-action--outline-primary" data-modal-open="pushModal">푸시 알림 발송</button>
         <button class="btn-action btn-action--primary">등록</button>
       </div>
     </div>
@@ -99,10 +99,11 @@
     <div class="modal__title">푸시 알림 발송</div>
     <div class="modal__message">등록과 동시에 대상 회원에게 푸시 알림을 발송하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('pushModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">발송</button>
     </div>
   </div>
 </div>
+<script src="js/common.js"></script>
 </body>
 </html>

@@ -70,9 +70,9 @@
       <div class="detail-top">
         <a href="settlements.html" class="btn-back">← 정산내역 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('settleCompleteModal').classList.add('active')">정산완료 처리</button>
-          <button class="btn-action btn-action--warning" onclick="document.getElementById('settleHoldModal').classList.add('active')">정산보류</button>
-          <button class="btn-action btn-action--outline" onclick="document.getElementById('holdReleaseModal').classList.add('active')">보류 해제</button>
+          <button class="btn-action btn-action--primary" data-modal-open="settleCompleteModal">정산완료 처리</button>
+          <button class="btn-action btn-action--warning" data-modal-open="settleHoldModal">정산보류</button>
+          <button class="btn-action btn-action--outline" data-modal-open="holdReleaseModal">보류 해제</button>
         </div>
       </div>
 
@@ -183,7 +183,7 @@
     <div class="modal__title">정산완료 처리</div>
     <div class="modal__message">선택한 건의 정산을 완료 처리합니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('settleCompleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">정산완료</button>
     </div>
   </div>
@@ -195,9 +195,9 @@
     <div class="modal__title">정산보류</div>
     <div class="modal__warning">해당 정산을 보류합니다. 보류 사유를 입력하세요.</div>
     <div class="modal__label">보류 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="holdReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('holdBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="holdReason" placeholder="사유를 입력하세요..." data-enables="holdBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('settleHoldModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning" id="holdBtn" disabled>정산보류</button>
     </div>
   </div>
@@ -209,11 +209,12 @@
     <div class="modal__title">보류 해제</div>
     <div class="modal__message">정산 보류를 해제하고 정산예정 상태로 복원합니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('holdReleaseModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">보류 해제</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

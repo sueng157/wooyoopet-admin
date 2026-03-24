@@ -106,7 +106,7 @@
           <span class="info-grid__value">
             <span class="masked-field">
               <span class="masked-field__value" data-masked="010-****-5678" data-raw="010-1234-5678">010-****-5678</span>
-              <button class="masked-field__toggle" type="button" onclick="toggleMask(this)">전체보기</button>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -164,7 +164,7 @@
           <span class="info-grid__value">
             <span class="masked-field">
               <span class="masked-field__value" data-masked="****호" data-raw="1234호">****호</span>
-              <button class="masked-field__toggle" type="button" onclick="toggleMask(this)">전체보기</button>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </span>
 
@@ -531,20 +531,7 @@
 </div><!-- .layout -->
 
 <!-- 마스킹 토글 스크립트 -->
-<script>
-function toggleMask(btn) {
-  const valueEl = btn.previousElementSibling;
-  const masked = valueEl.getAttribute('data-masked');
-  const raw = valueEl.getAttribute('data-raw');
-  if (valueEl.textContent === masked) {
-    valueEl.textContent = raw;
-    btn.textContent = '숨기기';
-  } else {
-    valueEl.textContent = masked;
-    btn.textContent = '전체보기';
-  }
-}
-</script>
 
+<script src="js/common.js"></script>
 </body>
 </html>

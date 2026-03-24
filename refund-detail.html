@@ -70,9 +70,9 @@
       <div class="detail-top">
         <a href="payments.html" class="btn-back">← 환불/위약금 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('directRefundModal').classList.add('active')">직접 환불 처리</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('waivePenaltyModal').classList.add('active')">위약금 면제</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('forceCancelModal').classList.add('active')">직권 취소</button>
+          <button class="btn-action btn-action--primary" data-modal-open="directRefundModal">직접 환불 처리</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="waivePenaltyModal">위약금 면제</button>
+          <button class="btn-action btn-action--danger" data-modal-open="forceCancelModal">직권 취소</button>
         </div>
       </div>
 
@@ -212,7 +212,7 @@
       처리 후 보호자에게 환불이 진행됩니다.
     </div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('directRefundModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">환불 처리</button>
     </div>
   </div>
@@ -227,9 +227,9 @@
       이 작업은 되돌릴 수 없습니다.
     </div>
     <div class="modal__label">면제 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="waivePenaltyReason" placeholder="위약금을 면제하는 사유를 입력하세요" oninput="document.getElementById('waivePenaltyBtn').disabled = this.value.trim().length === 0"></textarea>
+    <textarea class="modal__textarea" id="waivePenaltyReason" placeholder="위약금을 면제하는 사유를 입력하세요" data-enables="waivePenaltyBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('waivePenaltyModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning" id="waivePenaltyBtn" disabled>위약금 면제</button>
     </div>
   </div>
@@ -244,13 +244,14 @@
       관리자 직권으로 해당 건을 강제 취소합니다.
     </div>
     <div class="modal__label">취소 사유 <span>*</span></div>
-    <textarea class="modal__textarea" id="forceCancelReason" placeholder="직권 취소 사유를 입력하세요" oninput="document.getElementById('forceCancelBtn').disabled = this.value.trim().length === 0"></textarea>
+    <textarea class="modal__textarea" id="forceCancelReason" placeholder="직권 취소 사유를 입력하세요" data-enables="forceCancelBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceCancelModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="forceCancelBtn" disabled>직권 취소</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

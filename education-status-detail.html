@@ -66,9 +66,9 @@
       <div class="detail-top">
         <a href="educations.html" class="btn-back">← 이수현황 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('forceCompleteModal').classList.add('active')">강제 이수 처리</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('resetCompletionModal').classList.add('active')">이수 초기화</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('resetChecklistModal').classList.add('active')">체크리스트 확인 초기화</button>
+          <button class="btn-action btn-action--outline-primary" data-modal-open="forceCompleteModal">강제 이수 처리</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="resetCompletionModal">이수 초기화</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="resetChecklistModal">체크리스트 확인 초기화</button>
         </div>
       </div>
 
@@ -251,7 +251,7 @@
     </div>
     <textarea class="modal__textarea" placeholder="강제 이수 처리 사유를 입력하세요"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceCompleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">강제 이수 처리</button>
     </div>
   </div>
@@ -267,7 +267,7 @@
     </div>
     <textarea class="modal__textarea" placeholder="이수 초기화 사유를 입력하세요"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('resetCompletionModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">이수 초기화</button>
     </div>
   </div>
@@ -283,11 +283,12 @@
     </div>
     <textarea class="modal__textarea" placeholder="체크리스트 확인 초기화 사유를 입력하세요"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('resetChecklistModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">체크리스트 초기화</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

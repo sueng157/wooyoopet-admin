@@ -48,8 +48,8 @@
       <div class="detail-top">
         <a href="contents.html" class="btn-back">← 공지사항 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('privateModal').classList.add('active')">비공개 전환</button>
-          <button class="btn-action btn-action--outline-danger" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="privateModal">비공개 전환</button>
+          <button class="btn-action btn-action--outline-danger" data-modal-open="deleteModal">삭제</button>
         </div>
       </div>
 
@@ -109,7 +109,7 @@
       </div>
 
       <div class="detail-bottom-actions">
-        <button class="btn-action btn-action--outline-primary" onclick="document.getElementById('pushModal').classList.add('active')">푸시 알림 발송</button>
+        <button class="btn-action btn-action--outline-primary" data-modal-open="pushModal">푸시 알림 발송</button>
         <button class="btn-action btn-action--primary">저장</button>
       </div>
     </div>
@@ -121,7 +121,7 @@
     <div class="modal__title">비공개 전환</div>
     <div class="modal__message">이 공지사항을 비공개로 전환하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('privateModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning">비공개 전환</button>
     </div>
   </div>
@@ -131,7 +131,7 @@
     <div class="modal__title">공지 삭제</div>
     <div class="modal__message">이 공지사항을 삭제하시겠습니까? 삭제된 공지는 복구할 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--delete">삭제</button>
     </div>
   </div>
@@ -141,10 +141,11 @@
     <div class="modal__title">푸시 알림 발송</div>
     <div class="modal__message">대상 회원에게 푸시 알림을 발송하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('pushModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">발송</button>
     </div>
   </div>
 </div>
+<script src="js/common.js"></script>
 </body>
 </html>

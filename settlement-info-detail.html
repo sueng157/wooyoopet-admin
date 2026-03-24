@@ -70,9 +70,9 @@
       <div class="detail-top">
         <a href="settlements.html" class="btn-back">← 정산정보 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('reRegisterModal').classList.add('active')">이니시스 재등록</button>
-          <button class="btn-action btn-action--confirm" onclick="document.getElementById('forceApproveModal').classList.add('active')">강제 승인</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('forceRejectModal').classList.add('active')">강제 거절</button>
+          <button class="btn-action btn-action--primary" data-modal-open="reRegisterModal">이니시스 재등록</button>
+          <button class="btn-action btn-action--confirm" data-modal-open="forceApproveModal">강제 승인</button>
+          <button class="btn-action btn-action--danger" data-modal-open="forceRejectModal">강제 거절</button>
         </div>
       </div>
 
@@ -91,16 +91,16 @@
           <div class="info-grid__label">주민등록번호</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">850315-1******</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="850315-1******" data-raw="850315-1234567">850315-1******</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
 
           <div class="info-grid__label">핸드폰</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
-              <button class="masked-field__toggle">[전체보기]</button>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
+              <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
 
@@ -238,7 +238,7 @@
     <div class="modal__title">이니시스 재등록 요청</div>
     <div class="modal__message">해당 유치원의 서브몰 등록을 다시 요청합니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('reRegisterModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary" style="background:var(--primary);color:#fff;border:none;">재등록 요청</button>
     </div>
   </div>
@@ -250,9 +250,9 @@
     <div class="modal__title">관리자 강제 승인</div>
     <div class="modal__warning">이니시스 등록 절차를 건너뛰고 강제로 승인합니다.</div>
     <div class="modal__label">승인 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="approveReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('approveBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="approveReason" placeholder="사유를 입력하세요..." data-enables="approveBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceApproveModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning" id="approveBtn" disabled>강제 승인</button>
     </div>
   </div>
@@ -264,13 +264,14 @@
     <div class="modal__title">관리자 강제 거절</div>
     <div class="modal__warning">정산정보 등록을 거절합니다. 유치원은 정산정보를 다시 제출해야 합니다.</div>
     <div class="modal__label">거절 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="rejectReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('rejectBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="rejectReason" placeholder="사유를 입력하세요..." data-enables="rejectBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('forceRejectModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="rejectBtn" disabled>강제 거절</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

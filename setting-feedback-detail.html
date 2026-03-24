@@ -66,7 +66,7 @@
       <div class="detail-top">
         <a href="settings.html" class="btn-back">← 의견/피드백 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('confirmModal').classList.add('active')">확인 처리</button>
+          <button class="btn-action btn-action--primary" data-modal-open="confirmModal">확인 처리</button>
         </div>
       </div>
 
@@ -176,7 +176,7 @@
         </div>
         <textarea class="form-textarea form-textarea--mid" placeholder="내부용 메모를 작성하세요 (사용자에게 노출되지 않습니다)">검색 기능 개선 관련 — 차기 업데이트(v3.3.0)에서 거리 기반 검색 추가 예정. PM팀에 전달 완료.</textarea>
         <div class="stg-memo-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('saveMemoModal').classList.add('active')">메모 저장</button>
+          <button class="btn-action btn-action--primary" data-modal-open="saveMemoModal">메모 저장</button>
         </div>
       </div>
 
@@ -195,8 +195,8 @@
     <div class="modal__title modal__title--primary">확인 처리</div>
     <div class="modal__message">이 피드백을 확인 처리하시겠습니까?<br>확인 처리 후에는 되돌릴 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('confirmModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-primary" onclick="document.getElementById('confirmModal').classList.remove('active')">확인 처리</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" data-modal-close>확인 처리</button>
     </div>
   </div>
 </div>
@@ -207,11 +207,12 @@
     <div class="modal__title modal__title--primary">메모 저장</div>
     <div class="modal__message">관리자 메모를 저장하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('saveMemoModal').classList.remove('active')">취소</button>
-      <button class="modal__btn modal__btn--confirm-primary" onclick="document.getElementById('saveMemoModal').classList.remove('active')">저장</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" data-modal-close>저장</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

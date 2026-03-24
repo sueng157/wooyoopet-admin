@@ -70,9 +70,9 @@
       <div class="detail-top">
         <a href="chats.html" class="btn-back">← 신고접수 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--primary" onclick="document.getElementById('statusChangeModal').classList.add('active')">처리상태 변경</button>
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('sanctionModal').classList.add('active')">제재 적용</button>
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('dismissModal').classList.add('active')">기각 처리</button>
+          <button class="btn-action btn-action--primary" data-modal-open="statusChangeModal">처리상태 변경</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="sanctionModal">제재 적용</button>
+          <button class="btn-action btn-action--danger" data-modal-open="dismissModal">기각 처리</button>
         </div>
       </div>
 
@@ -136,7 +136,7 @@
           <div class="info-grid__label">연락처</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-9012</span>
+              <span class="masked-field__value" data-masked="010-****-9012" data-raw="010-3456-9012">010-****-9012</span>
               <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
@@ -164,7 +164,7 @@
           <div class="info-grid__label">연락처</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-3456</span>
+              <span class="masked-field__value" data-masked="010-****-3456" data-raw="010-7890-3456">010-****-3456</span>
               <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
@@ -253,7 +253,7 @@
       <option value="completed">처리완료</option>
     </select>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('statusChangeModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-primary">상태 변경</button>
     </div>
   </div>
@@ -273,9 +273,9 @@
       <option value="permanent">영구 정지</option>
     </select>
     <div class="modal__label">제재 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="sanctionReason" placeholder="제재 사유를 입력하세요..." oninput="document.getElementById('sanctionBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="sanctionReason" placeholder="제재 사유를 입력하세요..." data-enables="sanctionBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('sanctionModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning" id="sanctionBtn" disabled>제재 적용</button>
     </div>
   </div>
@@ -287,13 +287,14 @@
     <div class="modal__title">기각 처리</div>
     <div class="modal__warning">이 신고를 기각 처리합니다. 기각 사유를 필수로 입력해야 합니다.</div>
     <div class="modal__label">기각 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="dismissReason" placeholder="기각 사유를 입력하세요..." oninput="document.getElementById('dismissBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="dismissReason" placeholder="기각 사유를 입력하세요..." data-enables="dismissBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('dismissModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="dismissBtn" disabled>기각</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

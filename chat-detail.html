@@ -70,7 +70,7 @@
       <div class="detail-top">
         <a href="chats.html" class="btn-back">← 채팅내역 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--danger" onclick="document.getElementById('deactivateModal').classList.add('active')">채팅방 강제 비활성화</button>
+          <button class="btn-action btn-action--danger" data-modal-open="deactivateModal">채팅방 강제 비활성화</button>
         </div>
       </div>
 
@@ -109,7 +109,7 @@
           <div class="info-grid__label">보호자 연락처</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-5678</span>
+              <span class="masked-field__value" data-masked="010-****-5678" data-raw="010-1234-5678">010-****-5678</span>
               <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
@@ -134,7 +134,7 @@
           <div class="info-grid__label">운영자 연락처</div>
           <div class="info-grid__value">
             <span class="masked-field">
-              <span class="masked-field__value">010-****-1234</span>
+              <span class="masked-field__value" data-masked="010-****-1234" data-raw="010-5678-1234">010-****-1234</span>
               <button class="masked-field__toggle">전체보기</button>
             </span>
           </div>
@@ -334,13 +334,14 @@
     <div class="modal__title">채팅방 강제 비활성화</div>
     <div class="modal__warning">이 채팅방을 강제로 비활성화합니다. 비활성화 후에는 양측 모두 메시지를 보낼 수 없습니다.</div>
     <div class="modal__label">비활성화 사유 <span style="color:#E05A3A;">*</span></div>
-    <textarea class="modal__textarea" id="deactivateReason" placeholder="사유를 입력하세요..." oninput="document.getElementById('deactivateBtn').disabled = this.value.trim() === ''"></textarea>
+    <textarea class="modal__textarea" id="deactivateReason" placeholder="사유를 입력하세요..." data-enables="deactivateBtn"></textarea>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deactivateModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-danger" id="deactivateBtn" disabled>비활성화</button>
     </div>
   </div>
 </div>
 
+<script src="js/common.js"></script>
 </body>
 </html>

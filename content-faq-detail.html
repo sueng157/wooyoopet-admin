@@ -48,8 +48,8 @@
       <div class="detail-top">
         <a href="contents.html" class="btn-back">← FAQ 목록으로</a>
         <div class="detail-actions">
-          <button class="btn-action btn-action--outline-warning" onclick="document.getElementById('privateModal').classList.add('active')">비공개 전환</button>
-          <button class="btn-action btn-action--outline-danger" onclick="document.getElementById('deleteModal').classList.add('active')">삭제</button>
+          <button class="btn-action btn-action--outline-warning" data-modal-open="privateModal">비공개 전환</button>
+          <button class="btn-action btn-action--outline-danger" data-modal-open="deleteModal">삭제</button>
         </div>
       </div>
 
@@ -112,7 +112,7 @@
     <div class="modal__title">비공개 전환</div>
     <div class="modal__message">이 FAQ를 비공개로 전환하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('privateModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--confirm-warning">비공개 전환</button>
     </div>
   </div>
@@ -122,10 +122,11 @@
     <div class="modal__title">FAQ 삭제</div>
     <div class="modal__message">이 FAQ를 삭제하시겠습니까? 삭제된 FAQ는 복구할 수 없습니다.</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" onclick="document.getElementById('deleteModal').classList.remove('active')">취소</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
       <button class="modal__btn modal__btn--delete">삭제</button>
     </div>
   </div>
 </div>
+<script src="js/common.js"></script>
 </body>
 </html>
