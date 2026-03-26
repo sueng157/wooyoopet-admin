@@ -21,17 +21,17 @@
     </div>
     <nav class="sidebar__nav">
       <a href="index.html" class="sidebar__menu-item">대시보드</a>
-      <a href="members.html" class="sidebar__menu-item">회원관리</a>
-      <a href="kindergartens.html" class="sidebar__menu-item">유치원관리</a>
-      <a href="pets.html" class="sidebar__menu-item">반려동물관리</a>
-      <a href="reservations.html" class="sidebar__menu-item">돌봄예약관리</a>
-      <a href="payments.html" class="sidebar__menu-item">결제관리</a>
-      <a href="settlements.html" class="sidebar__menu-item">정산관리</a>
-      <a href="chats.html" class="sidebar__menu-item">채팅관리</a>
-      <a href="reviews.html" class="sidebar__menu-item active">후기관리</a>
-      <a href="educations.html" class="sidebar__menu-item">교육관리</a>
-      <a href="contents.html" class="sidebar__menu-item">콘텐츠관리</a>
-      <a href="settings.html" class="sidebar__menu-item">설정</a>
+      <a href="members.html" class="sidebar__menu-item" data-perm="perm_members">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item" data-perm="perm_kindergartens">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item" data-perm="perm_pets">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item" data-perm="perm_reservations">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item" data-perm="perm_payments">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item" data-perm="perm_settlements">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item" data-perm="perm_chats">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item active" data-perm="perm_reviews">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item" data-perm="perm_educations">교육관리</a>
+      <a href="contents.html" class="sidebar__menu-item" data-perm="perm_contents">콘텐츠관리</a>
+      <a href="settings.html" class="sidebar__menu-item" data-perm="perm_settings">설정</a>
     </nav>
     <div class="sidebar__profile">
       <div class="sidebar__profile-row">
@@ -227,6 +227,9 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/common.js"></script>
 <script src="js/components.js"></script>
 </body>

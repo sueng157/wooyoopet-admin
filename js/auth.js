@@ -74,20 +74,8 @@
     'setting-feedback-detail.html':'perm_settings'
   };
 
-  // 사이드바 메뉴 href → perm 매핑 (대표 페이지 기준)
-  var MENU_PERM_MAP = {
-    'members.html':       'perm_members',
-    'kindergartens.html': 'perm_kindergartens',
-    'pets.html':          'perm_pets',
-    'reservations.html':  'perm_reservations',
-    'payments.html':      'perm_payments',
-    'settlements.html':   'perm_settlements',
-    'chats.html':         'perm_chats',
-    'reviews.html':       'perm_reviews',
-    'educations.html':    'perm_educations',
-    'contents.html':      'perm_contents',
-    'settings.html':      'perm_settings'
-  };
+  // 사이드바 메뉴 권한은 HTML의 data-perm 속성으로 관리
+  // 예: <a href="members.html" class="sidebar__menu-item" data-perm="perm_members">회원관리</a>
 
   // ──────────────────────────────────────────
   // 2. 유틸리티 함수
@@ -151,21 +139,6 @@
 
     if (result.error || !result.data) return null;
     return result.data;
-  }
-
-  /**
-   * 이메일로 admin_id 조회 (로그인 실패 로그용)
-   * — anon 권한으로는 RLS에 의해 조회 불가할 수 있으므로 null 반환 허용
-   */
-  async function fetchAdminIdByEmail(email) {
-    var result = await sb
-      .from('admin_accounts')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (result.error || !result.data) return null;
-    return result.data.id;
   }
 
   // ──────────────────────────────────────────
@@ -259,11 +232,16 @@
   function updateSidebarProfile(admin) {
     if (!admin) return;
 
+    // 사이드바 프로필
     var nameEl = document.querySelector('.sidebar__admin-name');
     var roleEl = document.querySelector('.sidebar__admin-role');
 
     if (nameEl) nameEl.textContent = admin.name;
     if (roleEl) roleEl.textContent = admin.role;
+
+    // 헤더 프로필 ("홍길동 관리자" → "이름 역할")
+    var headerNameEl = document.querySelector('.header__admin-name');
+    if (headerNameEl) headerNameEl.textContent = admin.name + ' ' + admin.role;
   }
 
   // ──────────────────────────────────────────
@@ -273,16 +251,10 @@
   function applyPermissions(admin) {
     if (!admin) return;
 
-    // 8-1. 사이드바 메뉴 숨김 처리
-    var menuItems = document.querySelectorAll('.sidebar__menu-item');
+    // 8-1. 사이드바 메뉴 숨김 처리 (data-perm 속성 기반)
+    var menuItems = document.querySelectorAll('.sidebar__menu-item[data-perm]');
     menuItems.forEach(function (item) {
-      var href = item.getAttribute('href');
-      if (!href) return;
-
-      var fileName = href.split('/').pop();
-      var permKey = MENU_PERM_MAP[fileName];
-
-      // 대시보드(index.html)는 항상 표시, 매핑 없는 메뉴도 표시
+      var permKey = item.getAttribute('data-perm');
       if (!permKey) return;
 
       var permValue = admin[permKey];
@@ -348,15 +320,15 @@
     updateSidebarProfile(admin);
     applyPermissions(admin);
 
-    // 9-6. 로그아웃 버튼 이벤트 바인딩
-    var logoutBtn = document.querySelector('.sidebar__logout');
-    if (logoutBtn) {
-      logoutBtn.style.cursor = 'pointer';
-      logoutBtn.addEventListener('click', function (e) {
+    // 9-6. 로그아웃 버튼 이벤트 바인딩 (사이드바 + 헤더)
+    var logoutBtns = document.querySelectorAll('.sidebar__logout, .header__logout');
+    logoutBtns.forEach(function (btn) {
+      btn.style.cursor = 'pointer';
+      btn.addEventListener('click', function (e) {
         e.preventDefault();
         doLogout();
       });
-    }
+    });
   }
 
   // ──────────────────────────────────────────
