@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 로그인</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+<div class="login-page">
+
+  <!-- ========== 로그인 카드 ========== -->
+  <div class="login-card">
+
+    <!-- 로고 -->
+    <div class="login-card__logo">
+      <img
+        src="assets/images/logo.png"
+        alt="우유펫 로고"
+        class="login-card__logo-img"
+        onerror="this.style.display='none'"
+      >
+      <div class="login-card__brand-ko">우유펫</div>
+      <div class="login-card__brand-en">WOOYOOPET</div>
+      <div class="login-card__subtitle">관리자 대시보드</div>
+    </div>
+
+    <!-- 로그인 폼 -->
+    <form id="loginForm" autocomplete="off">
+
+      <!-- 이메일 -->
+      <div class="login-field">
+        <label class="login-field__label" for="loginEmail">이메일</label>
+        <div class="login-field__input-wrap">
+          <input
+            type="email"
+            id="loginEmail"
+            class="login-field__input"
+            placeholder="이메일 주소를 입력하세요"
+            autocomplete="email"
+            required
+          >
+        </div>
+      </div>
+
+      <!-- 비밀번호 -->
+      <div class="login-field">
+        <label class="login-field__label" for="loginPassword">비밀번호</label>
+        <div class="login-field__input-wrap">
+          <input
+            type="password"
+            id="loginPassword"
+            class="login-field__input login-field__input--password"
+            placeholder="비밀번호를 입력하세요"
+            autocomplete="current-password"
+            required
+          >
+          <button type="button" class="login-field__toggle-pw" id="togglePw" aria-label="비밀번호 표시">
+            <!-- 눈 아이콘 (보기) -->
+            <svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <!-- 눈 빗금 아이콘 (숨기기) -->
+            <svg class="icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 에러 메시지 -->
+      <div class="login-error" id="loginError"></div>
+
+      <!-- 로그인 버튼 -->
+      <button type="submit" class="login-btn" id="loginBtn">로그인</button>
+
+    </form>
+
+  </div>
+
+  <!-- 카피라이트 -->
+  <div class="login-footer">
+    &copy; 2026 WOOYOOPET. All rights reserved.
+  </div>
+
+</div>
+
+<!-- ========== Scripts ========== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── 비밀번호 표시/숨기기 토글 ──
+  var toggleBtn = document.getElementById('togglePw');
+  var pwInput = document.getElementById('loginPassword');
+
+  if (toggleBtn && pwInput) {
+    toggleBtn.addEventListener('click', function () {
+      var isPassword = pwInput.type === 'password';
+      pwInput.type = isPassword ? 'text' : 'password';
+      toggleBtn.classList.toggle('active', isPassword);
+      toggleBtn.setAttribute('aria-label', isPassword ? '비밀번호 숨기기' : '비밀번호 표시');
+    });
+  }
+
+  // ── 로그인 폼 제출 ──
+  var form = document.getElementById('loginForm');
+  var emailInput = document.getElementById('loginEmail');
+  var loginBtn = document.getElementById('loginBtn');
+  var errorDiv = document.getElementById('loginError');
+
+  function showError(msg) {
+    errorDiv.textContent = msg;
+    errorDiv.classList.add('active');
+  }
+
+  function hideError() {
+    errorDiv.textContent = '';
+    errorDiv.classList.remove('active');
+  }
+
+  function setLoading(loading) {
+    loginBtn.disabled = loading;
+    loginBtn.textContent = loading ? '로그인 중...' : '로그인';
+  }
+
+  if (form) {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      hideError();
+
+      var email = emailInput.value.trim();
+      var password = pwInput.value;
+
+      if (!email) {
+        showError('이메일을 입력하세요.');
+        emailInput.focus();
+        return;
+      }
+      if (!password) {
+        showError('비밀번호를 입력하세요.');
+        pwInput.focus();
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        var result = await window.__auth.doLogin(email, password);
+        if (result.success) {
+          window.location.href = 'index.html';
+        } else {
+          showError(result.error);
+          setLoading(false);
+        }
+      } catch (err) {
+        showError('로그인 처리 중 오류가 발생했습니다.');
+        setLoading(false);
+      }
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

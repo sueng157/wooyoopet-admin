@@ -2,3 +2,4 @@ node_modules/
 screenshot_*.png
 *.log
 .DS_Store
+login_preview.png

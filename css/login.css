@@ -1,0 +1,194 @@
+/* ============================================
+   우유펫 관리자 — 로그인 페이지 전용 CSS
+   common.css의 CSS 변수 재사용
+   ============================================ */
+
+/* ── 로그인 전체 레이아웃 ── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-base);
+  padding: 24px;
+}
+
+/* ── 로그인 카드 ── */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 48px 40px 40px;
+}
+
+/* ── 로고 영역 ── */
+.login-card__logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.login-card__logo-img {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 12px;
+}
+
+.login-card__brand-ko {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.login-card__brand-en {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-weak);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.login-card__subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* ── 폼 필드 ── */
+.login-field {
+  margin-bottom: 20px;
+}
+
+.login-field__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.login-field__input-wrap {
+  position: relative;
+}
+
+.login-field__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #dce1e6;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: var(--surface-card);
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.login-field__input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(51, 157, 238, 0.08);
+}
+
+.login-field__input::placeholder {
+  color: var(--text-weak);
+}
+
+.login-field__input--password {
+  padding-right: 44px;
+}
+
+/* ── 비밀번호 표시/숨기기 토글 ── */
+.login-field__toggle-pw {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-weak);
+  transition: color 0.2s;
+}
+
+.login-field__toggle-pw:hover {
+  color: var(--text-secondary);
+}
+
+.login-field__toggle-pw svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 비밀번호 숨김 아이콘(빗금) — 기본 숨김 */
+.login-field__toggle-pw .icon-hide {
+  display: none;
+}
+
+/* 비밀번호 표시 상태일 때 아이콘 전환 */
+.login-field__toggle-pw.active .icon-show {
+  display: none;
+}
+.login-field__toggle-pw.active .icon-hide {
+  display: block;
+}
+
+/* ── 에러 메시지 ── */
+.login-error {
+  display: none;
+  padding: 10px 14px;
+  background: var(--badge-red-bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--danger);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.login-error.active {
+  display: block;
+}
+
+/* ── 로그인 버튼 ── */
+.login-btn {
+  width: 100%;
+  height: 46px;
+  background: var(--gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.login-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── 하단 카피라이트 ── */
+.login-footer {
+  margin-top: 32px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-weak);
+}
