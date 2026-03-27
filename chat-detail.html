@@ -79,7 +79,7 @@
         <div class="detail-card__header">
           <h3 class="detail-card__title">채팅방 기본정보</h3>
         </div>
-        <div class="info-grid">
+        <div class="info-grid" id="detailChatBasic">
           <div class="info-grid__label">채팅방 고유번호</div>
           <div class="info-grid__value">CR-00000128</div>
 
@@ -99,7 +99,7 @@
         <div class="detail-card__header">
           <h3 class="detail-card__title">참여자 정보 — 보호자</h3>
         </div>
-        <div class="info-grid">
+        <div class="info-grid" id="detailChatGuardian">
           <div class="info-grid__label">보호자 이름</div>
           <div class="info-grid__value">김수진</div>
 
@@ -124,7 +124,7 @@
         <div class="detail-card__header">
           <h3 class="detail-card__title">참여자 정보 — 유치원</h3>
         </div>
-        <div class="info-grid">
+        <div class="info-grid" id="detailChatKg">
           <div class="info-grid__label">유치원명</div>
           <div class="info-grid__value">밤톨이네</div>
 
@@ -149,7 +149,7 @@
         <div class="detail-card__header">
           <h3 class="detail-card__title">연동 예약 목록</h3>
         </div>
-        <table class="mini-table">
+        <table class="mini-table" id="detailChatReservations">
           <thead>
             <tr>
               <th>예약번호</th>
@@ -188,7 +188,7 @@
           <span style="font-size:12px;color:var(--text-weak);">총 45건</span>
         </div>
 
-        <div class="chat-messages">
+        <div class="chat-messages" id="detailChatMessages">
 
           <!-- 날짜 구분선 -->
           <div class="chat-date-divider">2026-03-16</div>
@@ -309,7 +309,7 @@
         <div class="detail-card__header">
           <h3 class="detail-card__title">신고 이력</h3>
         </div>
-        <div class="info-grid">
+        <div class="info-grid" id="detailChatReport">
           <div class="info-grid__label">신고 여부</div>
           <div class="info-grid__value"><span class="report-no">없음</span></div>
 
@@ -348,5 +348,6 @@
 <script src="js/common.js"></script>
 <script src="js/components.js"></script>
 <script src="js/api.js"></script>
+<script src="js/chats.js"></script>
 </body>
 </html>
