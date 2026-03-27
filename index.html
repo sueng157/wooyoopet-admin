@@ -77,61 +77,61 @@
       <section class="dashboard-section">
         <div class="section-header">
           <span class="section-header__title">오늘의 현황</span>
-          <span class="section-header__date">2026-03-16 (월)</span>
+          <span class="section-header__date" id="dashboardDate">불러오는 중...</span>
         </div>
         <div class="status-cards">
           <!-- 카드 1: 신규 가입 -->
-          <div class="status-card">
+          <div class="status-card" id="cardNewMembers">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               신규 가입
             </div>
-            <div class="status-card__value">12</div>
+            <div class="status-card__value" id="statNewMembers">-</div>
             <div class="status-card__unit">명</div>
           </div>
           <!-- 카드 2: 신규 예약 -->
-          <div class="status-card">
+          <div class="status-card" id="cardNewReservations">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               신규 예약
             </div>
-            <div class="status-card__value">8</div>
+            <div class="status-card__value" id="statNewReservations">-</div>
             <div class="status-card__unit">건</div>
           </div>
           <!-- 카드 3: 등원 예정 -->
-          <div class="status-card">
+          <div class="status-card" id="cardCheckinExpected">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               등원 예정
             </div>
-            <div class="status-card__value">5</div>
+            <div class="status-card__value" id="statCheckinExpected">-</div>
             <div class="status-card__unit">건</div>
           </div>
           <!-- 카드 4: 진행 중 돌봄 -->
-          <div class="status-card">
+          <div class="status-card" id="cardInProgress">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               진행 중 돌봄
             </div>
-            <div class="status-card__value">3</div>
+            <div class="status-card__value" id="statInProgress">-</div>
             <div class="status-card__unit">건</div>
           </div>
           <!-- 카드 5: 오늘 결제액 -->
-          <div class="status-card">
+          <div class="status-card" id="cardTodayPayments">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               오늘 결제액
             </div>
-            <div class="status-card__value status-card__value--money">1,250,000</div>
+            <div class="status-card__value status-card__value--money" id="statTodayPayments">-</div>
             <div class="status-card__unit">원</div>
           </div>
           <!-- 카드 6: 오늘 취소·환불 -->
-          <div class="status-card">
+          <div class="status-card" id="cardTodayCancelRefund">
             <div class="status-card__label">
               <span class="status-card__dot"></span>
               오늘 취소·환불
             </div>
-            <div class="status-card__value">2</div>
+            <div class="status-card__value" id="statTodayCancelRefund">-</div>
             <div class="status-card__unit">건</div>
           </div>
         </div>
@@ -147,33 +147,33 @@
               <span class="section-header__title">관리자 승인 대기</span>
             </div>
             <div class="approval-list">
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingAddress">
                 <span class="approval-item__name">주소인증 대기</span>
-                <span class="approval-item__count approval-item__count--active">3</span>
+                <span class="approval-item__count" id="pendingAddress">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingSettlementNew">
                 <span class="approval-item__name">정산정보 신규 제출</span>
-                <span class="approval-item__count approval-item__count--active">1</span>
+                <span class="approval-item__count" id="pendingSettlementNew">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingSettlementFail">
                 <span class="approval-item__name">정산정보 심사 실패</span>
-                <span class="approval-item__count">0</span>
+                <span class="approval-item__count" id="pendingSettlementFail">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingRefund">
                 <span class="approval-item__name">환불 대기</span>
-                <span class="approval-item__count approval-item__count--active">2</span>
+                <span class="approval-item__count" id="pendingRefund">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingReport">
                 <span class="approval-item__name">신고 미처리</span>
-                <span class="approval-item__count approval-item__count--active">1</span>
+                <span class="approval-item__count" id="pendingReport">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingSettlementHold">
                 <span class="approval-item__name">정산 보류</span>
-                <span class="approval-item__count">0</span>
+                <span class="approval-item__count" id="pendingSettlementHold">-</span>
               </div>
-              <div class="approval-item">
+              <div class="approval-item" id="linkPendingFeedback">
                 <span class="approval-item__name">피드백 미확인</span>
-                <span class="approval-item__count approval-item__count--active">4</span>
+                <span class="approval-item__count" id="pendingFeedback">-</span>
               </div>
             </div>
           </div>
@@ -187,27 +187,27 @@
               <!-- 돌봄 결제금액 -->
               <div class="sales-item">
                 <span class="sales-item__label">이번 달 돌봄 결제금액</span>
-                <span class="sales-item__value">38,500,000 원</span>
+                <span class="sales-item__value" id="salesCarePayment">불러오는 중...</span>
               </div>
               <!-- 위약금 결제금액 -->
               <div class="sales-item">
                 <span class="sales-item__label">이번 달 위약금 결제금액</span>
-                <span class="sales-item__value">1,200,000 원</span>
+                <span class="sales-item__value" id="salesPenaltyPayment">불러오는 중...</span>
               </div>
               <!-- 총 유효 거래금액 (강조) -->
               <div class="sales-item sales-item--highlight">
                 <span class="sales-item__label">이번 달 총 유효 거래금액</span>
-                <span class="sales-item__value">39,700,000 원</span>
+                <span class="sales-item__value" id="salesTotalValid">불러오는 중...</span>
               </div>
               <!-- 플랫폼 수수료 수입 -->
               <div class="sales-item">
                 <span class="sales-item__label">이번 달 플랫폼 수수료 수입</span>
-                <span class="sales-item__value sales-item__value--blue">7,940,000 원</span>
+                <span class="sales-item__value sales-item__value--blue" id="salesPlatformFee">불러오는 중...</span>
               </div>
               <!-- 유치원 정산 총액 -->
               <div class="sales-item">
                 <span class="sales-item__label">이번 달 유치원 정산 총액</span>
-                <span class="sales-item__value sales-item__value--sub">31,760,000 원</span>
+                <span class="sales-item__value sales-item__value--sub" id="salesKgSettlement">불러오는 중...</span>
               </div>
               <!-- 취소·환불 금액 -->
               <div class="sales-item">
@@ -215,7 +215,7 @@
                   이번 달 취소·환불 금액
                   <span class="sales-item__label-sub">(플랫폼 수입 무관)</span>
                 </span>
-                <span class="sales-item__value sales-item__value--weak">5,300,000 원</span>
+                <span class="sales-item__value sales-item__value--weak" id="salesCancelRefund">불러오는 중...</span>
               </div>
               <!-- 전월 대비 증감 -->
               <div class="sales-item sales-item--compare">
@@ -223,8 +223,8 @@
                   전월 대비 증감
                   <span class="sales-item__label-sub">vs 지난달 수수료 수입</span>
                 </span>
-                <span class="sales-item__value">
-                  <span class="pill pill--up">▲ 12.5%</span>
+                <span class="sales-item__value" id="salesChangeRate">
+                  불러오는 중...
                 </span>
               </div>
             </div>
@@ -248,36 +248,9 @@
                 <th style="width: 100px;">관련 링크</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="activityLogBody">
               <tr>
-                <td class="log-table__time">2026-03-16 14:23</td>
-                <td><span class="badge badge--c-blue">예약접수</span></td>
-                <td>홍길동님이 행복한유치원에 돌봄 예약을 신청했습니다</td>
-                <td><span class="log-table__link">바로가기</span></td>
-              </tr>
-              <tr>
-                <td class="log-table__time">2026-03-16 13:45</td>
-                <td><span class="badge badge--c-blue">결제완료</span></td>
-                <td>김민수님의 예약 #20260316-0042 결제가 완료되었습니다</td>
-                <td><span class="log-table__link">바로가기</span></td>
-              </tr>
-              <tr>
-                <td class="log-table__time">2026-03-16 12:10</td>
-                <td><span class="badge badge--c-blue">신규가입</span></td>
-                <td>박서연님이 보호자 모드로 회원가입했습니다</td>
-                <td><span class="log-table__link">바로가기</span></td>
-              </tr>
-              <tr>
-                <td class="log-table__time">2026-03-16 11:30</td>
-                <td><span class="badge badge--c-orange">취소요청</span></td>
-                <td>이준호님이 예약 #20260315-0078 취소를 요청했습니다</td>
-                <td><span class="log-table__link">바로가기</span></td>
-              </tr>
-              <tr>
-                <td class="log-table__time">2026-03-16 10:55</td>
-                <td><span class="badge badge--c-red">신고접수</span></td>
-                <td>채팅방 #CR-20260316-015에서 부적절 메시지 신고가 접수되었습니다</td>
-                <td><span class="log-table__link">바로가기</span></td>
+                <td colspan="4" style="text-align:center;padding:40px 0;color:var(--text-weak);">데이터를 불러오는 중입니다.</td>
               </tr>
             </tbody>
           </table>
@@ -294,5 +267,7 @@
 <script src="js/auth.js"></script>
 <script src="js/common.js"></script>
 <script src="js/components.js"></script>
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
 </body>
 </html>
