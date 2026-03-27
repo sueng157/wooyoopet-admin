@@ -50,37 +50,38 @@
 
   function buildInfoFilters() {
     var f = [];
-    if (infoDateFrom && infoDateFrom.value) f.push({ column: 'applied_at', op: 'gte', value: infoDateFrom.value + 'T00:00:00' });
-    if (infoDateTo && infoDateTo.value) f.push({ column: 'applied_at', op: 'lte', value: infoDateTo.value + 'T23:59:59' });
+    if (infoDateFrom && infoDateFrom.value) f.push({ column: 'created_at', op: 'gte', value: infoDateFrom.value + 'T00:00:00' });
+    if (infoDateTo && infoDateTo.value) f.push({ column: 'created_at', op: 'lte', value: infoDateTo.value + 'T23:59:59' });
     if (infoStatus && infoStatus.value !== '전체') f.push({ column: 'inicis_status', op: 'eq', value: infoStatus.value });
     return f;
   }
 
   function buildInfoSearch() {
     if (!infoSearchInput || !infoSearchInput.value.trim()) return null;
-    var map = { '유치원명': 'kindergarten_name', '운영자 성명': 'operator_name' };
-    return { column: map[infoSearchField ? infoSearchField.value : '유치원명'] || 'kindergarten_name', value: infoSearchInput.value.trim() };
+    var field = infoSearchField ? infoSearchField.value : '운영자 성명';
+    return { column: 'operator_name', value: infoSearchInput.value.trim() };
   }
 
   function renderInfoRow(r, idx, offset) {
     var no = offset + idx + 1;
+    var kgName = (r.kindergartens && r.kindergartens.name) || '';
     var bizBadge = api.autoBadge(r.business_type || '', { '사업자': 'pink', '개인': 'brown' });
     var statusBadge = api.autoBadge(r.inicis_status || '', { '완료': 'green', '요청중': 'blue', '실패': 'red', '미등록': 'gray' });
     return '<tr>' +
       '<td>' + no + '</td>' +
-      '<td>' + api.escapeHtml(r.kindergarten_name || '') + '</td>' +
+      '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(r.operator_name || '') + '</td>' +
       '<td>' + api.maskPhone(r.operator_phone || '') + '</td>' +
       '<td>' + bizBadge + '</td>' +
-      '<td>' + api.escapeHtml(r.business_number || '—') + '</td>' +
-      '<td>' + api.escapeHtml(r.seller_id || '—') + '</td>' +
-      '<td>' + api.escapeHtml(r.bank_name || '—') + '</td>' +
-      '<td>' + api.escapeHtml(r.account_masked || '—') + '</td>' +
+      '<td>' + api.escapeHtml(r.business_reg_number || '—') + '</td>' +
+      '<td>' + api.escapeHtml(r.inicis_seller_id || '—') + '</td>' +
+      '<td>' + api.escapeHtml(r.account_bank || '—') + '</td>' +
+      '<td>' + (r.account_number ? api.maskAccount(r.account_number) : '—') + '</td>' +
       '<td>' + api.escapeHtml(r.account_holder || '—') + '</td>' +
       '<td>' + statusBadge + '</td>' +
-      '<td>' + api.escapeHtml(r.failure_reason || '—') + '</td>' +
-      '<td>' + (api.formatDate(r.applied_at, 'date') || '—') + '</td>' +
-      '<td>' + (api.formatDate(r.processed_at, 'date') || '—') + '</td>' +
+      '<td>' + api.escapeHtml(r.inicis_fail_reason || '—') + '</td>' +
+      '<td>' + (api.formatDate(r.inicis_requested_at, true) || '—') + '</td>' +
+      '<td>' + (api.formatDate(r.inicis_completed_at, true) || '—') + '</td>' +
       '<td><a href="settlement-info-detail.html?id=' + (r.id || '') + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
@@ -90,16 +91,17 @@
     var offset = (infoPage - 1) * PER_PAGE;
     api.showTableLoading(infoBody, 15);
 
-    api.fetchList('settlement_info', {
+    api.fetchList('settlement_infos', {
+      select: '*, kindergartens:kindergarten_id(name)',
       filters: buildInfoFilters(), search: buildInfoSearch(),
-      order: { column: 'applied_at', ascending: false },
+      order: { column: 'created_at', ascending: false },
       page: infoPage, perPage: PER_PAGE
     }).then(function (res) {
       var rows = res.data || [], total = res.count || 0;
       infoResultCount.textContent = api.formatNumber(total);
       if (!rows.length) { api.showTableEmpty(infoBody, 15, '검색 결과가 없습니다.'); infoPagination.innerHTML = ''; return; }
       infoBody.innerHTML = rows.map(function (r, i) { return renderInfoRow(r, i, offset); }).join('');
-      api.renderPagination(infoPagination, infoPage, Math.ceil(total / PER_PAGE), loadInfoList);
+      api.renderPagination(infoPagination, infoPage, total, PER_PAGE, loadInfoList);
     }).catch(function () { api.showTableEmpty(infoBody, 15, '데이터를 불러오지 못했습니다.'); });
   }
 
@@ -107,9 +109,10 @@
     if (infoBtnSearch) infoBtnSearch.addEventListener('click', function () { loadInfoList(1); });
     if (infoSearchInput) infoSearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') loadInfoList(1); });
     if (infoBtnExcel) infoBtnExcel.addEventListener('click', function () {
-      api.fetchAll('settlement_info', { filters: buildInfoFilters(), search: buildInfoSearch(), order: { column: 'applied_at', ascending: false } }).then(function (rows) {
+      api.fetchAll('settlement_infos', { select: '*, kindergartens:kindergarten_id(name)', filters: buildInfoFilters(), search: buildInfoSearch(), order: { column: 'created_at', ascending: false } }).then(function (res) {
+        var rows = res.data || [];
         api.exportExcel(rows.map(function (r) {
-          return { '유치원명': r.kindergarten_name || '', '운영자': r.operator_name || '', '사업자유형': r.business_type || '', '판매자ID': r.seller_id || '', '은행': r.bank_name || '', '이니시스상태': r.inicis_status || '', '신청일': r.applied_at || '' };
+          return { '유치원명': (r.kindergartens && r.kindergartens.name) || '', '운영자': r.operator_name || '', '사업자유형': r.business_type || '', '판매자ID': r.inicis_seller_id || '', '은행': r.account_bank || '', '이니시스상태': r.inicis_status || '', '신청일': r.created_at || '' };
         }), '정산정보');
       });
     });
@@ -142,38 +145,40 @@
 
   function buildHistFilters() {
     var f = [];
-    if (histDateFrom && histDateFrom.value) f.push({ column: 'settlement_date', op: 'gte', value: histDateFrom.value });
-    if (histDateTo && histDateTo.value) f.push({ column: 'settlement_date', op: 'lte', value: histDateTo.value });
-    if (histStatus && histStatus.value !== '전체') f.push({ column: 'settlement_status', op: 'eq', value: histStatus.value });
+    if (histDateFrom && histDateFrom.value) f.push({ column: 'scheduled_date', op: 'gte', value: histDateFrom.value });
+    if (histDateTo && histDateTo.value) f.push({ column: 'scheduled_date', op: 'lte', value: histDateTo.value });
+    if (histStatus && histStatus.value !== '전체') f.push({ column: 'status', op: 'eq', value: histStatus.value });
     return f;
   }
 
   function buildHistSearch() {
     if (!histSearchInput || !histSearchInput.value.trim()) return null;
-    var map = { '유치원명': 'kindergarten_name', '보호자 이름': 'guardian_name' };
-    return { column: map[histSearchField ? histSearchField.value : '유치원명'] || 'kindergarten_name', value: histSearchInput.value.trim() };
+    // settlements 테이블에 operator_name 직접 존재
+    return { column: 'operator_name', value: histSearchInput.value.trim() };
   }
 
   function renderHistRow(r, idx, offset) {
     var no = offset + idx + 1;
+    var kgName = (r.kindergartens && r.kindergartens.name) || '';
+    var memberName = (r.members && r.members.name) || '';
     var typeBadge = api.autoBadge(r.transaction_type || '', { '돌봄결제': 'blue', '위약금': 'orange' });
-    var statusBadge = api.autoBadge(r.settlement_status || '', { '정산예정': 'orange', '정산완료': 'green', '정산보류': 'red' });
+    var statusBadge = api.autoBadge(r.status || '', { '정산예정': 'orange', '정산완료': 'green', '정산보류': 'red' });
     return '<tr>' +
       '<td class="data-table__checkbox"><input type="checkbox" data-id="' + (r.id || '') + '"></td>' +
       '<td>' + no + '</td>' +
-      '<td>' + (api.formatDate(r.settlement_date, 'date') || '—') + '</td>' +
-      '<td>' + api.escapeHtml(r.kindergarten_name || '') + '</td>' +
+      '<td>' + (api.formatDate(r.scheduled_date, true) || '—') + '</td>' +
+      '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(r.operator_name || '') + '</td>' +
-      '<td>' + api.escapeHtml(r.guardian_name || '') + '</td>' +
-      '<td>' + (r.reservation_number ? '<a href="reservation-detail.html?id=' + r.reservation_number + '" class="data-table__link">' + api.escapeHtml(r.reservation_number) + '</a>' : '—') + '</td>' +
+      '<td>' + api.escapeHtml(memberName) + '</td>' +
+      '<td>' + (r.reservation_id ? '<a href="reservation-detail.html?id=' + r.reservation_id + '" class="data-table__link">' + api.escapeHtml(String(r.reservation_id).substring(0, 8)) + '</a>' : '—') + '</td>' +
       '<td>' + typeBadge + '</td>' +
       '<td style="text-align:right;">' + api.formatMoney(r.payment_amount) + '</td>' +
-      '<td>' + (r.fee_rate || 20) + '%</td>' +
-      '<td style="text-align:right;">' + api.formatMoney(r.fee_amount) + '</td>' +
+      '<td>' + (r.commission_rate || 20) + '%</td>' +
+      '<td style="text-align:right;">' + api.formatMoney(r.commission_amount) + '</td>' +
       '<td style="text-align:right;">' + api.formatMoney(r.settlement_amount) + '</td>' +
-      '<td>' + api.escapeHtml(r.account_display || '') + '</td>' +
+      '<td>' + api.escapeHtml((r.account_bank || '') + ' ' + (r.account_number || '')) + '</td>' +
       '<td>' + statusBadge + '</td>' +
-      '<td>' + (api.formatDate(r.completed_at, 'date') || '—') + '</td>' +
+      '<td>' + (api.formatDate(r.completed_date, true) || '—') + '</td>' +
       '<td><a href="settlement-detail.html?id=' + (r.id || '') + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
@@ -184,15 +189,16 @@
     api.showTableLoading(histBody, 16);
 
     api.fetchList('settlements', {
+      select: '*, kindergartens:kindergarten_id(name), members:member_id(name)',
       filters: buildHistFilters(), search: buildHistSearch(),
-      order: { column: 'settlement_date', ascending: false },
+      order: { column: 'scheduled_date', ascending: false },
       page: histPage, perPage: PER_PAGE
     }).then(function (res) {
       var rows = res.data || [], total = res.count || 0;
       histResultCount.textContent = api.formatNumber(total);
       if (!rows.length) { api.showTableEmpty(histBody, 16, '검색 결과가 없습니다.'); histPagination.innerHTML = ''; return; }
       histBody.innerHTML = rows.map(function (r, i) { return renderHistRow(r, i, offset); }).join('');
-      api.renderPagination(histPagination, histPage, Math.ceil(total / PER_PAGE), loadHistList);
+      api.renderPagination(histPagination, histPage, total, PER_PAGE, loadHistList);
       bindCheckAll();
     }).catch(function () { api.showTableEmpty(histBody, 16, '데이터를 불러오지 못했습니다.'); });
   }
@@ -213,9 +219,10 @@
     if (histBtnSearch) histBtnSearch.addEventListener('click', function () { loadHistList(1); });
     if (histSearchInput) histSearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') loadHistList(1); });
     if (histBtnExcel) histBtnExcel.addEventListener('click', function () {
-      api.fetchAll('settlements', { filters: buildHistFilters(), search: buildHistSearch(), order: { column: 'settlement_date', ascending: false } }).then(function (rows) {
+      api.fetchAll('settlements', { select: '*, kindergartens:kindergarten_id(name)', filters: buildHistFilters(), search: buildHistSearch(), order: { column: 'scheduled_date', ascending: false } }).then(function (res) {
+        var rows = res.data || [];
         api.exportExcel(rows.map(function (r) {
-          return { '정산번호': r.settlement_number || '', '예정일': r.settlement_date || '', '유치원명': r.kindergarten_name || '', '결제금액': r.payment_amount || 0, '수수료': r.fee_amount || 0, '정산금액': r.settlement_amount || 0, '상태': r.settlement_status || '' };
+          return { '정산번호': r.id || '', '예정일': r.scheduled_date || '', '유치원명': (r.kindergartens && r.kindergartens.name) || '', '결제금액': r.payment_amount || 0, '수수료': r.commission_amount || 0, '정산금액': r.settlement_amount || 0, '상태': r.status || '' };
         }), '정산내역');
       });
     });
@@ -229,7 +236,7 @@
         var ids = [];
         for (var i = 0; i < cbs.length; i++) ids.push(cbs[i].getAttribute('data-id'));
         Promise.all(ids.map(function (id) {
-          return api.updateRecord('settlements', id, { settlement_status: '정산완료' });
+          return api.updateRecord('settlements', id, { status: '정산완료' });
         })).then(function () {
           loadHistList(histPage);
         });
@@ -239,12 +246,22 @@
 
   // 정산 요약 카드 로드
   function loadSummary() {
-    api.callRpc('get_settlement_summary', {}).then(function (data) {
+    api.callRpc('get_settlement_summary', {}).then(function (res) {
+      var data = res && res.data ? res.data : res;
       if (!data) return;
       var tab = document.getElementById('tab-history');
       if (!tab) return;
       var cards = tab.querySelectorAll('.stat-card__value');
-      // cards are populated from DB if available
+      if (cards.length < 10) return;
+      cards[1].innerHTML = api.formatMoney(data.care_payment) + '<span class="stat-card__unit">원</span>';
+      cards[2].innerHTML = api.formatMoney(data.penalty_payment) + '<span class="stat-card__unit">원</span>';
+      cards[3].innerHTML = api.formatMoney(data.total_valid) + '<span class="stat-card__unit">원</span>';
+      cards[4].innerHTML = api.formatMoney(data.platform_fee) + '<span class="stat-card__unit">원</span>';
+      cards[5].innerHTML = api.formatMoney(data.kg_settlement) + '<span class="stat-card__unit">원</span>';
+      cards[6].innerHTML = api.formatNumber(data.pending_count) + '<span class="stat-card__unit">건</span>';
+      cards[7].innerHTML = api.formatMoney(data.pending_amount) + '<span class="stat-card__unit">원</span>';
+      cards[8].innerHTML = api.formatNumber(data.completed_count) + '<span class="stat-card__unit">건</span>';
+      cards[9].innerHTML = api.formatMoney(data.completed_amount) + '<span class="stat-card__unit">원</span>';
     }).catch(function () { /* summary stays as static HTML */ });
   }
 
@@ -269,20 +286,20 @@
   function loadInfoDetail() {
     var id = api.getParam('id');
     if (!id) return;
-    api.showLoading(true);
 
-    api.fetchDetail('settlement_info', id).then(function (r) {
-      if (!r) { api.showLoading(false); return; }
+    api.fetchDetail('settlement_infos', id, '*, kindergartens:kindergarten_id(name, business_status)').then(function (result) {
+      var r = result.data;
+      if (!r || result.error) return;
 
       // 영역 1: 운영자 기본정보
       var op = document.getElementById('detailStlOperator');
       if (op) {
         api.setHtml(op, [
           ['운영자 성명', api.escapeHtml(r.operator_name || '')],
-          ['생년월일', api.formatDate(r.birth_date, 'date') || '—'],
-          ['주민등록번호', api.renderMaskedField(r.ssn, r.ssn_masked)],
-          ['핸드폰', api.renderMaskedField(r.operator_phone)],
-          ['이메일', api.escapeHtml(r.email || '')],
+          ['생년월일', api.formatDate(r.operator_birth_date, true) || '—'],
+          ['주민등록번호', api.renderMaskedField(r.operator_ssn_masked || '', r.operator_ssn_masked || '', 'settlement_infos', r.id, 'ssn')],
+          ['핸드폰', api.renderMaskedField(api.maskPhone(r.operator_phone || ''), api.formatPhone(r.operator_phone || ''), 'settlement_infos', r.id, 'phone')],
+          ['이메일', api.escapeHtml(r.operator_email || '')],
           ['회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id) : '—']
         ]);
       }
@@ -292,7 +309,7 @@
       if (biz) {
         api.setHtml(biz, [
           ['사업자 유형', api.autoBadge(r.business_type || '', { '사업자': 'pink', '개인': 'brown' })],
-          ['사업자등록번호', api.escapeHtml(r.business_number || '—')],
+          ['사업자등록번호', api.escapeHtml(r.business_reg_number || '—')],
           ['상호명', api.escapeHtml(r.business_name || '—')],
           ['업종·업태', api.escapeHtml(r.business_category || '—')]
         ]);
@@ -302,7 +319,7 @@
       var acc = document.getElementById('detailStlAccount');
       if (acc) {
         api.setHtml(acc, [
-          ['정산 은행', api.escapeHtml(r.bank_name || '—')],
+          ['정산 은행', api.escapeHtml(r.account_bank || '—')],
           ['계좌번호', api.escapeHtml(r.account_number || '—')],
           ['예금주', api.escapeHtml(r.account_holder || '—')]
         ]);
@@ -312,22 +329,23 @@
       var ini = document.getElementById('detailStlInicis');
       if (ini) {
         api.setHtml(ini, [
-          ['판매자 ID', api.escapeHtml(r.seller_id || '—')],
+          ['판매자 ID', api.escapeHtml(r.inicis_seller_id || '—')],
           ['서브몰 코드', api.escapeHtml(r.submall_code || '—')],
           ['등록상태', api.autoBadge(r.inicis_status || '', { '완료': 'green', '요청중': 'blue', '실패': 'red', '미등록': 'gray' })],
-          ['실패 사유', r.failure_reason || '—'],
-          ['등록 요청일시', api.formatDate(r.applied_at)],
-          ['등록 완료일시', api.formatDate(r.processed_at) || '—']
+          ['실패 사유', r.inicis_fail_reason || '—'],
+          ['등록 요청일시', api.formatDate(r.inicis_requested_at)],
+          ['등록 완료일시', api.formatDate(r.inicis_completed_at) || '—']
         ]);
       }
 
       // 영역 5: 유치원 정보
       var kg = document.getElementById('detailStlKg');
       if (kg) {
+        var kgData = r.kindergartens || {};
         api.setHtml(kg, [
-          ['유치원명', api.escapeHtml(r.kindergarten_name || '')],
+          ['유치원명', api.escapeHtml(kgData.name || '')],
           ['유치원번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id) : '—'],
-          ['영업상태', api.autoBadge(r.kg_status || '')]
+          ['영업상태', api.autoBadge(kgData.business_status || '')]
         ]);
       }
 
@@ -347,46 +365,42 @@
           '</tbody>';
       }
 
-      api.showLoading(false);
-    }).catch(function () { api.showLoading(false); });
+    }).catch(function (err) { console.error('[settlements] info detail error:', err); });
   }
 
   function bindInfoDetailModals() {
-    // 이니시스 재등록
     var reRegBtn = document.querySelector('#reRegisterModal .modal__btn--confirm-primary');
     if (reRegBtn) {
       reRegBtn.addEventListener('click', function () {
         var id = api.getParam('id');
-        api.updateRecord('settlement_info', id, { inicis_status: '요청중' }).then(function () {
-          api.insertAuditLog('settlement_info', id, '이니시스 재등록 요청', '');
+        api.updateRecord('settlement_infos', id, { inicis_status: '요청중' }).then(function () {
+          api.insertAuditLog('이니시스재등록요청', 'settlement_infos', id, {});
           location.reload();
         });
       });
     }
 
-    // 강제 승인
     var approveBtn = document.getElementById('approveBtn');
     if (approveBtn) {
       approveBtn.addEventListener('click', function () {
         var reason = document.getElementById('approveReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('settlement_info', id, { inicis_status: '완료' }).then(function () {
-          api.insertAuditLog('settlement_info', id, '관리자 강제 승인', reason);
+        api.updateRecord('settlement_infos', id, { inicis_status: '완료' }).then(function () {
+          api.insertAuditLog('관리자강제승인', 'settlement_infos', id, { reason: reason });
           location.reload();
         });
       });
     }
 
-    // 강제 거절
     var rejectBtn = document.getElementById('rejectBtn');
     if (rejectBtn) {
       rejectBtn.addEventListener('click', function () {
         var reason = document.getElementById('rejectReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('settlement_info', id, { inicis_status: '실패', failure_reason: reason }).then(function () {
-          api.insertAuditLog('settlement_info', id, '관리자 강제 거절', reason);
+        api.updateRecord('settlement_infos', id, { inicis_status: '실패', inicis_fail_reason: reason }).then(function () {
+          api.insertAuditLog('관리자강제거절', 'settlement_infos', id, { reason: reason });
           location.reload();
         });
       });
@@ -410,19 +424,19 @@
   function loadHistDetail() {
     var id = api.getParam('id');
     if (!id) return;
-    api.showLoading(true);
 
-    api.fetchDetail('settlements', id).then(function (r) {
-      if (!r) { api.showLoading(false); return; }
+    api.fetchDetail('settlements', id, '*, kindergartens:kindergarten_id(name), members:member_id(name)').then(function (result) {
+      var r = result.data;
+      if (!r || result.error) return;
 
       // 영역 1: 정산 기본정보
       var basic = document.getElementById('detailStlBasic');
       if (basic) {
         api.setHtml(basic, [
-          ['정산 고유번호', r.settlement_number || r.id],
-          ['정산 예정일', api.formatDate(r.settlement_date, 'date') || '—'],
-          ['정산상태', api.autoBadge(r.settlement_status || '', { '정산예정': 'orange', '정산완료': 'green', '정산보류': 'red' })],
-          ['정산 완료일', api.formatDate(r.completed_at, 'date') || '—'],
+          ['정산 고유번호', r.id],
+          ['정산 예정일', api.formatDate(r.scheduled_date, true) || '—'],
+          ['정산상태', api.autoBadge(r.status || '', { '정산예정': 'orange', '정산완료': 'green', '정산보류': 'red' })],
+          ['정산 완료일', api.formatDate(r.completed_date, true) || '—'],
           ['보류 사유', r.hold_reason || '—']
         ]);
       }
@@ -433,8 +447,8 @@
         api.setHtml(amount, [
           ['거래유형', api.autoBadge(r.transaction_type || '', { '돌봄결제': 'blue', '위약금': 'orange' })],
           ['결제금액', '<span class="payment-amount-highlight">' + api.formatMoney(r.payment_amount) + '</span>'],
-          ['수수료율', (r.fee_rate || 20) + '%'],
-          ['수수료 금액', api.formatMoney(r.fee_amount)],
+          ['수수료율', (r.commission_rate || 20) + '%'],
+          ['수수료 금액', api.formatMoney(r.commission_amount)],
           ['정산금액', '<span class="settlement-amount-highlight">' + api.formatMoney(r.settlement_amount) + '</span>']
         ]);
       }
@@ -442,13 +456,14 @@
       // 영역 3: 유치원 계좌정보
       var acc = document.getElementById('detailStlAccInfo');
       if (acc) {
+        var kgData = r.kindergartens || {};
         api.setHtml(acc, [
-          ['유치원명', api.escapeHtml(r.kindergarten_name || '')],
+          ['유치원명', api.escapeHtml(kgData.name || '')],
           ['운영자 성명', api.escapeHtml(r.operator_name || '')],
-          ['정산 은행', api.escapeHtml(r.bank_name || '')],
+          ['정산 은행', api.escapeHtml(r.account_bank || '')],
           ['계좌번호', api.escapeHtml(r.account_number || '')],
           ['예금주', api.escapeHtml(r.account_holder || '')],
-          ['서브몰 코드', api.escapeHtml(r.submall_code || '')]
+          ['서브몰 코드', api.escapeHtml(r.inicis_submall_code || '')]
         ]);
       }
 
@@ -456,52 +471,48 @@
       var links = document.getElementById('detailStlLinks');
       if (links) {
         api.setHtml(links, [
-          ['결제번호', r.payment_number ? api.renderDetailLink('payment-detail.html', r.payment_number) : '—'],
-          ['예약번호', r.reservation_number ? api.renderDetailLink('reservation-detail.html', r.reservation_number) : '—'],
-          ['보호자 회원번호', r.guardian_id ? api.renderDetailLink('member-detail.html', r.guardian_id) : '—'],
+          ['결제번호', r.payment_id ? api.renderDetailLink('payment-detail.html', r.payment_id) : '—'],
+          ['예약번호', r.reservation_id ? api.renderDetailLink('reservation-detail.html', r.reservation_id) : '—'],
+          ['보호자 회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id) : '—'],
           ['유치원번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id) : '—'],
-          ['환불번호', r.refund_number ? api.renderDetailLink('refund-detail.html', r.refund_number) : '—']
+          ['환불번호', r.refund_id ? api.renderDetailLink('refund-detail.html', r.refund_id) : '—']
         ]);
       }
 
-      api.showLoading(false);
-    }).catch(function () { api.showLoading(false); });
+    }).catch(function (err) { console.error('[settlements] hist detail error:', err); });
   }
 
   function bindHistDetailModals() {
-    // 정산완료 처리
     var completeBtn = document.querySelector('#settleCompleteModal .modal__btn--confirm-primary');
     if (completeBtn) {
       completeBtn.addEventListener('click', function () {
         var id = api.getParam('id');
-        api.updateRecord('settlements', id, { settlement_status: '정산완료' }).then(function () {
-          api.insertAuditLog('settlements', id, '정산완료 처리', '');
+        api.updateRecord('settlements', id, { status: '정산완료' }).then(function () {
+          api.insertAuditLog('정산완료처리', 'settlements', id, {});
           location.reload();
         });
       });
     }
 
-    // 정산보류
     var holdBtn = document.getElementById('holdBtn');
     if (holdBtn) {
       holdBtn.addEventListener('click', function () {
         var reason = document.getElementById('holdReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('settlements', id, { settlement_status: '정산보류', hold_reason: reason }).then(function () {
-          api.insertAuditLog('settlements', id, '정산보류', reason);
+        api.updateRecord('settlements', id, { status: '정산보류', hold_reason: reason }).then(function () {
+          api.insertAuditLog('정산보류', 'settlements', id, { reason: reason });
           location.reload();
         });
       });
     }
 
-    // 보류 해제
     var releaseBtn = document.querySelector('#holdReleaseModal .modal__btn--confirm-primary');
     if (releaseBtn) {
       releaseBtn.addEventListener('click', function () {
         var id = api.getParam('id');
-        api.updateRecord('settlements', id, { settlement_status: '정산예정', hold_reason: null }).then(function () {
-          api.insertAuditLog('settlements', id, '보류 해제', '');
+        api.updateRecord('settlements', id, { status: '정산예정', hold_reason: null }).then(function () {
+          api.insertAuditLog('보류해제', 'settlements', id, {});
           location.reload();
         });
       });

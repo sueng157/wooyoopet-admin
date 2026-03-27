@@ -587,6 +587,34 @@ CREATE POLICY "setting_change_logs_insert_admin" ON setting_change_logs FOR INSE
 
 
 -- ============================================================
+-- 5. 정산 요약 함수
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_settlement_summary()
+RETURNS json
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  result json;
+BEGIN
+  SELECT json_build_object(
+    'care_payment',      COALESCE(SUM(CASE WHEN p.payment_type = '돌봄' AND p.payment_status = '결제완료' THEN p.amount ELSE 0 END), 0),
+    'penalty_payment',   COALESCE(SUM(CASE WHEN p.payment_type = '위약금' AND p.payment_status = '결제완료' THEN p.amount ELSE 0 END), 0),
+    'total_valid',       COALESCE(SUM(CASE WHEN p.payment_status = '결제완료' THEN p.amount ELSE 0 END), 0),
+    'platform_fee',      COALESCE(SUM(CASE WHEN p.payment_status = '결제완료' THEN p.amount * 0.2 ELSE 0 END), 0),
+    'kg_settlement',     COALESCE(SUM(CASE WHEN p.payment_status = '결제완료' THEN p.amount * 0.8 ELSE 0 END), 0),
+    'pending_count',     (SELECT COUNT(*) FROM settlements WHERE settlement_status = '정산예정'),
+    'pending_amount',    (SELECT COALESCE(SUM(settlement_amount), 0) FROM settlements WHERE settlement_status = '정산예정'),
+    'completed_count',   (SELECT COUNT(*) FROM settlements WHERE settlement_status = '정산완료'),
+    'completed_amount',  (SELECT COALESCE(SUM(settlement_amount), 0) FROM settlements WHERE settlement_status = '정산완료')
+  ) INTO result
+  FROM payments p;
+
+  RETURN result;
+END;
+$$;
+
+
+-- ============================================================
 -- 완료 메시지
 -- ============================================================
 DO $$

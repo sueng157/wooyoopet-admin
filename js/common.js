@@ -104,6 +104,15 @@
       if (valueEl.textContent === masked) {
         valueEl.textContent = raw;
         btn.textContent = '숨기기';
+
+        // 감사 로그: 개인정보 전체보기
+        var api = window.__api;
+        if (api && api.insertAuditLog) {
+          var targetType = btn.getAttribute('data-audit-target') || '';
+          var targetId = btn.getAttribute('data-audit-id') || '';
+          var fieldName = btn.getAttribute('data-audit-field') || '';
+          api.insertAuditLog('개인정보조회', targetType, targetId, { field: fieldName });
+        }
       } else {
         valueEl.textContent = masked;
         btn.textContent = '전체보기';

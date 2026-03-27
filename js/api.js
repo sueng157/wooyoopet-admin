@@ -45,8 +45,9 @@
     var opts = options || {};
     var select = opts.select || '*';
     var filters = opts.filters || [];
-    var orderBy = opts.orderBy || 'created_at';
-    var ascending = opts.ascending === true;
+    // order 파라미터: string(orderBy) 또는 object({ column, ascending }) 모두 지원
+    var orderBy = opts.orderBy || (opts.order && opts.order.column) || 'created_at';
+    var ascending = (opts.ascending === true) || (opts.order && opts.order.ascending === true);
     var page = opts.page || 1;
     var perPage = opts.perPage || 20;
     var from = (page - 1) * perPage;
@@ -73,6 +74,11 @@
       }
     }
 
+    // 단일 컬럼 검색 (search: { column, value })
+    if (opts.search && opts.search.column && opts.search.value) {
+      query = query.ilike(opts.search.column, '%' + opts.search.value + '%');
+    }
+
     // OR 검색 (여러 컬럼 검색)
     if (opts.orFilters && opts.orFilters.length > 0) {
       query = query.or(opts.orFilters.join(','));
@@ -96,8 +102,9 @@
     var opts = options || {};
     var select = opts.select || '*';
     var filters = opts.filters || [];
-    var orderBy = opts.orderBy || 'created_at';
-    var ascending = opts.ascending === true;
+    // order 파라미터: string(orderBy) 또는 object({ column, ascending }) 모두 지원
+    var orderBy = opts.orderBy || (opts.order && opts.order.column) || 'created_at';
+    var ascending = (opts.ascending === true) || (opts.order && opts.order.ascending === true);
 
     var query = sb.from(table).select(select);
 
@@ -115,6 +122,11 @@
         case 'is':    query = query.is(f.column, f.value); break;
         default:      query = query.eq(f.column, f.value);
       }
+    }
+
+    // 단일 컬럼 검색
+    if (opts.search && opts.search.column && opts.search.value) {
+      query = query.ilike(opts.search.column, '%' + opts.search.value + '%');
     }
 
     if (opts.orFilters && opts.orFilters.length > 0) {
@@ -714,6 +726,20 @@
    */
   function setHtml(el, html) {
     if (!el) return;
+    // 배열 형태 [[label, value], ...] → info-grid HTML 자동 생성
+    if (Array.isArray(html)) {
+      var gridHtml = '<div class="info-grid">';
+      for (var i = 0; i < html.length; i++) {
+        var item = html[i];
+        if (Array.isArray(item) && item.length >= 2) {
+          gridHtml += '<span class="info-grid__label">' + escapeHtml(item[0]) + '</span>';
+          gridHtml += '<span class="info-grid__value">' + (item[1] !== null && item[1] !== undefined ? item[1] : '-') + '</span>';
+        }
+      }
+      gridHtml += '</div>';
+      el.innerHTML = gridHtml;
+      return;
+    }
     el.innerHTML = (html !== null && html !== undefined) ? html : '-';
   }
 

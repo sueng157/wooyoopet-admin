@@ -120,24 +120,26 @@
   }
 
   // 탭3: 이수현황
+  var sPage = 1;
   async function loadStatusList() {
     if (!statusBody) return;
     api.showTableLoading(statusBody, 9);
     var result = await api.fetchList('education_completions', {
       select: '*, kindergartens:kindergarten_id(name)',
       orderBy: 'created_at',
-      perPage: 100
+      page: sPage, perPage: PER_PAGE
     });
     if (result.error) { api.showTableEmpty(statusBody, 9, '데이터 로드 실패'); return; }
     if (statusCount) statusCount.textContent = api.formatNumber(result.count);
     if (!result.data.length) { api.showTableEmpty(statusBody, 9); return; }
 
     var html = '';
+    var start = (sPage - 1) * PER_PAGE;
     for (var i = 0; i < result.data.length; i++) {
       var s = result.data[i];
       var kgName = s.kindergartens ? s.kindergartens.name : '';
       html += '<tr>' +
-        '<td>' + (i + 1) + '</td>' +
+        '<td>' + (start + i + 1) + '</td>' +
         '<td>' + api.escapeHtml(kgName) + '</td>' +
         '<td>' + (s.completed_topics || 0) + '/' + (s.total_topics || 0) + '</td>' +
         '<td>' + (s.progress_rate || 0) + '%</td>' +
@@ -149,10 +151,54 @@
         '</tr>';
     }
     statusBody.innerHTML = html;
+
+    var tab3 = document.getElementById('tab-status');
+    var pagination = tab3 ? tab3.querySelector('.pagination') : null;
+    if (pagination) api.renderPagination(pagination, sPage, result.count, PER_PAGE, function (p) { sPage = p; loadStatusList(); });
+  }
+
+  function bindListEvents() {
+    // 이수현황 탭 – 검색 & 엑셀
+    var tab3 = document.getElementById('tab-status');
+    if (tab3) {
+      var btnSearch = tab3.querySelector('.btn-search');
+      if (btnSearch) btnSearch.addEventListener('click', function () { sPage = 1; loadStatusList(); });
+      var searchInput = tab3.querySelector('.filter-input');
+      if (searchInput) searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { sPage = 1; loadStatusList(); } });
+
+      var btnExcel = tab3.querySelector('.btn-excel');
+      if (btnExcel) btnExcel.addEventListener('click', async function () {
+        var all = await api.fetchAll('education_completions', {
+          select: '*, kindergartens:kindergarten_id(name)',
+          orderBy: 'created_at'
+        });
+        var rows = (all.data || []).map(function (s) {
+          return {
+            kg: s.kindergartens ? s.kindergartens.name : '',
+            topics: (s.completed_topics || 0) + '/' + (s.total_topics || 0),
+            progress: (s.progress_rate || 0) + '%',
+            status: s.completion_status || '',
+            checklist: s.checklist_confirmed ? '완료' : '미완료',
+            pledge: s.pledge_agreed ? '완료' : '미완료',
+            completed_at: api.formatDate(s.all_completed_at || '-')
+          };
+        });
+        api.exportExcel(rows, [
+          { key: 'kg', label: '유치원명' },
+          { key: 'topics', label: '이수 주제' },
+          { key: 'progress', label: '진행률' },
+          { key: 'status', label: '이수 상태' },
+          { key: 'checklist', label: '체크리스트' },
+          { key: 'pledge', label: '서약서' },
+          { key: 'completed_at', label: '이수 완료일' }
+        ], '이수현황');
+      });
+    }
   }
 
   function initList() {
     cacheListDom();
+    bindListEvents();
     api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.btn-add-new']);
     loadTopicList();
     loadChecklistList();

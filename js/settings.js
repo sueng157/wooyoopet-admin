@@ -222,6 +222,31 @@
     if (tab3) {
       var btn3 = tab3.querySelector('.btn-search');
       if (btn3) btn3.addEventListener('click', function () { fbPage = 1; loadFeedbackList(); });
+
+      var btnExcel3 = tab3.querySelector('.btn-excel');
+      if (btnExcel3) btnExcel3.addEventListener('click', async function () {
+        var all = await api.fetchAll('feedbacks', { orderBy: 'created_at' });
+        var rows = (all.data || []).map(function (f) {
+          return {
+            type: f.feedback_type || '',
+            name: f.writer_name || '',
+            nickname: f.writer_nickname || '',
+            writer_type: f.writer_type || '',
+            title: (f.title || f.content || '').substring(0, 100),
+            written: api.formatDate(f.written_at || f.created_at),
+            confirmed: f.is_confirmed ? '확인' : '미확인'
+          };
+        });
+        api.exportExcel(rows, [
+          { key: 'type', label: '유형' },
+          { key: 'name', label: '작성자' },
+          { key: 'nickname', label: '닉네임' },
+          { key: 'writer_type', label: '구분' },
+          { key: 'title', label: '내용' },
+          { key: 'written', label: '작성일시' },
+          { key: 'confirmed', label: '확인여부' }
+        ], '피드백');
+      });
     }
   }
 

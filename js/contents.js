@@ -198,6 +198,31 @@
     return filters;
   }
 
+  // ── 탭별 엑셀 다운로드 ──
+  async function excelForTab(tabName) {
+    var cfg = {
+      'tab-notice': {
+        table: 'notices', orderBy: 'created_at', dateCol: 'created_at',
+        map: function (n) { return { title: n.title || '', target: n.target || '', pinned: n.is_pinned ? '고정' : '-', visibility: n.visibility || '', views: n.view_count || 0, push: n.push_sent ? '발송' : '미발송', created: api.formatDate(n.created_at) }; },
+        headers: [{ key: 'title', label: '제목' }, { key: 'target', label: '대상' }, { key: 'pinned', label: '상단고정' }, { key: 'visibility', label: '공개' }, { key: 'views', label: '조회수' }, { key: 'push', label: '푸시' }, { key: 'created', label: '등록일' }],
+        filename: '공지사항'
+      },
+      'tab-faq': {
+        table: 'faqs', orderBy: 'created_at', dateCol: 'created_at',
+        map: function (f) { return { category: f.category || '', question: f.question || '', visibility: f.visibility || '', order: f.display_order || 0, created: api.formatDate(f.created_at) }; },
+        headers: [{ key: 'category', label: '카테고리' }, { key: 'question', label: '질문' }, { key: 'visibility', label: '공개' }, { key: 'order', label: '순서' }, { key: 'created', label: '등록일' }],
+        filename: 'FAQ'
+      }
+    };
+    var c = cfg[tabName];
+    if (!c) { alert('이 탭은 엑셀 다운로드를 지원하지 않습니다.'); return; }
+    var tab = document.getElementById(tabName);
+    var filters = buildTabFilters(tab, c.dateCol);
+    var all = await api.fetchAll(c.table, { filters: filters, orderBy: c.orderBy });
+    var rows = (all.data || []).map(c.map);
+    api.exportExcel(rows, c.headers, c.filename);
+  }
+
   function bindListEvents() {
     var tabs = ['tab-banner', 'tab-notice', 'tab-faq', 'tab-terms'];
     var loaders = [loadBannerList, loadNoticeList, loadFaqList, loadTermsList];
@@ -206,16 +231,16 @@
     for (var i = 0; i < tabs.length; i++) {
       var tab = document.getElementById(tabs[i]);
       if (!tab) continue;
-      (function (t, load, resetPage) {
+      (function (t, tName, load, resetPage) {
         var btnSearch = t.querySelector('.btn-search');
         if (btnSearch) btnSearch.addEventListener('click', function () { resetPage(); load(); });
         var searchInput = t.querySelector('.filter-input--search');
         if (searchInput) searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { resetPage(); load(); } });
         var btnExcel = t.querySelector('.btn-excel');
-        if (btnExcel) btnExcel.addEventListener('click', function () {
-          alert('엑셀 다운로드는 준비 중입니다.');
+        if (btnExcel) btnExcel.addEventListener('click', async function () {
+          excelForTab(tName);
         });
-      })(tab, loaders[i], pageResets[i]);
+      })(tab, tabs[i], loaders[i], pageResets[i]);
     }
   }
 

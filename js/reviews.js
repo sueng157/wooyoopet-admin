@@ -120,32 +120,38 @@
     if (!g.body) return;
     api.showTableLoading(g.body, 11);
 
-    var result = await api.fetchList('guardian_reviews', {
-      select: '*, members:member_id(nickname), kindergartens:kindergarten_id(name), pets:pet_id(name)',
-      filters: buildGuardianFilters(),
-      orFilters: buildGuardianSearch(),
-      orderBy: 'written_at',
-      page: gPage,
-      perPage: PER_PAGE
-    });
+    try {
+      var result = await api.fetchList('guardian_reviews', {
+        select: '*, members:member_id(nickname), kindergartens:kindergarten_id(name), pets:pet_id(name)',
+        filters: buildGuardianFilters(),
+        orFilters: buildGuardianSearch(),
+        orderBy: 'written_at',
+        page: gPage,
+        perPage: PER_PAGE
+      });
 
-    if (result.error) {
-      api.showTableEmpty(g.body, 11, '데이터 로드 실패: ' + result.error.message);
-      return;
+      if (result.error) {
+        console.error('[reviews] guardian list error:', result.error);
+        api.showTableEmpty(g.body, 11, '데이터 로드 실패: ' + (result.error.message || ''));
+        return;
+      }
+      if (g.resultCount) g.resultCount.textContent = api.formatNumber(result.count);
+      if (!result.data.length) { api.showTableEmpty(g.body, 11); return; }
+
+      var html = '';
+      var start = (gPage - 1) * PER_PAGE;
+      for (var i = 0; i < result.data.length; i++) {
+        html += renderGuardianRow(result.data[i], start + i + 1);
+      }
+      g.body.innerHTML = html;
+
+      api.renderPagination(g.pagination, gPage, result.count, PER_PAGE, function (p) {
+        gPage = p; loadGuardianList();
+      });
+    } catch (err) {
+      console.error('[reviews] guardian list exception:', err);
+      api.showTableEmpty(g.body, 11, '데이터를 불러오지 못했습니다.');
     }
-    if (g.resultCount) g.resultCount.textContent = api.formatNumber(result.count);
-    if (!result.data.length) { api.showTableEmpty(g.body, 11); return; }
-
-    var html = '';
-    var start = (gPage - 1) * PER_PAGE;
-    for (var i = 0; i < result.data.length; i++) {
-      html += renderGuardianRow(result.data[i], start + i + 1);
-    }
-    g.body.innerHTML = html;
-
-    api.renderPagination(g.pagination, gPage, result.count, PER_PAGE, function (p) {
-      gPage = p; loadGuardianList();
-    });
   }
 
   // ── 유치원 후기 필터 ──
@@ -211,32 +217,38 @@
     if (!k.body) return;
     api.showTableLoading(k.body, 11);
 
-    var result = await api.fetchList('kindergarten_reviews', {
-      select: '*, kindergartens:kindergarten_id(name), members:member_id(nickname), pets:pet_id(name)',
-      filters: buildKgFilters(),
-      orFilters: buildKgSearch(),
-      orderBy: 'written_at',
-      page: kPage,
-      perPage: PER_PAGE
-    });
+    try {
+      var result = await api.fetchList('kindergarten_reviews', {
+        select: '*, kindergartens:kindergarten_id(name), members:member_id(nickname), pets:pet_id(name)',
+        filters: buildKgFilters(),
+        orFilters: buildKgSearch(),
+        orderBy: 'written_at',
+        page: kPage,
+        perPage: PER_PAGE
+      });
 
-    if (result.error) {
-      api.showTableEmpty(k.body, 11, '데이터 로드 실패: ' + result.error.message);
-      return;
+      if (result.error) {
+        console.error('[reviews] kg list error:', result.error);
+        api.showTableEmpty(k.body, 11, '데이터 로드 실패: ' + (result.error.message || ''));
+        return;
+      }
+      if (k.resultCount) k.resultCount.textContent = api.formatNumber(result.count);
+      if (!result.data.length) { api.showTableEmpty(k.body, 11); return; }
+
+      var html = '';
+      var start = (kPage - 1) * PER_PAGE;
+      for (var i = 0; i < result.data.length; i++) {
+        html += renderKgRow(result.data[i], start + i + 1);
+      }
+      k.body.innerHTML = html;
+
+      api.renderPagination(k.pagination, kPage, result.count, PER_PAGE, function (p) {
+        kPage = p; loadKgList();
+      });
+    } catch (err) {
+      console.error('[reviews] kg list exception:', err);
+      api.showTableEmpty(k.body, 11, '데이터를 불러오지 못했습니다.');
     }
-    if (k.resultCount) k.resultCount.textContent = api.formatNumber(result.count);
-    if (!result.data.length) { api.showTableEmpty(k.body, 11); return; }
-
-    var html = '';
-    var start = (kPage - 1) * PER_PAGE;
-    for (var i = 0; i < result.data.length; i++) {
-      html += renderKgRow(result.data[i], start + i + 1);
-    }
-    k.body.innerHTML = html;
-
-    api.renderPagination(k.pagination, kPage, result.count, PER_PAGE, function (p) {
-      kPage = p; loadKgList();
-    });
   }
 
   // ── 목록 이벤트 바인딩 ──
@@ -274,6 +286,14 @@
 
   function initList() {
     cacheListDom();
+    // 날짜 필터 기본값을 동적으로 설정 (HTML 하드코딩 대신)
+    var today = api.getToday();
+    if (g.dateTo && (!g.dateTo.value || g.dateTo.value < today)) {
+      g.dateTo.value = today;
+    }
+    if (k.dateTo && (!k.dateTo.value || k.dateTo.value < today)) {
+      k.dateTo.value = today;
+    }
     bindListEvents();
     api.hideIfReadOnly(PERM_KEY, ['.btn-action']);
     loadGuardianList();
@@ -292,7 +312,7 @@
     var id = api.getParam('id');
     if (!id) return;
 
-    var result = await api.fetchDetail('guardian_reviews', id, '*, members:member_id(*), kindergartens:kindergarten_id(id, name, member_id, members:member_id(name)), pets:pet_id(id, name), reservations:reservation_id(id, checkin_datetime, checkout_datetime)');
+    var result = await api.fetchDetail('guardian_reviews', id, '*, members:member_id(*), kindergartens:kindergarten_id(id, name, member_id, members:member_id(name)), pets:pet_id(id, name), reservations:reservation_id(id, checkin_scheduled, checkout_scheduled)');
     if (result.error || !result.data) { alert('후기 데이터를 불러올 수 없습니다.'); return; }
     var d = result.data;
     var m = d.members || {};
@@ -353,8 +373,8 @@
     if (careEl) {
       api.setHtml(careEl, '<div class="info-grid">' +
         '<span class="info-grid__label">예약번호</span><span class="info-grid__value"><a href="reservation-detail.html?id=' + (res.id || '') + '" class="info-grid__value--link">' + api.escapeHtml(res.id || '') + '</a></span>' +
-        '<span class="info-grid__label">등원일시</span><span class="info-grid__value">' + api.formatDate(res.checkin_datetime) + '</span>' +
-        '<span class="info-grid__label">하원일시</span><span class="info-grid__value">' + api.formatDate(res.checkout_datetime) + '</span>' +
+        '<span class="info-grid__label">등원일시</span><span class="info-grid__value">' + api.formatDate(res.checkin_scheduled) + '</span>' +
+        '<span class="info-grid__label">하원일시</span><span class="info-grid__value">' + api.formatDate(res.checkout_scheduled) + '</span>' +
         '<span class="info-grid__label">반려동물명</span><span class="info-grid__value">' + api.escapeHtml(pet.name || '') + '</span>' +
         '<span class="info-grid__label">반려동물번호</span><span class="info-grid__value"><a href="pet-detail.html?id=' + (pet.id || '') + '" class="info-grid__value--link">' + api.escapeHtml(pet.id || '') + '</a></span>' +
         '</div>');
@@ -376,7 +396,7 @@
     var id = api.getParam('id');
     if (!id) return;
 
-    var result = await api.fetchDetail('kindergarten_reviews', id, '*, kindergartens:kindergarten_id(id, name, member_id, members:member_id(name, phone)), pets:pet_id(id, name, breed, size_category), members:member_id(id, name, nickname), reservations:reservation_id(id, checkin_datetime, checkout_datetime)');
+    var result = await api.fetchDetail('kindergarten_reviews', id, '*, kindergartens:kindergarten_id(id, name, member_id, members:member_id(name, phone)), pets:pet_id(id, name, breed, size_class), members:member_id(id, name, nickname), reservations:reservation_id(id, checkin_scheduled, checkout_scheduled)');
     if (result.error || !result.data) { alert('후기 데이터를 불러올 수 없습니다.'); return; }
     var d = result.data;
     var kg = d.kindergartens || {};
@@ -418,7 +438,7 @@
       api.setHtml(petEl, '<div class="info-grid">' +
         '<span class="info-grid__label">반려동물명</span><span class="info-grid__value">' + api.escapeHtml(pet.name || '') + '</span>' +
         '<span class="info-grid__label">견종</span><span class="info-grid__value">' + api.escapeHtml(pet.breed || '') + '</span>' +
-        '<span class="info-grid__label">크기 구분</span><span class="info-grid__value">' + api.escapeHtml(pet.size_category || '') + '</span>' +
+        '<span class="info-grid__label">크기 구분</span><span class="info-grid__value">' + api.escapeHtml(pet.size_class || '') + '</span>' +
         '<span class="info-grid__label">반려동물번호</span><span class="info-grid__value"><a href="pet-detail.html?id=' + (pet.id || '') + '" class="info-grid__value--link">' + api.escapeHtml(pet.id || '') + '</a></span>' +
         '</div>');
     }
@@ -438,8 +458,8 @@
     if (careEl) {
       api.setHtml(careEl, '<div class="info-grid">' +
         '<span class="info-grid__label">예약번호</span><span class="info-grid__value"><a href="reservation-detail.html?id=' + (res.id || '') + '" class="info-grid__value--link">' + api.escapeHtml(res.id || '') + '</a></span>' +
-        '<span class="info-grid__label">등원일시</span><span class="info-grid__value">' + api.formatDate(res.checkin_datetime) + '</span>' +
-        '<span class="info-grid__label">하원일시</span><span class="info-grid__value">' + api.formatDate(res.checkout_datetime) + '</span>' +
+        '<span class="info-grid__label">등원일시</span><span class="info-grid__value">' + api.formatDate(res.checkin_scheduled) + '</span>' +
+        '<span class="info-grid__label">하원일시</span><span class="info-grid__value">' + api.formatDate(res.checkout_scheduled) + '</span>' +
         '</div>');
     }
 
