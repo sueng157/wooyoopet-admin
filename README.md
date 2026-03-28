@@ -1,10 +1,10 @@
 # 우유펫(WOOYOOPET) 관리자 대시보드
 
 반려동물 돌봄 플랫폼 **우유펫**의 관리자 백오피스 대시보드입니다.  
-소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. DB 구성 완료 후 모바일 앱과 동일 DB를 공유할 예정입니다.  
-**전 메뉴(0~11번) HTML + CSS 정적 UI 구현 및 JavaScript UI 인터랙션 구현이 완료**되었으며, 다음 단계는 DB 스키마 설계 + API 서버 구축입니다.  
-총 **HTML 42개**, **CSS 14개** (common + components + 메뉴별 12개), **JS 4개** (common + components + educations + settings).  
-**CSS 리팩터링 Phase 1~6 전체 완료** — 3,453줄 → 3,030줄 (-12.2%), 7색 배지 시스템, 공통 컴포넌트 통합, 색상 변수 체계 확립.  
+소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. Supabase DB를 공유하며, 모바일 앱과의 연동은 Phase 5에서 진행 예정입니다.  
+**백엔드 구축 Phase 1~3 완료** (DB 스키마·인증·API 연결), 현재 **DB 연결 보완 및 UI 개선** 진행중입니다.  
+총 **HTML 42개**, **CSS 15개** (common + components + 메뉴별 12개 + login), **JS 17개** (공통 5개 + 페이지전용 12개, 총 8,301줄).  
+**CSS 리팩터링 Phase 1~6 전체 완료** — 7색 배지 시스템, 공통 컴포넌트 통합, 색상 변수 체계 확립 (총 3,306줄).  
 **UI 일관성 통일 완료** — 다운로드 버튼·테이블 링크/헤더 "상세" 통일, 상세 페이지 breadcrumb(`대메뉴 › 탭 › 상세`) + 뒤로가기(`← 탭이름 목록으로`) 전면 통일 (PR #37).  
 **JavaScript UI 구현 완료** — 인라인 JS 전면 제거, 외부 JS + `data-*` 속성 방식으로 전환. 모달 시스템(57개), 마스킹 토글(17개), 탭 전환(18탭), 체크박스·정렬·검증·카운터, 교육관리 동적 항목, 설정 규칙 추가/삭제. 42페이지 JS 에러 0건 (PR #39~#42).
 
@@ -58,7 +58,8 @@ webapp/
 │   ├── reviews.css         # 후기관리 전용 태그
 │   ├── educations.css      # 교육관리 전용 이미지/퀴즈/토글/체크리스트/서약서
 │   ├── contents.css        # 콘텐츠관리 전용 카테고리/폼/이미지 프리뷰
-│   └── settings.css        # 설정 전용 폼/인풋/셀렉트
+│   ├── settings.css        # 설정 전용 폼/인풋/셀렉트
+│   └── login.css           # 로그인 전용
 ├── assets/
 │   └── images/
 │       └── logo.png
@@ -104,14 +105,30 @@ webapp/
 ├── setting-admin-detail.html
 ├── setting-admin-create.html
 ├── setting-feedback-detail.html
+├── login.html
 ├── js/
+│   ├── supabase-client.js   # Supabase 클라이언트 초기화
+│   ├── auth.js              # 인증·세션·권한 관리
 │   ├── common.js            # 모달 시스템, 마스킹 토글, 소개글 토글, textarea→버튼 활성화
 │   ├── components.js        # 탭 전환, 전체선택 체크박스, 순서 화살표, 버전 검증, 글자수 카운터
-│   ├── educations.js        # 교육관리 전용 (퀴즈 정답 토글, 체크리스트 토글, 항목 추가/삭제)
-│   └── settings.js          # 설정 전용 (자동 처리 규칙 동적 추가/삭제)
+│   ├── api.js               # Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀
+│   ├── dashboard.js         # 대시보드 전용
+│   ├── members.js           # 회원관리 전용
+│   ├── kindergartens.js     # 유치원관리 전용
+│   ├── pets.js              # 반려동물관리 전용
+│   ├── reservations.js      # 돌봄예약관리 전용
+│   ├── payments.js          # 결제관리 전용
+│   ├── settlements.js       # 정산관리 전용
+│   ├── chats.js             # 채팅관리 전용
+│   ├── reviews.js           # 후기관리 전용
+│   ├── educations.js        # 교육관리 전용
+│   ├── contents.js          # 콘텐츠관리 전용
+│   └── settings.js          # 설정 전용
 ├── full_spec_with_tables.md   # 전체 기능 명세서
 ├── CSS_REFACTORING_PLAN.md    # CSS 리팩터링 계획서 (Phase 1~6 전체 완료)
 ├── HANDOVER.md                # 개발 인수인계서 (CSS/JS 구조, 규칙, 작업 프로세스)
+├── TECH_DECISION.md           # 기술 의사결정 문서 (Phase 1~6 로드맵)
+├── sql/                       # SQL 스크립트 (스키마 조회, 테스트 데이터, Auth 설정)
 └── README.md
 ```
 
@@ -124,25 +141,27 @@ common.css → components.css → [페이지전용].css
 ```
 
 - **common.css** (399줄): CSS 변수(:root), 리셋, 사이드바/헤더 레이아웃, Pretendard 폰트
-- **components.css** (1,270줄): 모든 목록+상세 페이지에서 재사용하는 UI 컴포넌트 (필터바, 데이터테이블, 7색 배지, 모달, 폼 form-*, 페이지네이션, 상세카드, 통계카드, order-arrows 등)
-- **페이지전용 CSS** (12개): 해당 메뉴에서만 필요한 추가 스타일
+- **components.css** (1,352줄): 모든 목록+상세 페이지에서 재사용하는 UI 컴포넌트 (필터바, 데이터테이블, 7색 배지, 모달, 폼 form-*, 페이지네이션, 상세카드, 통계카드, order-arrows, 서류확인 모달 등)
+- **페이지전용 CSS** (12개 + login.css): 해당 메뉴에서만 필요한 추가 스타일
 
-총 **3,030줄** (리팩터링 전 3,453줄 대비 -12.2%). 자세한 CSS 구조, HTML 작성 패턴, 협의된 규칙은 `HANDOVER.md` 참조.
+총 **3,306줄**. 자세한 CSS 구조, HTML 작성 패턴, 협의된 규칙은 `HANDOVER.md` 참조.
 
 ---
 
 ## JavaScript 아키텍처
 
 ```
-common.js → components.js → [페이지전용].js
+supabase-js CDN → supabase-client.js → auth.js → common.js → components.js → api.js → [페이지전용].js
 ```
 
-- **common.js** (132줄): 모달 시스템(열기/닫기/ESC/오버레이), 마스킹 토글, 소개글 더보기/접기, textarea→버튼 활성화
+- **supabase-client.js** (20줄): Supabase CDN 클라이언트 초기화
+- **auth.js** (365줄): 로그인/로그아웃, 세션 체크, 사이드바·헤더 프로필, 메뉴 접근 권한 제어
+- **common.js** (141줄): 모달 시스템(열기/닫기/ESC/오버레이), 마스킹 토글, 소개글 더보기/접기, textarea→버튼 활성화
 - **components.js** (224줄): 탭 전환(`data-tab-target`), 전체선택 체크박스, 순서 화살표(▲/▼), 버전 검증(`x.x.x`), 글자수 카운터
-- **educations.js** (194줄): 퀴즈 정답 토글, 체크리스트 사용 토글, 항목 동적 추가/삭제, 원칙 설명 추가, 하위 항목 추가/삭제
-- **settings.js** (71줄): 자동 처리 규칙 동적 추가/삭제
+- **api.js** (829줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
+- **페이지전용 JS** (12개): dashboard(244), members(812), kindergartens(1,004), pets(452), reservations(461), payments(497), settlements(593), chats(475), reviews(510), educations(674), contents(496), settings(504)
 
-총 **621줄**. 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리. Playwright 42페이지 검증 JS 에러 0건.
+총 **8,301줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
 
 ---
 
@@ -179,14 +198,19 @@ common.js → components.js → [페이지전용].js
 ## 현재 진행 상황 및 다음 단계
 
 ### 완료된 작업
-1. **HTML/CSS 정적 UI** — 42페이지, 14 CSS (PR #1~#27)
+1. **HTML/CSS 정적 UI** — 42페이지, 15 CSS (PR #1~#27)
 2. **CSS 리팩터링** — Phase 1~6 완료 (PR #30~#35)
 3. **문서 동기화** — README·스펙 리팩터링 결과 반영 (PR #36)
 4. **UI 일관성 통일** — 다운로드 버튼·breadcrumb·뒤로가기 통일 (PR #37)
 5. **JavaScript UI 인터랙션** — 4개 JS 파일, 621줄, 인라인 JS 0건 (PR #39~#42)
+6. **백엔드 구축 Phase 1~3** — DB 스키마·인증·API 연결, 17 JS 8,301줄 (PR #48~#57)
 
-### 다음 단계 (DB/API 연동)
-1. **DB 스키마 설계** — `full_spec_with_tables.md` 기반 테이블 정의
-2. **API 서버 구축** — CRUD 엔드포인트, 인증/권한 처리
-3. **관리자 페이지 ↔ API 연결** — fetch 호출, 데이터 렌더링, 폼 처리
-4. **모바일 앱 ↔ 동일 DB 재연결** — 외부 프론트엔드 개발자 담당
+### 진행중
+7. **DB 연결 보완 및 UI 개선** — 전체 페이지 DB 연결 오류 수정 + UI 개선
+   - ✅ 회원관리, 유치원관리: 수정 완료 (PR #59~#63)
+   - ⬜ 반려동물관리 ~ 설정: 작업 예정
+
+### 다음 단계
+8. **Phase 4: 호스팅 전환** — Cloudflare Pages + 커스텀 도메인
+9. **Phase 5: 모바일 앱 백엔드 전환** — React Native 앱 Supabase 연동
+10. **Phase 6: 기존 서버 해지** — 카페24·스마일서브 해지
