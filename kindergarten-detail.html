@@ -72,10 +72,10 @@
         </div>
       </div>
 
-      <!-- ── ① 유치원 기본정보 ── -->
+      <!-- ── 유치원 기본정보 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">① 유치원 기본정보</span>
+          <span class="detail-card__title">유치원 기본정보</span>
         </div>
         <div class="info-grid">
           <span class="info-grid__label">유치원 고유번호</span>
@@ -109,10 +109,10 @@
         </div>
       </div>
 
-      <!-- ── ② 운영자 정보 ── -->
+      <!-- ── 운영자 정보 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">② 운영자 정보</span>
+          <span class="detail-card__title">운영자 정보</span>
         </div>
         <div class="info-grid">
           <span class="info-grid__label">운영자 성명</span>
@@ -128,10 +128,10 @@
         </div>
       </div>
 
-      <!-- ── ③ 유치원 주소 정보 ── -->
+      <!-- ── 유치원 주소 정보 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">③ 유치원 주소 정보</span>
+          <span class="detail-card__title">유치원 주소 정보</span>
           <div class="detail-actions">
             <button class="btn-action btn-action--success" id="btnKgAddrApprove">승인</button>
             <button class="btn-action btn-action--danger" id="btnKgAddrReject">거절</button>
@@ -166,10 +166,10 @@
         </div>
       </div>
 
-      <!-- ── ④ 신선도 정보 ── -->
+      <!-- ── 신선도 정보 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">④ 신선도 정보</span>
+          <span class="detail-card__title">신선도 정보</span>
         </div>
         <div class="info-grid">
           <span class="info-grid__label">현재 신선도</span>
@@ -195,10 +195,55 @@
         </div>
       </div>
 
-      <!-- ── ⑤ 상주 반려동물 목록 ── -->
+      <!-- ── 보호자가 작성한 돌봄후기 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑤ 상주 반려동물 목록</span>
+          <h2 class="detail-card__title">보호자가 작성한 돌봄후기</h2>
+        </div>
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>작성일</th>
+              <th>등원일</th>
+              <th>보호자명</th>
+              <th>반려동물 이름</th>
+              <th>만족도</th>
+              <th>선택 태그</th>
+              <th>후기 내용</th>
+              <th>후기 상태</th>
+              <th>후기번호</th>
+            </tr>
+          </thead>
+          <tbody id="kgGuardianReviewsBody">
+            <tr><td colspan="9" style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</td></tr>
+          </tbody>
+        </table>
+        <a href="#" class="view-all-link">전체 보기 →</a>
+      </div>
+
+      <!-- ── 돌봄 후기 태그 집계 ── -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">돌봄 후기 태그 집계</h2>
+        </div>
+        <table class="mini-table" style="width:auto;">
+          <thead>
+            <tr>
+              <th style="min-width:120px;">항목</th>
+              <th style="width:80px;text-align:center;">긍정</th>
+              <th style="width:80px;text-align:center;">부정</th>
+            </tr>
+          </thead>
+          <tbody id="kgTagSummaryBody">
+            <tr><td colspan="3" style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── 상주 반려동물 목록 ── -->
+      <div class="detail-card">
+        <div class="detail-card__header">
+          <span class="detail-card__title">상주 반려동물 목록</span>
         </div>
         <table class="mini-table">
           <thead>
@@ -218,19 +263,19 @@
         </table>
       </div>
 
-      <!-- ── ⑥ 돌봄비 가격표 ── -->
+      <!-- ── 돌봄비 가격표 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑥ 돌봄비 가격표</span>
+          <span class="detail-card__title">돌봄비 가격표</span>
         </div>
-        <table class="price-table">
+        <table class="price-table" style="width:auto;">
           <thead>
             <tr>
-              <th>구분</th>
-              <th>1시간</th>
-              <th>24시간</th>
-              <th>산책 1회</th>
-              <th>픽업/드랍</th>
+              <th style="min-width:130px;">구분</th>
+              <th style="width:100px;text-align:center;">1시간</th>
+              <th style="width:100px;text-align:center;">24시간</th>
+              <th style="width:100px;text-align:center;">산책 1회</th>
+              <th style="width:100px;text-align:center;">픽업/드랍</th>
             </tr>
           </thead>
           <tbody id="priceTableBody">
@@ -250,10 +295,10 @@
         </table>
       </div>
 
-      <!-- ── ⑦ 교육이수 정보 ── -->
+      <!-- ── 교육이수 정보 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑦ 교육이수 정보</span>
+          <span class="detail-card__title">교육이수 정보</span>
         </div>
         <div class="info-grid">
           <span class="info-grid__label">교육이수 상태</span>
@@ -273,10 +318,10 @@
         </div>
       </div>
 
-      <!-- ── ⑧ 정산정보 및 서브몰 등록 ── -->
+      <!-- ── 정산정보 및 서브몰 등록 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑧ 정산정보 및 서브몰 등록</span>
+          <span class="detail-card__title">정산정보 및 서브몰 등록</span>
           <div class="detail-actions">
             <button class="btn-action btn-action--outline-primary" id="btnSubmallReregister">서브몰 재등록 요청</button>
           </div>
@@ -299,10 +344,10 @@
         </div>
       </div>
 
-      <!-- ── ⑨ 정산 이력 요약 ── -->
+      <!-- ── 정산 이력 요약 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑨ 정산 이력 요약</span>
+          <span class="detail-card__title">정산 이력 요약</span>
         </div>
         <div class="stat-cards stat-cards--3col">
           <div class="stat-card">
@@ -341,10 +386,10 @@
         </div>
       </div>
 
-      <!-- ── ⑩ 노쇼 이력 (유치원 측) ── -->
+      <!-- ── 노쇼 이력 (유치원 측) ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑩ 노쇼 이력 (유치원 측)</span>
+          <span class="detail-card__title">노쇼 이력 (유치원 측)</span>
         </div>
         <div class="info-grid" style="margin-bottom:20px;">
           <span class="info-grid__label">누적 노쇼 횟수</span>
@@ -369,10 +414,10 @@
         </table>
       </div>
 
-      <!-- ── ⑪ 상태 변경 이력 ── -->
+      <!-- ── 상태 변경 이력 ── -->
       <div class="detail-card">
         <div class="detail-card__header">
-          <span class="detail-card__title">⑪ 상태 변경 이력</span>
+          <span class="detail-card__title">상태 변경 이력</span>
         </div>
         <table class="mini-table">
           <thead>

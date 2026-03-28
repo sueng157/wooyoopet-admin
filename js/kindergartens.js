@@ -334,7 +334,7 @@
     var kg = detailRes.data;
     var memberInfo = kg.members || {};
 
-    // ① 기본정보
+    // 기본정보
     api.setTextById('kgIdText', kg.id ? kg.id.slice(0, 8).toUpperCase() : '-');
     api.setTextById('kgName', kg.name || '-');
     api.setHtmlById('kgBizStatus', api.autoBadge(kg.business_status || '-'));
@@ -359,7 +359,7 @@
       }
     }
 
-    // ② 운영자 정보 — members 조인 결과
+    // 운영자 정보 — members 조인 결과
     api.setTextById('opName', memberInfo.name || '-');
     api.setHtmlById('opPhone', api.renderMaskedField(
       api.maskPhone(memberInfo.phone), api.formatPhone(memberInfo.phone), 'kindergartens', kgId, 'operator_phone'
@@ -368,7 +368,7 @@
       api.setHtmlById('opMemberId', api.renderDetailLink('member-detail.html', kg.member_id, kg.member_id.slice(0, 8).toUpperCase()));
     }
 
-    // ③ 주소 정보 — DB 컬럼명: address_road, address_jibun, address_complex, address_building_dong, address_building_ho
+    // 주소 정보 — DB 컬럼명: address_road, address_jibun, address_complex, address_building_dong, address_building_ho
     api.setTextById('kgAddrRoad', kg.address_road || '-');
     api.setTextById('kgAddrJibun', kg.address_jibun || '-');
     api.setTextById('kgAddrComplex', kg.address_complex || '-');
@@ -382,7 +382,7 @@
     api.setHtmlById('kgAddrVerified', api.autoBadge(kg.address_auth_status || '미인증'));
     api.setTextById('kgAddrVerifiedDate', kg.address_auth_date ? api.formatDate(kg.address_auth_date) : '\u2014');
 
-    // ④ 신선도 정보 — freshness_current / freshness_initial
+    // 신선도 정보 — freshness_current / freshness_initial
     var freshVal = kg.freshness_current != null ? kg.freshness_current : 100;
     var freshColor = freshVal >= 100 ? '#2ECC71' : '#E05A3A';
     api.setHtmlById('freshCurrent', '<span style="font-size:28px;font-weight:700;color:' + freshColor + ';">' + freshVal + '%</span>');
@@ -423,31 +423,153 @@
       .eq('status', '유치원취소');
     api.setTextById('freshKgCancel', (cancelRes.count || 0) + '회');
 
-    // ⑤ 상주 반려동물
+    // 보호자가 작성한 돌봄후기
+    loadGuardianReviews(kgId);
+
+    // 돌봄 후기 태그 집계
+    loadKgReviewTags(kgId);
+
+    // 상주 반려동물
     loadResidentPets(kgId);
 
-    // ⑥ 돌봄비 가격표
+    // 돌봄비 가격표
     loadPriceTable(kg);
 
-    // ⑦ 교육이수 정보
+    // 교육이수 정보
     loadEducationInfo(kgId);
 
-    // ⑧ 정산정보 및 서브몰
+    // 정산정보 및 서브몰
     loadSettlementInfo(kgId, kg);
 
-    // ⑨ 정산 이력 요약
+    // 정산 이력 요약
     loadSettlementSummary(kgId);
 
-    // ⑩ 노쇼 이력
+    // 노쇼 이력
     loadKgNoshows(kgId);
 
-    // ⑪ 상태 변경 이력
+    // 상태 변경 이력
     loadKgStatusLogs(kgId);
 
     // [K] 액션 버튼 바인딩 — business_status / address_auth_status
     bindKgActions(kgId, kg);
     api.hideIfReadOnly(PERM_KEY, ['.detail-actions', '.btn-action']);
     api.insertAuditLog('유치원조회', 'kindergartens', kgId, { name: kg.name });
+  }
+
+  // ── 보호자가 작성한 돌봄후기 ──
+  async function loadGuardianReviews(kgId) {
+    var tbody = document.getElementById('kgGuardianReviewsBody');
+    if (!tbody) return;
+
+    var res = await api.fetchList('guardian_reviews', {
+      select: '*, members(name), pets(name), reservations(checkin_scheduled)',
+      filters: [{ column: 'kindergarten_id', op: 'eq', value: kgId }],
+      orderBy: 'created_at',
+      ascending: false,
+      page: 1,
+      perPage: 5
+    });
+
+    if (!res.data || res.data.length === 0) {
+      api.showTableEmpty(tbody, 9, '보호자 후기가 없습니다.');
+      return;
+    }
+
+    var html = '';
+    res.data.forEach(function (rv) {
+      var guardianName = (rv.members && rv.members.name) || '-';
+      var petName = (rv.pets && rv.pets.name) || '-';
+      var checkinDate = (rv.reservations && rv.reservations.checkin_scheduled)
+        ? api.formatDate(rv.reservations.checkin_scheduled, true) : '-';
+      var tags = rv.selected_tags || [];
+      if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch (e) { tags = []; } }
+      var tagHtml = tags.map(function (t) {
+        return '<span class="review-tag-pill">' + api.escapeHtml(t) + '</span>';
+      }).join(' ');
+      var satColor = rv.satisfaction === '최고예요!' ? 'green'
+                   : rv.satisfaction === '좋았어요' ? 'blue' : 'orange';
+      var statusBadge = rv.is_hidden
+        ? api.renderBadge('숨김', 'red')
+        : api.renderBadge('공개', 'green');
+
+      html += '<tr>' +
+        '<td>' + api.formatDate(rv.created_at, true) + '</td>' +
+        '<td>' + checkinDate + '</td>' +
+        '<td>' + api.escapeHtml(guardianName) + '</td>' +
+        '<td>' + api.escapeHtml(petName) + '</td>' +
+        '<td>' + api.renderBadge(rv.satisfaction || '-', satColor) + '</td>' +
+        '<td>' + (tagHtml || '-') + '</td>' +
+        '<td><span class="review-content">' + api.escapeHtml(rv.content || '-') + '</span></td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td>' + api.renderDetailLink('review-detail.html', rv.id, rv.id.slice(0, 8).toUpperCase()) + '</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  // ── 돌봄 후기 태그 집계 ──
+  async function loadKgReviewTags(kgId) {
+    var tbody = document.getElementById('kgTagSummaryBody');
+    if (!tbody) return;
+
+    // 7개 항목 고정 정의 (순서 보장)
+    var TAG_ITEMS = [
+      { label: '상담 친절도',
+        positive: '상담이 친절하고 편안했어요',
+        negative: '상담이 불친절하고 불편했어요' },
+      { label: '일정 준수',
+        positive: '예약한 돌봄 일정을 잘 지켜주셨어요',
+        negative: '예약한 돌봄 일정이 잘 지켜지지 않았어요' },
+      { label: '위생 상태',
+        positive: '집(유치원)이 깔끔하고 위생적이었어요',
+        negative: '집(유치원)이 지저분하거나 위생이 걱정됐어요' },
+      { label: '사진/영상 공유',
+        positive: '사진과 영상을 자주 보내주셨어요',
+        negative: '사진과 영상 공유가 부족했어요' },
+      { label: '요청사항 반영',
+        positive: '추가 요청사항을 잘 반영해 주셨어요',
+        negative: '추가 요청사항이 제대로 반영되지 않았어요' },
+      { label: '반려견 컨디션',
+        positive: '반려견이 즐겁고 편안하게 지냈어요',
+        negative: '반려견이 편안해 보이지 않았어요' },
+      { label: '재이용 의향',
+        positive: '다음에도 맡기고 싶어요',
+        negative: '다음에는 맡기고 싶지 않아요' }
+    ];
+
+    // guardian_reviews에서 이 유치원의 모든 selected_tags 조회
+    var res = await api.fetchAll('guardian_reviews', {
+      select: 'selected_tags',
+      filters: [{ column: 'kindergarten_id', op: 'eq', value: kgId }]
+    });
+
+    // 태그별 건수 집계
+    var tagCounts = {};
+    if (res.data) {
+      res.data.forEach(function (rv) {
+        var tags = rv.selected_tags || [];
+        if (typeof tags === 'string') {
+          try { tags = JSON.parse(tags); } catch (e) { tags = []; }
+        }
+        tags.forEach(function (t) {
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        });
+      });
+    }
+
+    // 7개 항목 고정 순서로 렌더링
+    var html = '';
+    TAG_ITEMS.forEach(function (item) {
+      var posCount = tagCounts[item.positive] || 0;
+      var negCount = tagCounts[item.negative] || 0;
+
+      html += '<tr>' +
+        '<td style="font-weight:600;">' + api.escapeHtml(item.label) + '</td>' +
+        '<td style="text-align:center;font-weight:700;color:#2ECC71;">' + posCount + '건</td>' +
+        '<td style="text-align:center;font-weight:700;color:#E05A3A;">' + negCount + '건</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
   }
 
   async function loadResidentPets(kgId) {
