@@ -85,7 +85,6 @@
     var keyword = '%' + filterSearchInput.value.trim() + '%';
     var fieldMap = {
       '반려동물 이름': 'name.ilike.' + keyword,
-      '보호자 이름':   'owner_name.ilike.' + keyword,
       '견종':         'breed.ilike.' + keyword
     };
     var label = filterSearchField ? filterSearchField.value : '반려동물 이름';
@@ -105,7 +104,7 @@
     api.showTableLoading(listBody, 16);
 
     var result = await api.fetchList('pets', {
-      select: '*, members(name, phone)',
+      select: '*, members(nickname, phone)',
       filters: buildFilters(),
       orFilters: buildSearchOr(),
       orderBy: 'created_at',
@@ -127,6 +126,22 @@
       return;
     }
 
+    // 돌봄횟수 집계: 현재 페이지 pet_id 목록으로 reservations(돌봄완료) 조회
+    var petIds = result.data.map(function (p) { return p.id; });
+    var careCountMap = {};
+    var careRes = await api.fetchAll('reservations', {
+      select: 'pet_id',
+      filters: [
+        { column: 'pet_id', op: 'in', value: petIds },
+        { column: 'status', op: 'eq', value: '돌봄완료' }
+      ]
+    });
+    if (careRes.data) {
+      careRes.data.forEach(function (r) {
+        careCountMap[r.pet_id] = (careCountMap[r.pet_id] || 0) + 1;
+      });
+    }
+
     var startIdx = (currentPage - 1) * PER_PAGE;
     var html = '';
 
@@ -140,7 +155,7 @@
       html += '<tr>' +
         '<td>' + idx + '</td>' +
         '<td>' + api.escapeHtml(p.name) + '</td>' +
-        '<td>' + api.escapeHtml(owner.name || p.owner_name || '-') + '</td>' +
+        '<td>' + api.escapeHtml(owner.nickname || '-') + '</td>' +
         '<td class="masked">' + api.maskPhone(owner.phone || p.owner_phone) + '</td>' +
         '<td>' + thumbHtml(Array.isArray(p.photo_urls) && p.photo_urls.length > 0 ? p.photo_urls[0] : null) + '</td>' +
         '<td>' + api.escapeHtml(p.breed || '-') + '</td>' +
@@ -151,7 +166,7 @@
         '<td>' + api.autoBadge(p.is_neutered ? '했어요' : '안 했어요') + '</td>' +
         '<td>' + api.autoBadge(p.is_vaccinated ? '했어요' : '안 했어요') + '</td>' +
         '<td>' + (p.is_representative ? api.renderBadge('대표', 'blue') : api.renderBadge('일반', 'gray')) + '</td>' +
-        '<td>' + api.formatNumber(p.care_count || 0) + '회</td>' +
+        '<td>' + (careCountMap[p.id] || 0) + '회</td>' +
         '<td>' + api.formatDate(p.created_at, true) + '</td>' +
         '<td>' + api.renderDetailLink('pet-detail.html', p.id) + '</td>' +
         '</tr>';
@@ -167,7 +182,7 @@
 
   async function exportPetExcel() {
     var result = await api.fetchAll('pets', {
-      select: '*, members(name, phone)',
+      select: '*, members(nickname, phone)',
       filters: buildFilters(),
       orFilters: buildSearchOr(),
       orderBy: 'created_at',
@@ -175,9 +190,25 @@
     });
     if (!result.data || result.data.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
 
+    // 돌봄횟수 집계: 전체 pet_id로 reservations(돌봄완료) 조회
+    var petIds = result.data.map(function (p) { return p.id; });
+    var careCountMap = {};
+    var careRes = await api.fetchAll('reservations', {
+      select: 'pet_id',
+      filters: [
+        { column: 'pet_id', op: 'in', value: petIds },
+        { column: 'status', op: 'eq', value: '돌봄완료' }
+      ]
+    });
+    if (careRes.data) {
+      careRes.data.forEach(function (r) {
+        careCountMap[r.pet_id] = (careCountMap[r.pet_id] || 0) + 1;
+      });
+    }
+
     var headers = [
       { key: 'name', label: '반려동물 이름' },
-      { key: 'owner', label: '보호자 이름' },
+      { key: 'owner', label: '보호자 닉네임' },
       { key: 'phone', label: '보호자 연락처' },
       { key: 'breed', label: '견종' },
       { key: 'gender', label: '성별' },
@@ -194,7 +225,7 @@
       var owner = p.members || {};
       return {
         name: p.name,
-        owner: owner.name || p.owner_name || '',
+        owner: owner.nickname || '',
         phone: api.maskPhone(owner.phone || p.owner_phone),
         breed: p.breed || '',
         gender: p.gender || '',
@@ -204,7 +235,7 @@
         neutered: p.is_neutered ? '했어요' : '안 했어요',
         vaccinated: p.is_vaccinated ? '했어요' : '안 했어요',
         representative: p.is_representative ? '대표' : '일반',
-        care_count: p.care_count || 0,
+        care_count: careCountMap[p.id] || 0,
         created_date: api.formatDate(p.created_at, true)
       };
     });

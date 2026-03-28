@@ -230,21 +230,18 @@
   }
 
   /**
-   * 반려동물 나이 (년·개월)
+   * 반려동물 나이 (만 나이 — "N살")
    */
   function calcPetAge(birthDate) {
     if (!birthDate) return '-';
     var birth = new Date(birthDate);
     if (isNaN(birth.getTime())) return '-';
     var today = new Date();
-    var years = today.getFullYear() - birth.getFullYear();
-    var months = today.getMonth() - birth.getMonth();
-    if (today.getDate() < birth.getDate()) months--;
-    if (months < 0) { years--; months += 12; }
-    if (years > 0 && months > 0) return years + '년 ' + months + '개월';
-    if (years > 0) return years + '년';
-    if (months > 0) return months + '개월';
-    return '1개월 미만';
+    var age = today.getFullYear() - birth.getFullYear();
+    var m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    if (age < 1) return '1살 미만';
+    return age + '살';
   }
 
   /**
@@ -385,6 +382,8 @@
    * 상태값에 따른 자동 배지 매핑
    */
   var STATUS_BADGE_MAP = {
+    // 반려동물 중성화·예방접종
+    '했어요': 'green', '안 했어요': 'gray',
     // 회원 상태
     '정상': 'green', '이용정지': 'red', '탈퇴': 'gray',
     // 주소 인증 상태
