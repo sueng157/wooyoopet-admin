@@ -72,7 +72,7 @@
     if (filterMode) {
       var modeVal = filterMode.value;
       if (modeVal && modeVal !== '모드: 전체') {
-        filters.push({ column: 'role', op: 'eq', value: modeVal });
+        filters.push({ column: 'current_mode', op: 'eq', value: modeVal });
       }
     }
 
@@ -80,7 +80,7 @@
     if (filterAddress) {
       var addrVal = filterAddress.value;
       if (addrVal && addrVal !== '주소인증: 전체') {
-        filters.push({ column: 'address_verified', op: 'eq', value: addrVal });
+        filters.push({ column: 'address_auth_status', op: 'eq', value: addrVal });
       }
     }
 
@@ -134,7 +134,7 @@
     for (var i = 0; i < rows.length; i++) {
       var m = rows[i];
       var idx = startIdx + i + 1;
-      var addrShort = (m.complex_name || '') + ' ' + (m.building || '');
+      var addrShort = (m.address_complex || '') + ' ' + (m.address_building_dong ? m.address_building_dong + '동' : '');
       addrShort = addrShort.trim() || '-';
 
       html += '<tr>' +
@@ -145,9 +145,9 @@
         '<td>' + api.escapeHtml(m.carrier || '-') + '</td>' +
         '<td class="masked">' + api.maskPhone(m.phone) + '</td>' +
         '<td>' + api.escapeHtml(addrShort) + '</td>' +
-        '<td>' + api.autoBadge(m.address_verified || '미인증') + '</td>' +
+        '<td>' + api.autoBadge(m.address_auth_status || '미인증') + '</td>' +
         '<td>' + api.autoBadge(m.identity_verified ? '완료' : '미완료') + '</td>' +
-        '<td>' + api.autoBadge(m.role || '-') + '</td>' +
+        '<td>' + api.autoBadge(m.current_mode || '-') + '</td>' +
         '<td>' + api.autoBadge(m.status) + '</td>' +
         '<td class="text-right">' + api.formatNumber(m.payment_count || 0) + '</td>' +
         '<td class="text-right">' + api.formatMoney(m.payment_amount || 0, false) + '</td>' +
@@ -203,10 +203,10 @@
         birth_date: api.formatBirthShort(m.birth_date),
         carrier: m.carrier || '',
         phone_masked: api.maskPhone(m.phone),
-        address_short: ((m.complex_name || '') + ' ' + (m.building || '')).trim() || '-',
-        address_verified: m.address_verified || '미인증',
+        address_short: ((m.address_complex || '') + ' ' + (m.address_building_dong ? m.address_building_dong + '동' : '')).trim() || '-',
+        address_verified: m.address_auth_status || '미인증',
         identity_status: m.identity_verified ? '완료' : '미완료',
-        role: m.role || '',
+        role: m.current_mode || '',
         status: m.status || '',
         payment_count: m.payment_count || 0,
         payment_amount: m.payment_amount || 0,
@@ -280,36 +280,39 @@
     api.setHtmlById('memberPhone', api.renderMaskedField(
       api.maskPhone(m.phone), api.formatPhone(m.phone), 'members', memberId, 'phone'
     ));
-    api.setHtmlById('memberMode', api.autoBadge(m.role));
+    api.setHtmlById('memberMode', api.autoBadge(m.current_mode));
     api.setHtmlById('memberStatus', api.autoBadge(m.status));
     api.setTextById('memberCreated', api.formatDate(m.created_at));
 
     // 프로필 이미지
-    if (m.profile_image_url) {
+    if (m.profile_image) {
       var imgEl = document.getElementById('memberProfileImg');
-      if (imgEl) imgEl.innerHTML = '<img src="' + api.escapeHtml(m.profile_image_url) + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;">';
+      if (imgEl) imgEl.innerHTML = '<img src="' + api.escapeHtml(m.profile_image) + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;">';
     }
 
     // ── ② 본인인증 정보 ──
     api.setHtmlById('identityStatus', api.autoBadge(m.identity_verified ? '완료' : '미완료'));
     api.setTextById('identityMethod', m.identity_method || '-');
     api.setTextById('identityDate', api.formatDate(m.identity_verified_at));
-    api.setTextById('identityCarrier', m.carrier || '-');
+    api.setTextById('identityCarrier', m.identity_carrier || '-');
 
     // ── ③ 주소 정보 ──
-    api.setTextById('addressRoad', m.road_address || '-');
-    api.setTextById('addressComplex', m.complex_name || '-');
-    api.setTextById('addressBuilding', m.building || '-');
+    api.setTextById('addressRoad', m.address_road || '-');
+    api.setTextById('addressComplex', m.address_complex || '-');
+    api.setTextById('addressBuilding', m.address_building_dong ? m.address_building_dong + '동' : '-');
+    var hoVal = m.address_building_ho || '';
+    var hoRaw  = hoVal ? hoVal + '호' : '-';
+    var hoMask = hoVal ? api.maskHo(hoVal) + '호' : '-';
     api.setHtmlById('addressHo', api.renderMaskedField(
-      api.maskHo(m.unit_number), (m.unit_number || '-') + '호', 'members', memberId, 'unit_number'
+      hoMask, hoRaw, 'members', memberId, 'address_building_ho'
     ));
-    api.setHtmlById('addressVerified', api.autoBadge(m.address_verified || '미인증'));
-    api.setTextById('addressVerifiedDate', m.address_verified_at ? api.formatDate(m.address_verified_at) : '\u2014');
+    api.setHtmlById('addressVerified', api.autoBadge(m.address_auth_status || '미인증'));
+    api.setTextById('addressVerifiedDate', m.address_auth_date ? api.formatDate(m.address_auth_date) : '\u2014');
 
     // 유치원 모드 전용 섹션 표시/숨김
     var kgSection = document.getElementById('sectionKindergarten');
     if (kgSection) {
-      if (m.role === '유치원') {
+      if (m.current_mode === '유치원') {
         kgSection.style.display = '';
         loadMemberKindergarten(memberId);
       } else {
@@ -352,7 +355,7 @@
     if (!tbody) return;
 
     var res = await api.fetchList('member_term_agreements', {
-      select: '*, terms(title, is_required)',
+      select: '*',
       filters: [{ column: 'member_id', op: 'eq', value: memberId }],
       orderBy: 'created_at',
       ascending: true,
@@ -366,13 +369,10 @@
 
     var html = '';
     res.data.forEach(function (a) {
-      var term = a.terms || {};
-      var isRequired = term.is_required;
-      var agreed = a.agreed_at ? true : false;
       html += '<tr>' +
-        '<td>' + api.escapeHtml(term.title || '-') + '</td>' +
-        '<td>' + (isRequired ? api.renderBadge('필수', 'blue') : api.renderBadge('선택', 'gray')) + '</td>' +
-        '<td>' + (agreed ? '<span class="text-agreed">동의</span>' : '<span class="text-disagreed">미동의</span>') + '</td>' +
+        '<td>' + api.escapeHtml(a.term_title || '-') + '</td>' +
+        '<td>' + (a.is_required ? api.renderBadge('필수', 'blue') : api.renderBadge('선택', 'gray')) + '</td>' +
+        '<td>' + (a.is_agreed ? '<span class="text-agreed">동의</span>' : '<span class="text-disagreed">미동의</span>') + '</td>' +
         '<td>' + (a.agreed_at ? api.formatDate(a.agreed_at) : '<span style="color:var(--text-weak);">\u2014</span>') + '</td>' +
         '</tr>';
     });
@@ -428,21 +428,16 @@
 
     // 환불 건수/금액
     var refRes = await sb.from('refunds')
-      .select('refund_amount', { count: 'exact' })
+      .select('refund_amount, penalty_amount', { count: 'exact' })
       .eq('member_id', memberId);
 
     var refCount = refRes.count || 0;
     var refTotal = 0;
     if (refRes.data) refRes.data.forEach(function (r) { refTotal += (r.refund_amount || 0); });
 
-    // 위약금 금액
-    var penRes = await sb.from('payments')
-      .select('amount')
-      .eq('member_id', memberId)
-      .eq('payment_type', '위약금');
-
+    // 위약금 금액 (refunds 테이블의 penalty_amount 합산)
     var penTotal = 0;
-    if (penRes.data) penRes.data.forEach(function (r) { penTotal += (r.amount || 0); });
+    if (refRes.data) refRes.data.forEach(function (r) { penTotal += (r.penalty_amount || 0); });
 
     api.setTextById('statPayCount', payCount);
     api.setTextById('statPayAmount', api.formatNumber(payTotal));
@@ -522,7 +517,7 @@
         '<td>' + api.autoBadge(n.sanction_type || '-') + '</td>' +
         '<td>' + api.autoBadge(n.appeal_status || '미소명') + '</td>' +
         '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + api.escapeHtml(n.appeal_content || '-') + '</td>' +
-        '<td>' + (n.appeal_document_url ? '<span class="mini-table__link">서류 확인</span>' : '<span style="color:var(--text-weak);">\u2014</span>') + '</td>' +
+        '<td>' + (n.appeal_doc_urls && n.appeal_doc_urls.length > 0 ? '<span class="mini-table__link">서류 확인</span>' : '<span style="color:var(--text-weak);">\u2014</span>') + '</td>' +
         '<td>' + (hasAppeal && n.appeal_status === '소명접수' ?
           '<button class="btn-action btn-action--success btn-noshow-approve" data-id="' + n.id + '" style="padding:4px 10px;font-size:12px;">소명 인정</button> ' +
           '<button class="btn-action btn-action--danger btn-noshow-reject" data-id="' + n.id + '" style="padding:4px 10px;font-size:12px;">소명 거부</button>' :
@@ -538,8 +533,9 @@
     if (!tbody) return;
 
     var res = await api.fetchList('member_blocks', {
+      select: '*, blocked:members!blocked_id(name)',
       filters: [{ column: 'blocker_id', op: 'eq', value: memberId }],
-      orderBy: 'created_at',
+      orderBy: 'blocked_at',
       ascending: false,
       perPage: 50
     });
@@ -551,9 +547,10 @@
 
     var html = '';
     res.data.forEach(function (b) {
+      var blockedName = (b.blocked && b.blocked.name) || '-';
       html += '<tr>' +
-        '<td>' + api.escapeHtml(b.blocked_name || '-') + '</td>' +
-        '<td>' + api.formatDate(b.created_at) + '</td>' +
+        '<td>' + api.escapeHtml(blockedName) + '</td>' +
+        '<td>' + api.formatDate(b.blocked_at) + '</td>' +
         '<td>' + (b.unblocked_at ?
           api.formatDate(b.unblocked_at) :
           '<span style="color:#E05A3A;font-weight:500;">차단 중</span>') + '</td>' +
@@ -566,7 +563,7 @@
   async function loadMemberKindergarten(memberId) {
     var sb = window.__supabase;
     var res = await sb.from('kindergartens')
-      .select('id, name, status, inicis_status')
+      .select('id, name, business_status, inicis_status')
       .eq('member_id', memberId)
       .limit(1)
       .single();
@@ -575,7 +572,7 @@
       var kg = res.data;
       api.setTextById('kgName', kg.name || '-');
       api.setHtmlById('kgNumber', api.renderDetailLink('kindergarten-detail.html', kg.id, kg.id.slice(0, 8).toUpperCase()));
-      api.setHtmlById('kgStatus', api.autoBadge(kg.status || '-'));
+      api.setHtmlById('kgStatus', api.autoBadge(kg.business_status || '-'));
       api.setHtmlById('kgInicis', api.autoBadge(kg.inicis_status || '미등록'));
     }
   }
@@ -674,8 +671,8 @@
       btnAddrApprove.addEventListener('click', async function () {
         if (!confirm('주소 인증을 승인하시겠습니까?')) return;
         await api.updateRecord('members', memberId, {
-          address_verified: '인증완료',
-          address_verified_at: new Date().toISOString()
+          address_auth_status: '인증완료',
+          address_auth_date: new Date().toISOString()
         });
         api.insertAuditLog('주소인증승인', 'members', memberId, {});
         alert('주소 인증이 승인되었습니다.');
@@ -685,10 +682,72 @@
     if (btnAddrReject) {
       btnAddrReject.addEventListener('click', async function () {
         if (!confirm('주소 인증을 거절하시겠습니까?')) return;
-        await api.updateRecord('members', memberId, { address_verified: '미인증' });
+        await api.updateRecord('members', memberId, { address_auth_status: '미인증' });
         api.insertAuditLog('주소인증거절', 'members', memberId, {});
         alert('주소 인증이 거절되었습니다.');
         location.reload();
+      });
+    }
+    // ──── 서류 확인 버튼 ────
+    var btnMemberDocView = document.getElementById('btnMemberDocView');
+    if (btnMemberDocView) {
+      btnMemberDocView.addEventListener('click', async function (e) {
+        e.preventDefault();
+        var overlay = document.getElementById('modalMemberDocOverlay');
+        var body = document.getElementById('modalMemberDocBody');
+        if (!overlay || !body) return;
+
+        // 모달 열기
+        overlay.classList.add('active');
+        body.innerHTML = '<p style="text-align:center;color:var(--text-weak);padding:40px 0;">불러오는 중...</p>';
+
+        // address_doc_urls 조회
+        var sb = window.__supabase;
+        var docRes = await sb.from('members')
+          .select('address_doc_urls')
+          .eq('id', memberId)
+          .single();
+
+        var docUrls = (docRes.data && docRes.data.address_doc_urls) || [];
+        if (typeof docUrls === 'string') { try { docUrls = JSON.parse(docUrls); } catch (ex) { docUrls = []; } }
+
+        if (!Array.isArray(docUrls) || docUrls.length === 0) {
+          body.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-weak);">' +
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="#ccc"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>' +
+            '<p style="margin-top:12px;font-size:14px;">제출된 서류가 없습니다.</p></div>';
+          return;
+        }
+
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">';
+        docUrls.forEach(function (url, idx) {
+          var ext = url.split('.').pop().toLowerCase();
+          var isPdf = ext === 'pdf';
+          if (isPdf) {
+            html += '<a href="' + api.escapeHtml(url) + '" target="_blank" class="doc-item" style="display:flex;align-items:center;justify-content:center;border:1px solid #e0e0e0;border-radius:8px;padding:20px;text-decoration:none;color:var(--text-primary);">' +
+              '<svg width="32" height="32" viewBox="0 0 24 24" fill="#E05A3A"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9h-2v2h2v2h-2v2H9v-2H7v-2h2v-2H7V9h2V7h2v2h2v2zm-1-5V3.5L17.5 9H13z"/></svg>' +
+              '<span style="margin-left:8px;">서류 ' + (idx + 1) + ' (PDF)</span></a>';
+          } else {
+            html += '<div style="border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">' +
+              '<a href="' + api.escapeHtml(url) + '" target="_blank">' +
+              '<img src="' + api.escapeHtml(url) + '" alt="서류 ' + (idx + 1) + '" style="width:100%;height:auto;display:block;">' +
+              '</a></div>';
+          }
+        });
+        html += '</div>';
+        body.innerHTML = html;
+
+        api.insertAuditLog('서류확인', 'members', memberId, { doc_count: docUrls.length });
+      });
+    }
+
+    // 모달 닫기 핸들러 (서류 확인 모달)
+    var memberDocOverlay = document.getElementById('modalMemberDocOverlay');
+    if (memberDocOverlay) {
+      memberDocOverlay.querySelectorAll('[data-modal-close]').forEach(function (btn) {
+        btn.addEventListener('click', function () { memberDocOverlay.classList.remove('active'); });
+      });
+      memberDocOverlay.addEventListener('click', function (e) {
+        if (e.target === memberDocOverlay) memberDocOverlay.classList.remove('active');
       });
     }
   }

@@ -212,7 +212,7 @@
       var operatorName = memberInfo.name || '-';
       var operatorPhone = memberInfo.phone || '';
 
-      var loc = ((kg.address_complex || '') + ' ' + (kg.address_building_dong || '')).trim() || '-';
+      var loc = ((kg.address_complex || '') + ' ' + (kg.address_building_dong ? kg.address_building_dong + '동' : '')).trim() || '-';
       var freshVal = kg.freshness_current != null ? kg.freshness_current + '%' : '-';
       var freshCls = freshnessClass(kg.freshness_current);
 
@@ -285,7 +285,7 @@
         name: kg.name,
         operator_name: memberInfo.name || '',
         phone_masked: api.maskPhone(memberInfo.phone),
-        location: ((kg.address_complex || '') + ' ' + (kg.address_building_dong || '')).trim() || '-',
+        location: ((kg.address_complex || '') + ' ' + (kg.address_building_dong ? kg.address_building_dong + '동' : '')).trim() || '-',
         business_status: kg.business_status || '',
         freshness: kg.freshness_current != null ? kg.freshness_current + '%' : '-',
         address_auth_status: kg.address_auth_status || '미인증',
@@ -372,9 +372,12 @@
     api.setTextById('kgAddrRoad', kg.address_road || '-');
     api.setTextById('kgAddrJibun', kg.address_jibun || '-');
     api.setTextById('kgAddrComplex', kg.address_complex || '-');
-    api.setTextById('kgAddrBuilding', kg.address_building_dong || '-');
+    api.setTextById('kgAddrBuilding', kg.address_building_dong ? kg.address_building_dong + '동' : '-');
+    var kgHoVal = kg.address_building_ho || '';
+    var kgHoRaw  = kgHoVal ? kgHoVal + '호' : '-';
+    var kgHoMask = kgHoVal ? api.maskHo(kgHoVal) + '호' : '-';
     api.setHtmlById('kgAddrHo', api.renderMaskedField(
-      api.maskHo(kg.address_building_ho), (kg.address_building_ho || '-'), 'kindergartens', kgId, 'address_building_ho'
+      kgHoMask, kgHoRaw, 'kindergartens', kgId, 'address_building_ho'
     ));
     api.setHtmlById('kgAddrVerified', api.autoBadge(kg.address_auth_status || '미인증'));
     api.setTextById('kgAddrVerifiedDate', kg.address_auth_date ? api.formatDate(kg.address_auth_date) : '\u2014');

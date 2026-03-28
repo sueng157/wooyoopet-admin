@@ -169,7 +169,7 @@
           <span class="info-grid__value" id="addressVerifiedDate">불러오는 중...</span>
 
           <span class="info-grid__label">제출 서류 보기</span>
-          <span class="info-grid__value"><span class="info-grid__value--link">서류 확인</span></span>
+          <span class="info-grid__value"><a href="#" class="info-grid__value--link" id="btnMemberDocView">서류 확인</a></span>
         </div>
       </div>
 
@@ -379,6 +379,21 @@
 
 </div><!-- .layout -->
 
+<!-- ========== 서류 확인 모달 ========== -->
+<div class="modal-overlay" id="modalMemberDocOverlay">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal__header">
+      <span class="modal__title">제출 서류 확인</span>
+      <button class="modal__close" data-modal-close>&times;</button>
+    </div>
+    <div class="modal__body" id="modalMemberDocBody">
+      <p style="text-align:center;color:var(--text-weak);padding:40px 0;">불러오는 중...</p>
+    </div>
+    <div class="modal__footer">
+      <button class="btn-action btn-action--outline-primary" data-modal-close>닫기</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
