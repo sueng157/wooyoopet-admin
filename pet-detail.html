@@ -190,16 +190,18 @@
           <thead>
             <tr>
               <th>작성일</th>
+              <th>등원일</th>
               <th>유치원명</th>
               <th>만족도</th>
               <th>선택 태그</th>
               <th>후기 내용</th>
               <th>보호자 전용</th>
+              <th>후기 상태</th>
               <th>후기번호</th>
             </tr>
           </thead>
           <tbody id="petReviewsBody">
-            <tr><td colspan="7" style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</td></tr>
+            <tr><td colspan="9" style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</td></tr>
           </tbody>
         </table>
         <a href="#" class="view-all-link">전체 보기 →</a>
@@ -210,9 +212,18 @@
         <div class="detail-card__header">
           <h2 class="detail-card__title">돌봄 후기 태그 집계</h2>
         </div>
-        <div class="stat-cards--3col" id="tagSummary">
-          <div style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</div>
-        </div>
+        <table class="mini-table" style="width:auto;">
+          <thead>
+            <tr>
+              <th style="min-width:120px;">항목</th>
+              <th style="width:80px;text-align:center;">긍정</th>
+              <th style="width:80px;text-align:center;">부정</th>
+            </tr>
+          </thead>
+          <tbody id="petTagSummaryBody">
+            <tr><td colspan="3" style="text-align:center;padding:20px 0;color:var(--text-weak);">불러오는 중...</td></tr>
+          </tbody>
+        </table>
       </div>
 
     </div><!-- /content -->

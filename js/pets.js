@@ -327,7 +327,7 @@
     loadPetReviews(petId);
 
     // ⑤ 후기 태그 집계
-    loadReviewTags(petId);
+    loadPetReviewTags(petId);
 
     // 액션 버튼 바인딩
     bindPetActions(petId, p);
@@ -373,7 +373,7 @@
     if (!tbody) return;
 
     var res = await api.fetchList('kindergarten_reviews', {
-      select: '*, kindergartens(name)',
+      select: '*, kindergartens(name), reservations(checkin_scheduled)',
       filters: [{ column: 'pet_id', op: 'eq', value: petId }],
       orderBy: 'created_at',
       ascending: false,
@@ -382,68 +382,101 @@
     });
 
     if (!res.data || res.data.length === 0) {
-      api.showTableEmpty(tbody, 7, '후기가 없습니다.');
+      api.showTableEmpty(tbody, 9, '후기가 없습니다.');
       return;
     }
 
     var html = '';
     res.data.forEach(function (rv) {
       var kgName = (rv.kindergartens && rv.kindergartens.name) || '-';
+      var checkinDate = (rv.reservations && rv.reservations.checkin_scheduled)
+        ? api.formatDate(rv.reservations.checkin_scheduled, true) : '-';
       var tags = rv.selected_tags || [];
       if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch (e) { tags = []; } }
       var tagHtml = tags.map(function (t) { return '<span class="review-tag-pill">' + api.escapeHtml(t) + '</span>'; }).join(' ');
 
       var satColor = rv.satisfaction === '최고예요!' ? 'green' : rv.satisfaction === '좋았어요' ? 'blue' : 'orange';
+      var statusBadge = rv.is_hidden
+        ? api.renderBadge('숨김', 'red')
+        : api.renderBadge('공개', 'green');
 
       html += '<tr>' +
         '<td>' + api.formatDate(rv.created_at, true) + '</td>' +
+        '<td>' + checkinDate + '</td>' +
         '<td>' + api.escapeHtml(kgName) + '</td>' +
         '<td>' + api.renderBadge(rv.satisfaction || '-', satColor) + '</td>' +
         '<td>' + (tagHtml || '-') + '</td>' +
         '<td><span class="review-content">' + api.escapeHtml(rv.content || '-') + '</span></td>' +
         '<td>' + (rv.is_guardian_only ? api.renderBadge('예', 'orange') : api.renderBadge('아니오', 'gray')) + '</td>' +
+        '<td>' + statusBadge + '</td>' +
         '<td>' + api.renderDetailLink('review-kg-detail.html', rv.id, rv.id.slice(0, 8).toUpperCase()) + '</td>' +
         '</tr>';
     });
     tbody.innerHTML = html;
   }
 
-  async function loadReviewTags(petId) {
-    var container = document.getElementById('tagSummary');
-    if (!container) return;
+  async function loadPetReviewTags(petId) {
+    var tbody = document.getElementById('petTagSummaryBody');
+    if (!tbody) return;
 
-    // 모든 후기의 태그를 가져와서 집계
+    // 7개 항목 고정 정의 (순서 보장)
+    var TAG_ITEMS = [
+      { label: '사람 친화도',
+        positive: '사람을 좋아하고 애교가 많아요',
+        negative: '자꾸 으르렁대며 공격성이 있어요' },
+      { label: '짖음 정도',
+        positive: '거의 짖지 않았어요',
+        negative: '짖음이 심해서 힘들었어요' },
+      { label: '공격성/안전',
+        positive: '낯선 강아지/사람에게 공격성이 없었어요',
+        negative: '상주 반려동물 혹은 사람을 물었어요' },
+      { label: '청결 상태',
+        positive: '아이 청결 상태가 좋았어요',
+        negative: '아이 청결 상태가 좋지 않았어요' },
+      { label: '안정감/적응',
+        positive: '유치원에서 안정적으로 잘 있었어요',
+        negative: '분리불안이 있는 것 같아요' },
+      { label: '식습관',
+        positive: '편식이나 남기는 것 없이 사료를 잘 먹어요',
+        negative: '편식 및 사료거부 등 식습관 문제가 있었어요' },
+      { label: '재이용 의향',
+        positive: '다음에도 맡아주고 싶어요',
+        negative: '다음에도 맡고싶지 않아요' }
+    ];
+
+    // kindergarten_reviews에서 이 반려동물의 모든 selected_tags 조회
     var res = await api.fetchAll('kindergarten_reviews', {
       select: 'selected_tags',
       filters: [{ column: 'pet_id', op: 'eq', value: petId }]
     });
 
-    if (!res.data || res.data.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text-weak);">후기 태그 데이터가 없습니다.</div>';
-      return;
-    }
-
+    // 태그별 건수 집계
     var tagCounts = {};
-    res.data.forEach(function (rv) {
-      var tags = rv.selected_tags || [];
-      if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch (e) { tags = []; } }
-      tags.forEach(function (t) {
-        tagCounts[t] = (tagCounts[t] || 0) + 1;
+    if (res.data) {
+      res.data.forEach(function (rv) {
+        var tags = rv.selected_tags || [];
+        if (typeof tags === 'string') {
+          try { tags = JSON.parse(tags); } catch (e) { tags = []; }
+        }
+        tags.forEach(function (t) {
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        });
       });
-    });
-
-    var sorted = Object.entries(tagCounts).sort(function (a, b) { return b[1] - a[1]; });
-    if (sorted.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text-weak);">후기 태그 데이터가 없습니다.</div>';
-      return;
     }
 
+    // 7개 항목 고정 순서로 렌더링
     var html = '';
-    sorted.forEach(function (pair) {
-      html += '<div class="stat-card"><div class="stat-card__label">' + api.escapeHtml(pair[0]) + '</div>' +
-        '<div class="stat-card__value">' + pair[1] + '건</div></div>';
+    TAG_ITEMS.forEach(function (item) {
+      var posCount = tagCounts[item.positive] || 0;
+      var negCount = tagCounts[item.negative] || 0;
+
+      html += '<tr>' +
+        '<td style="font-weight:600;">' + api.escapeHtml(item.label) + '</td>' +
+        '<td style="text-align:center;font-weight:700;color:#2ECC71;">' + posCount + '건</td>' +
+        '<td style="text-align:center;font-weight:700;color:#E05A3A;">' + negCount + '건</td>' +
+        '</tr>';
     });
-    container.innerHTML = html;
+    tbody.innerHTML = html;
   }
 
   function bindPetActions(petId, pet) {
