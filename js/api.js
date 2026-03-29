@@ -435,15 +435,21 @@
     // 위약금 결제 상태
     '미결제': 'gray', '결제실패': 'red',
     // 체크리스트/서약서 적용상태
-    '현재 적용중': 'green', '이전 버전': 'gray'
+    '현재 적용중': 'green', '이전 버전': 'gray',
+    // 반려동물 성별
+    '수컷': 'blue', '암컷': 'red',
+    // 반려동물 크기
+    '소형': 'green', '중형': 'orange', '대형': 'red'
   };
 
   /**
    * 상태값으로 자동 배지 생성
+   * @param {string} text - 상태 텍스트
+   * @param {object} [customMap] - 커스텀 색상 맵 (우선 적용)
    */
-  function autoBadge(text) {
+  function autoBadge(text, customMap) {
     if (!text) return '-';
-    var color = STATUS_BADGE_MAP[text] || 'gray';
+    var color = (customMap && customMap[text]) || STATUS_BADGE_MAP[text] || 'gray';
     return renderBadge(text, color);
   }
 
@@ -699,18 +705,20 @@
    * @param {string} fieldName - 감사로그용 필드명
    */
   function renderMaskedField(masked, raw, targetType, targetId, fieldName) {
-    return '<span class="masked-field__value" data-masked="' + escapeHtml(masked) +
+    return '<span class="masked-field">' +
+           '<span class="masked-field__value" data-masked="' + escapeHtml(masked) +
            '" data-raw="' + escapeHtml(raw) + '">' + escapeHtml(masked) + '</span>' +
            '<button class="masked-field__toggle" data-audit-target="' + escapeHtml(targetType) +
            '" data-audit-id="' + escapeHtml(targetId) +
-           '" data-audit-field="' + escapeHtml(fieldName) + '">전체보기</button>';
+           '" data-audit-field="' + escapeHtml(fieldName) + '">전체보기</button>' +
+           '</span>';
   }
 
   /**
    * 상세 링크 HTML 생성 (목록 테이블용)
    */
-  function renderDetailLink(page, id, text) {
-    return '<a href="' + page + '?id=' + encodeURIComponent(id) + '" class="data-table__link">' + (text || '상세') + '</a>';
+  function renderDetailLink(page, id, text, className) {
+    return '<a href="' + page + '?id=' + encodeURIComponent(id) + '" class="' + (className || 'data-table__link') + '">' + (text || '상세') + '</a>';
   }
 
   /**
@@ -726,17 +734,16 @@
    */
   function setHtml(el, html) {
     if (!el) return;
-    // 배열 형태 [[label, value], ...] → info-grid HTML 자동 생성
+    // 배열 형태 [[label, value], ...] → info-grid 라벨/값 쌍 직접 삽입
     if (Array.isArray(html)) {
-      var gridHtml = '<div class="info-grid">';
+      var gridHtml = '';
       for (var i = 0; i < html.length; i++) {
         var item = html[i];
         if (Array.isArray(item) && item.length >= 2) {
-          gridHtml += '<span class="info-grid__label">' + escapeHtml(item[0]) + '</span>';
+          gridHtml += '<span class="info-grid__label">' + item[0] + '</span>';
           gridHtml += '<span class="info-grid__value">' + (item[1] !== null && item[1] !== undefined ? item[1] : '-') + '</span>';
         }
       }
-      gridHtml += '</div>';
       el.innerHTML = gridHtml;
       return;
     }

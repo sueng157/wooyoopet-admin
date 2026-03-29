@@ -48,4 +48,26 @@
 
 /* ── 금액 상세 4칸 그리드 → components.css 에 통합 ── */
 
+/* ── 등원/하원 예정+실제 나란히 배치 ── */
+.res-datetime {
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+}
+
+.res-datetime__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.res-datetime__sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-weak);
+  background: var(--surface-base);
+  border-radius: var(--radius-xs, 4px);
+  padding: 2px 6px;
+}
+
 /* ── 모달 변형 스타일은 components.css 에 통합 ── */

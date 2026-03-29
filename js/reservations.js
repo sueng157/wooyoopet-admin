@@ -82,8 +82,8 @@
     var kgName = jv(r.kindergartens, 'name');
     var kgComplex = jv(r.kindergartens, 'address_complex');
     var kgDong = jv(r.kindergartens, 'address_building_dong');
-    var kgAddr = (kgComplex && kgDong) ? kgComplex + ' ' + kgDong + '동'
-               : kgComplex || (kgDong ? kgDong + '동' : '') || '';
+    var kgAddr = (kgComplex && kgDong) ? kgComplex + ' ' + kgDong
+               : kgComplex || kgDong || '';
     var pay = Array.isArray(r.payments) ? r.payments[0] : (r.payments || {});
     var payAmount = pay ? (pay.amount || 0) : 0;
     var payId = pay ? pay.id : null;
@@ -239,7 +239,15 @@
     var id = api.getParam('id');
     if (!id) return;
 
-    api.fetchDetail('reservations', id, '*, members:member_id(name, nickname, phone, address_road), pets:pet_id(name, breed, gender, birth_date, weight, size_class, is_neutered, is_vaccinated), kindergartens:kindergarten_id(name, address_road, members:member_id(name, phone)), payments(id, amount, pg_transaction_id, paid_at, payment_method, card_company, status), refunds(id, refund_amount, penalty_amount, penalty_rate, status, requester, cancel_reason, requested_at), reservation_status_logs(created_at, prev_status, new_status, changed_by, note)').then(function (result) {
+    var selectStr = '*, ' +
+      'members:member_id(id, name, nickname, phone, address_road, address_complex, address_building_dong, address_building_ho), ' +
+      'pets:pet_id(id, name, breed, gender, birth_date, weight, size_class, is_neutered, is_vaccinated), ' +
+      'kindergartens:kindergarten_id(id, name, address_road, address_complex, address_building_dong, address_building_ho, members:member_id(name, phone)), ' +
+      'payments(id, amount, care_fee, walk_fee, pickup_fee, pg_transaction_id, paid_at, payment_method, card_company, status), ' +
+      'refunds(id, refund_amount, penalty_amount, penalty_rate, status, requester, cancel_reason, requested_at), ' +
+      'reservation_status_logs(created_at, prev_status, new_status, changed_by, note)';
+
+    api.fetchDetail('reservations', id, selectStr).then(function (result) {
       var r = result.data;
       if (!r || result.error) return;
 
@@ -251,17 +259,45 @@
       var ref = Array.isArray(r.refunds) ? r.refunds[0] : (r.refunds || null);
       var logs = r.reservation_status_logs || [];
 
+      // ── 헬퍼: 등원/하원 날짜 행 (예정 + 실제를 나란히) ──
+      function renderDatetimeRow(label, scheduled, actual) {
+        var schedStr = api.formatDate(scheduled);
+        var actualStr = actual ? api.formatDate(actual) : '<span style="color:var(--text-weak)">—</span>';
+        return '<div class="res-datetime">' +
+          '<div class="res-datetime__item"><span class="res-datetime__sub">예정</span> ' + schedStr + '</div>' +
+          '<div class="res-datetime__item"><span class="res-datetime__sub">실제</span> ' + actualStr + '</div>' +
+          '</div>';
+      }
+
+      // ── 헬퍼: 주소 조립 (도로명 + 단지명 + 동) ──
+      function buildAddress(road, complex, dong) {
+        var parts = [];
+        if (road) parts.push(road);
+        if (complex) parts.push(complex);
+        if (dong) parts.push(dong);
+        return parts.join(' ') || '-';
+      }
+
+      // ── 헬퍼: 유치원 주소 조립 (도로명 + 단지명 + 동 + 호 마스킹) ──
+      function buildKgAddress(road, complex, dong, ho) {
+        var addrText = buildAddress(road, complex, dong);
+        if (ho) {
+          var hoMask = api.maskHo(ho) + '호';
+          var hoRaw = ho + '호';
+          return api.escapeHtml(addrText) + ' ' + api.renderMaskedField(hoMask, hoRaw, 'kindergartens', r.kindergarten_id, 'address_building_ho');
+        }
+        return api.escapeHtml(addrText);
+      }
+
       // 영역 1: 예약 기본정보
       var basic = document.getElementById('detailResBasic');
       if (basic) {
         api.setHtml(basic, [
-          ['예약 고유번호', r.id],
+          ['예약 고유번호', api.escapeHtml(r.id)],
           ['신청일시', api.formatDate(r.requested_at || r.created_at)],
           ['현재 예약 상태', api.autoBadge(r.status)],
-          ['등원 예정일시', api.formatDate(r.checkin_scheduled)],
-          ['하원 예정일시', api.formatDate(r.checkout_scheduled)],
-          ['실제 등원일시', api.formatDate(r.checkin_actual) || '—'],
-          ['실제 하원일시', api.formatDate(r.checkout_actual) || '—'],
+          ['등원', renderDatetimeRow('등원', r.checkin_scheduled, r.checkin_actual)],
+          ['하원', renderDatetimeRow('하원', r.checkout_scheduled, r.checkout_actual)],
           ['산책 횟수', (r.walk_count || 0) + '회'],
           ['픽업/드랍 여부', (r.pickup_requested ? '<span class="badge badge--c-blue">이용</span>' : '<span class="badge badge--c-gray">미이용</span>')]
         ]);
@@ -270,12 +306,13 @@
       // 영역 2: 보호자 정보
       var guardianEl = document.getElementById('detailResGuardian');
       if (guardianEl) {
+        var guardianAddr = buildAddress(m.address_road, m.address_complex, m.address_building_dong);
         api.setHtml(guardianEl, [
           ['보호자 이름', api.escapeHtml(m.name || '')],
           ['보호자 닉네임', api.escapeHtml(m.nickname || '')],
-          ['보호자 연락처', api.renderMaskedField(m.phone || '')],
-          ['보호자 주소', api.escapeHtml(m.address_road || '')],
-          ['보호자 회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id) : '—']
+          ['보호자 연락처', api.renderMaskedField(api.maskPhone(m.phone), api.formatPhone(m.phone), 'members', r.member_id, 'phone')],
+          ['보호자 주소', api.escapeHtml(guardianAddr)],
+          ['보호자 회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id, r.member_id.substring(0, 8) + '\u2026', 'info-grid__value--link') : '—']
         ]);
       }
 
@@ -285,13 +322,13 @@
         api.setHtml(petEl, [
           ['반려동물 이름', api.escapeHtml(pet.name || '')],
           ['견종', api.escapeHtml(pet.breed || '')],
-          ['성별', api.autoBadge(pet.gender || '', { '수컷': 'blue', '암컷': 'pink' })],
+          ['성별', api.autoBadge(pet.gender || '')],
           ['나이', pet.birth_date ? api.calcPetAge(pet.birth_date) : '—'],
           ['몸무게', (pet.weight || '—') + (pet.weight ? ' kg' : '')],
-          ['크기 분류', api.autoBadge(pet.size_class || '', { '소형': 'green', '중형': 'orange', '대형': 'red' })],
+          ['크기 분류', api.autoBadge(pet.size_class || '')],
           ['중성화 여부', api.autoBadge(pet.is_neutered ? '했어요' : '안했어요', { '했어요': 'green', '안했어요': 'gray' })],
           ['예방접종 여부', api.autoBadge(pet.is_vaccinated ? '했어요' : '안했어요', { '했어요': 'green', '안했어요': 'gray' })],
-          ['반려동물 번호', r.pet_id ? api.renderDetailLink('pet-detail.html', r.pet_id) : '—']
+          ['반려동물 번호', r.pet_id ? api.renderDetailLink('pet-detail.html', r.pet_id, r.pet_id.substring(0, 8) + '\u2026', 'info-grid__value--link') : '—']
         ]);
       }
 
@@ -301,36 +338,52 @@
         api.setHtml(kgEl, [
           ['유치원명', api.escapeHtml(kg.name || '')],
           ['운영자 성명', api.escapeHtml(kgOwner.name || '')],
-          ['운영자 연락처', api.renderMaskedField(kgOwner.phone || '')],
-          ['위치', api.escapeHtml(kg.address_road || '')],
-          ['유치원 번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id) : '—']
+          ['운영자 연락처', api.renderMaskedField(api.maskPhone(kgOwner.phone), api.formatPhone(kgOwner.phone), 'kindergartens', r.kindergarten_id, 'operator_phone')],
+          ['위치', buildKgAddress(kg.address_road, kg.address_complex, kg.address_building_dong, kg.address_building_ho)],
+          ['유치원 번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id, r.kindergarten_id.substring(0, 8) + '\u2026', 'info-grid__value--link') : '—']
         ]);
       }
 
-      // 영역 5: 금액 상세
-      var amountEl = document.getElementById('detailResAmount');
-      if (amountEl) {
-        var totalAmt = pay.amount || 0;
-        amountEl.innerHTML =
-          '<div class="stat-cards--4col">' +
-          '<div class="stat-card stat-card--highlight"><div class="stat-card__label">총 결제금액</div><div class="stat-card__value">' + api.formatMoney(totalAmt) + '</div></div>' +
-          '</div>';
-      }
-
-      // 영역 6: 결제 정보
+      // 영역 5: 결제 정보 (금액 상세 합침)
       var payEl = document.getElementById('detailResPayment');
       if (payEl) {
-        api.setHtml(payEl, [
-          ['결제 고유번호', pay.id ? api.renderDetailLink('payment-detail.html', pay.id) : '—'],
+        // 금액 내역 행
+        var feeRows = [];
+        feeRows.push([
+          '총 결제금액',
+          '<strong style="font-size:16px">' + api.formatMoney(pay.amount) + '</strong>'
+        ]);
+        feeRows.push([
+          '<span style="color:var(--text-weak)">돌봄비</span>',
+          '<span style="color:var(--text-weak)">' + api.formatMoney(pay.care_fee) + '</span>'
+        ]);
+        if (pay.walk_fee > 0) {
+          var walkLabel = r.walk_count ? '산책비 (' + r.walk_count + '회)' : '산책비';
+          feeRows.push([
+            '<span style="color:var(--text-weak)">' + walkLabel + '</span>',
+            '<span style="color:var(--text-weak)">' + api.formatMoney(pay.walk_fee) + '</span>'
+          ]);
+        }
+        if (pay.pickup_fee > 0) {
+          feeRows.push([
+            '<span style="color:var(--text-weak)">픽업/드랍비</span>',
+            '<span style="color:var(--text-weak)">' + api.formatMoney(pay.pickup_fee) + '</span>'
+          ]);
+        }
+
+        var paymentItems = [].concat(feeRows, [
+          ['결제 고유번호', pay.id ? api.renderDetailLink('payment-detail.html', pay.id, pay.id.substring(0, 8) + '\u2026', 'info-grid__value--link') : '—'],
           ['PG사 거래번호', api.escapeHtml(pay.pg_transaction_id || '')],
           ['결제일시', api.formatDate(pay.paid_at)],
           ['결제 수단', api.escapeHtml(pay.payment_method || '')],
           ['카드사', api.escapeHtml(pay.card_company || '')],
           ['결제 상태', api.autoBadge(pay.status || '', { '결제완료': 'green', '결제취소': 'red' })]
         ]);
+
+        api.setHtml(payEl, paymentItems);
       }
 
-      // 영역 7: 환불 정보 (조건부)
+      // 영역 6: 환불 정보 (조건부)
       var refundEl = document.getElementById('detailResRefund');
       if (refundEl) {
         if (ref && ref.status) {
@@ -349,7 +402,7 @@
         }
       }
 
-      // 영역 8: 거절 정보 (조건부)
+      // 영역 7: 거절 정보 (조건부)
       var rejectEl = document.getElementById('detailResReject');
       if (rejectEl) {
         if (r.status === '유치원거절' && r.reject_reason) {
@@ -363,7 +416,7 @@
         }
       }
 
-      // 영역 9: 하원 확인 정보 (조건부)
+      // 영역 8: 하원 확인 정보 (조건부)
       var checkoutEl = document.getElementById('detailResCheckout');
       if (checkoutEl) {
         if (r.status === '돌봄완료' && (r.guardian_checkout_confirmed || r.kg_checkout_confirmed)) {
@@ -377,7 +430,7 @@
         }
       }
 
-      // 영역 10: 상태 변경 이력
+      // 영역 9: 상태 변경 이력
       var logEl = document.getElementById('detailResLog');
       if (logEl && logs.length > 0) {
         logEl.innerHTML = '<thead><tr><th>변경일시</th><th>이전 상태</th><th>변경 후 상태</th><th>행위자</th><th>비고</th></tr></thead><tbody>' +
