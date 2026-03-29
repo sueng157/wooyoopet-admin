@@ -70,15 +70,19 @@
         <!-- 1행: 기간 -->
         <div class="filter-row">
           <span class="filter-label">기간</span>
+          <select id="filterDateType" class="filter-select--date-type">
+            <option value="requested" selected>신청일</option>
+            <option value="checkin">등원일</option>
+          </select>
           <input type="date" class="filter-input filter-input--date" value="2025-01-01">
           <span class="filter-separator">~</span>
           <input type="date" class="filter-input filter-input--date" value="2026-12-31">
         </div>
         <!-- 2행: 예약 상태 -->
         <div class="filter-row">
-          <span class="filter-label">상태</span>
+          <span class="filter-label">필터</span>
           <select class="filter-select">
-            <option>전체</option>
+            <option value="전체">예약상태: 전체</option>
             <option>수락대기</option>
             <option>예약확정</option>
             <option>돌봄진행중</option>
@@ -88,15 +92,21 @@
             <option>유치원거절</option>
             <option>노쇼</option>
           </select>
+          <select class="filter-select" id="filterSizeClass">
+            <option value="전체">크기: 전체</option>
+            <option value="소형">소형</option>
+            <option value="중형">중형</option>
+            <option value="대형">대형</option>
+          </select>
         </div>
         <!-- 3행: 검색 -->
         <div class="filter-row">
           <span class="filter-label">검색</span>
           <select class="filter-select">
-            <option>보호자 이름</option>
+            <option>보호자 닉네임</option>
+            <option>보호자 연락처</option>
             <option>반려동물 이름</option>
             <option>유치원명</option>
-            <option>예약번호</option>
           </select>
           <input type="text" class="filter-input filter-input--search" placeholder="검색어를 입력하세요">
           <button class="btn-search">검색</button>
@@ -121,7 +131,7 @@
             <tr>
               <th>번호</th>
               <th>신청일시</th>
-              <th>보호자 이름</th>
+              <th>보호자 닉네임</th>
               <th>보호자 연락처</th>
               <th>반려동물 이름</th>
               <th>크기</th>

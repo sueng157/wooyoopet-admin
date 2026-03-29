@@ -23,19 +23,22 @@
     return !!document.getElementById('resListBody');
   }
 
-  var filterDateFrom, filterDateTo, filterStatus;
+  var filterDateType, filterDateFrom, filterDateTo, filterStatus, filterSizeClass;
   var filterSearchField, filterSearchInput, btnSearch, btnExcel;
   var resultCount, listBody, pagination;
   var currentPage = 1;
 
   function cacheListDom() {
+    filterDateType = document.getElementById('filterDateType');
+
     var dates = document.querySelectorAll('.filter-input--date');
     filterDateFrom = dates[0];
     filterDateTo   = dates[1];
 
     var selects = document.querySelectorAll('.filter-select');
     filterStatus      = selects[0]; // 예약 상태
-    filterSearchField = selects[1]; // 검색 기준
+    filterSizeClass   = selects[1]; // 반려동물 크기
+    filterSearchField = selects[2]; // 검색 기준
     filterSearchInput = document.querySelector('.filter-input--search');
     btnSearch = document.querySelector('.btn-search');
     btnExcel  = document.querySelector('.btn-excel');
@@ -45,39 +48,34 @@
     pagination  = document.querySelector('.pagination');
   }
 
-  function buildFilters() {
-    var filters = [];
+  /** RPC 파라미터 조립 */
+  function buildRpcParams(page, perPage) {
+    var params = {
+      p_date_type:      (filterDateType && filterDateType.value === 'checkin') ? 'checkin' : 'requested',
+      p_date_from:      (filterDateFrom && filterDateFrom.value) ? filterDateFrom.value + 'T00:00:00' : null,
+      p_date_to:        (filterDateTo && filterDateTo.value) ? filterDateTo.value + 'T23:59:59' : null,
+      p_status:         (filterStatus && filterStatus.value !== '전체') ? filterStatus.value : null,
+      p_size_class:     (filterSizeClass && filterSizeClass.value !== '전체') ? filterSizeClass.value : null,
+      p_search_type:    null,
+      p_search_keyword: null,
+      p_page:           page || 1,
+      p_per_page:       perPage || PER_PAGE
+    };
 
-    if (filterDateFrom && filterDateFrom.value) {
-      filters.push({ column: 'created_at', op: 'gte', value: filterDateFrom.value + 'T00:00:00' });
-    }
-    if (filterDateTo && filterDateTo.value) {
-      filters.push({ column: 'created_at', op: 'lte', value: filterDateTo.value + 'T23:59:59' });
+    if (filterSearchInput && filterSearchInput.value.trim()) {
+      params.p_search_type = filterSearchField ? filterSearchField.value : '보호자 닉네임';
+      params.p_search_keyword = filterSearchInput.value.trim();
     }
 
-    if (filterStatus && filterStatus.value !== '전체') {
-      filters.push({ column: 'status', op: 'eq', value: filterStatus.value });
-    }
-
-    return filters;
+    return params;
   }
 
-  function buildSearch() {
-    // 조인 테이블 검색은 orFilters로 처리해야 하므로 여기선 id 검색만
-    if (!filterSearchInput || !filterSearchInput.value.trim()) return null;
-    var val = filterSearchInput.value.trim();
-    var field = filterSearchField ? filterSearchField.value : '예약번호';
-    if (field === '예약번호') return { column: 'id', value: val };
-    // 나머지 (보호자, 반려동물, 유치원)는 클라이언트 필터링 또는 별도 처리 필요
-    return null;
-  }
-
-  /** 조인된 데이터에서 이름 추출 헬퍼 */
+  /** 조인된 데이터에서 값 추출 헬퍼 */
   function jv(obj, key) { return (obj && obj[key]) ? obj[key] : ''; }
 
   function renderRow(r, idx, offset) {
     var no = offset + idx + 1;
-    var memberName = jv(r.members, 'name');
+    var memberNickname = jv(r.members, 'nickname');
     var memberPhone = jv(r.members, 'phone');
     var petName = jv(r.pets, 'name');
     var petSize = jv(r.pets, 'size_class') || '소형';
@@ -87,9 +85,8 @@
     var payAmount = pay ? (pay.amount || 0) : 0;
     var payId = pay ? pay.id : null;
 
-    var sizeBadge = api.autoBadge(petSize, {
-      '소형': 'green', '중형': 'orange', '대형': 'red'
-    });
+    var sizeColorMap = { '소형': 'green', '중형': 'orange', '대형': 'red' };
+    var sizeBadge = api.renderBadge(petSize, sizeColorMap[petSize] || 'gray');
     var pickupBadge = (r.pickup_requested === true)
       ? '<span class="badge badge--c-blue">이용</span>'
       : '<span class="badge badge--c-gray">미이용</span>';
@@ -102,7 +99,7 @@
     return '<tr>' +
       '<td>' + no + '</td>' +
       '<td>' + api.formatDate(r.requested_at || r.created_at) + '</td>' +
-      '<td>' + api.escapeHtml(memberName) + '</td>' +
+      '<td>' + api.escapeHtml(memberNickname) + '</td>' +
       '<td class="masked">' + api.maskPhone(memberPhone) + '</td>' +
       '<td>' + api.escapeHtml(petName) + '</td>' +
       '<td>' + sizeBadge + '</td>' +
@@ -119,6 +116,15 @@
       '</tr>';
   }
 
+  /** RPC 결과 파싱 (문자열 방어) */
+  function parseRpcResult(raw) {
+    if (!raw) return { data: [], count: 0 };
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch (e) { return { data: [], count: 0 }; }
+    }
+    return raw;
+  }
+
   async function loadList(page) {
     currentPage = page || 1;
     var offset = (currentPage - 1) * PER_PAGE;
@@ -126,24 +132,17 @@
     api.showTableLoading(listBody, 16);
 
     try {
-      var res = await api.fetchList('reservations', {
-        select: '*, members:member_id(name, nickname, phone), pets:pet_id(name, size_class), kindergartens:kindergarten_id(name, address_road), payments(id, amount, status, paid_at)',
-        filters: buildFilters(),
-        search: buildSearch(),
-        orderBy: 'created_at',
-        ascending: false,
-        page: currentPage,
-        perPage: PER_PAGE
-      });
+      var rpcResult = await window.__supabase.rpc('search_reservations', buildRpcParams(currentPage));
 
-      if (res.error) {
-        console.error('[reservations] list query error:', res.error);
-        api.showTableEmpty(listBody, 16, '데이터 로드 실패: ' + (res.error.message || JSON.stringify(res.error)));
+      if (rpcResult.error) {
+        console.error('[reservations] RPC error:', rpcResult.error);
+        api.showTableEmpty(listBody, 16, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
         return;
       }
 
-      var rows = res.data || [];
-      var total = res.count || 0;
+      var result = parseRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
 
       if (resultCount) resultCount.textContent = api.formatNumber(total);
 
@@ -175,18 +174,20 @@
     }
     if (btnExcel) {
       btnExcel.addEventListener('click', function () {
-        api.fetchAll('reservations', {
-          select: '*, members:member_id(name, phone), pets:pet_id(name, size_class), kindergartens:kindergarten_id(name)',
-          filters: buildFilters(),
-          search: buildSearch(),
-          orderBy: 'created_at',
-          ascending: false
-        }).then(function (res) {
-          var data = (res.data || []).map(function (r) {
+        var params = buildRpcParams(1, 10000);
+
+        window.__supabase.rpc('search_reservations', params).then(function (rpcResult) {
+          if (rpcResult.error) { alert('다운로드 실패'); return; }
+          var result = parseRpcResult(rpcResult.data);
+          var rows = result.data || [];
+          if (rows.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
+          var data = rows.map(function (r) {
+            var pay = Array.isArray(r.payments) ? r.payments[0] : (r.payments || {});
+            var payAmount = pay ? (pay.amount || 0) : 0;
             return {
               '예약번호': r.id || '',
               '신청일시': r.requested_at || r.created_at || '',
-              '보호자': jv(r.members, 'name'),
+              '보호자': jv(r.members, 'nickname'),
               '연락처': jv(r.members, 'phone'),
               '반려동물': jv(r.pets, 'name'),
               '크기': jv(r.pets, 'size_class'),
@@ -195,6 +196,7 @@
               '하원일시': r.checkout_scheduled || '',
               '산책': (r.walk_count || 0) + '회',
               '픽업': r.pickup_requested ? '이용' : '미이용',
+              '결제금액': payAmount,
               '상태': r.status || ''
             };
           });
@@ -204,7 +206,8 @@
             { key: '반려동물', label: '반려동물' }, { key: '크기', label: '크기' },
             { key: '유치원명', label: '유치원명' }, { key: '등원일시', label: '등원일시' },
             { key: '하원일시', label: '하원일시' }, { key: '산책', label: '산책' },
-            { key: '픽업', label: '픽업' }, { key: '상태', label: '상태' }
+            { key: '픽업', label: '픽업' }, { key: '결제금액', label: '결제금액' },
+            { key: '상태', label: '상태' }
           ], '돌봄예약관리');
         });
       });

@@ -5,6 +5,31 @@
    이 파일은 돌봄예약관리 페이지 전용 스타일
    ============================================ */
 
+/* ── 기간 타입 드롭다운 ── */
+.filter-select--date-type {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+  min-width: 90px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238C9AA5' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.filter-select--date-type:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
 /* ── 위약금 비율 강조 (50%, 100%) ── */
 .refund-penalty-rate--highlighted {
   font-weight: 700;
