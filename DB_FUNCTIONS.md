@@ -24,7 +24,7 @@
 
 | 함수명 | 용도 | 반환타입 | 참조 테이블 및 컬럼 | 비고 |
 |--------|------|----------|---------------------|------|
-| `search_reservations` | 돌봄예약 통합 검색 (날짜유형, 기간, 상태, 크기, 검색어 필터 + 페이지네이션) | `json` | `reservations(id, status, requested_at, created_at, checkin_scheduled, checkout_scheduled, walk_count, pickup_requested)`, `members(name, nickname, phone)`, `pets(name, size_class)`, `kindergartens(name, address_road)`, `payments(id, amount, status, paid_at)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** 모바일 앱과 DB 공유 환경에서 일반 사용자 호출 방어용. 파라미터: `p_date_type`, `p_date_from`, `p_date_to`, `p_status`, `p_size_class`, `p_search_type`, `p_search_keyword`, `p_page`, `p_per_page`. 반환: `{data: [...], count: N}` |
+| `search_reservations` | 돌봄예약 통합 검색 (날짜유형, 기간, 상태, 크기, 검색어 필터 + 페이지네이션) | `json` | `reservations(id, status, requested_at, created_at, checkin_scheduled, checkout_scheduled, walk_count, pickup_requested)`, `members(name, nickname, phone)`, `pets(name, size_class)`, `kindergartens(name, address_complex, address_building_dong)`, `payments(id, amount, status, paid_at)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** 모바일 앱과 DB 공유 환경에서 일반 사용자 호출 방어용. 파라미터: `p_date_type`, `p_date_from`, `p_date_to`, `p_status`, `p_size_class`, `p_search_type`, `p_search_keyword`, `p_page`, `p_per_page`. 반환: `{data: [...], count: N}` |
 
 ## 4. 시스템 자동화
 
@@ -86,3 +86,4 @@
 | 2026-03-29 | 문서 최초 작성 | — |
 | 2026-03-29 | `search_reservations` 함수 추가 | `sql/13_search_reservations.sql` |
 | 2026-03-29 | `set_pet_size_class` 트리거 함수 추가 | `sql/14_pets_size_class_sync.sql` |
+| 2026-03-29 | `search_reservations` 유치원 주소 반환 필드 변경 (`address_road` → `address_complex` + `address_building_dong`) | `sql/13_search_reservations.sql` |

@@ -80,7 +80,10 @@
     var petName = jv(r.pets, 'name');
     var petSize = jv(r.pets, 'size_class') || '소형';
     var kgName = jv(r.kindergartens, 'name');
-    var kgAddr = jv(r.kindergartens, 'address_road');
+    var kgComplex = jv(r.kindergartens, 'address_complex');
+    var kgDong = jv(r.kindergartens, 'address_building_dong');
+    var kgAddr = (kgComplex && kgDong) ? kgComplex + ' ' + kgDong + '동'
+               : kgComplex || (kgDong ? kgDong + '동' : '') || '';
     var pay = Array.isArray(r.payments) ? r.payments[0] : (r.payments || {});
     var payAmount = pay ? (pay.amount || 0) : 0;
     var payId = pay ? pay.id : null;

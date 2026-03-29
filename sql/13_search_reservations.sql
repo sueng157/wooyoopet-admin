@@ -92,7 +92,8 @@ BEGIN
         ) AS pets,
         json_build_object(
           ''name'', k.name,
-          ''address_road'', k.address_road
+          ''address_complex'', k.address_complex,
+          ''address_building_dong'', k.address_building_dong
         ) AS kindergartens,
         (
           SELECT json_agg(json_build_object(
