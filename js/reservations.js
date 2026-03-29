@@ -73,12 +73,23 @@
   /** 조인된 데이터에서 값 추출 헬퍼 */
   function jv(obj, key) { return (obj && obj[key]) ? obj[key] : ''; }
 
+  /** 크기 분류 판별 (pets.js와 동일 로직) */
+  function sizeLabel(weight) {
+    if (weight == null) return '-';
+    var w = parseFloat(weight);
+    if (isNaN(w)) return '-';
+    if (w < 10) return '소형';
+    if (w < 25) return '중형';
+    return '대형';
+  }
+
   function renderRow(r, idx, offset) {
     var no = offset + idx + 1;
     var memberNickname = jv(r.members, 'nickname');
     var memberPhone = jv(r.members, 'phone');
     var petName = jv(r.pets, 'name');
-    var petSize = jv(r.pets, 'size_class') || '소형';
+    var petWeight = r.pets ? r.pets.weight : null;
+    var petSize = sizeLabel(petWeight);
     var kgName = jv(r.kindergartens, 'name');
     var kgAddr = jv(r.kindergartens, 'address_road');
     var pay = Array.isArray(r.payments) ? r.payments[0] : (r.payments || {});
@@ -190,7 +201,7 @@
               '보호자': jv(r.members, 'nickname'),
               '연락처': jv(r.members, 'phone'),
               '반려동물': jv(r.pets, 'name'),
-              '크기': jv(r.pets, 'size_class'),
+              '크기': sizeLabel(r.pets ? r.pets.weight : null),
               '유치원명': jv(r.kindergartens, 'name'),
               '등원일시': r.checkin_scheduled || '',
               '하원일시': r.checkout_scheduled || '',
@@ -285,7 +296,7 @@
           ['성별', api.autoBadge(pet.gender || '', { '수컷': 'blue', '암컷': 'pink' })],
           ['나이', pet.birth_date ? api.calcPetAge(pet.birth_date) : '—'],
           ['몸무게', (pet.weight || '—') + (pet.weight ? ' kg' : '')],
-          ['크기 분류', api.autoBadge(pet.size_class || '', { '소형': 'green', '중형': 'orange', '대형': 'red' })],
+          ['크기 분류', (function() { var s = sizeLabel(pet.weight); var c = {'소형':'green','중형':'orange','대형':'red'}; return api.renderBadge(s, c[s] || 'gray'); })()],
           ['중성화 여부', api.autoBadge(pet.is_neutered ? '했어요' : '안했어요', { '했어요': 'green', '안했어요': 'gray' })],
           ['예방접종 여부', api.autoBadge(pet.is_vaccinated ? '했어요' : '안했어요', { '했어요': 'green', '안했어요': 'gray' })],
           ['반려동물 번호', r.pet_id ? api.renderDetailLink('pet-detail.html', r.pet_id) : '—']

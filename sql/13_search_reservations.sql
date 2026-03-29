@@ -53,7 +53,12 @@ BEGIN
     WHERE ($1 IS NULL OR r.%I >= $1::timestamptz)
       AND ($2 IS NULL OR r.%I <= $2::timestamptz)
       AND ($3 IS NULL OR r.status = $3)
-      AND ($4 IS NULL OR pt.size_class = $4)
+      AND (
+        $4 IS NULL
+        OR ($4 = ''소형'' AND pt.weight < 10)
+        OR ($4 = ''중형'' AND pt.weight >= 10 AND pt.weight < 25)
+        OR ($4 = ''대형'' AND pt.weight >= 25)
+      )
       AND (
         $5 IS NULL OR $6 IS NULL
         OR ($5 = ''보호자 닉네임'' AND m.nickname ILIKE ''%%'' || $6 || ''%%'')
@@ -88,7 +93,7 @@ BEGIN
         ) AS members,
         json_build_object(
           ''name'', pt.name,
-          ''size_class'', pt.size_class
+          ''weight'', pt.weight
         ) AS pets,
         json_build_object(
           ''name'', k.name,
@@ -111,7 +116,12 @@ BEGIN
       WHERE ($1 IS NULL OR r.%I >= $1::timestamptz)
         AND ($2 IS NULL OR r.%I <= $2::timestamptz)
         AND ($3 IS NULL OR r.status = $3)
-        AND ($4 IS NULL OR pt.size_class = $4)
+        AND (
+          $4 IS NULL
+          OR ($4 = ''소형'' AND pt.weight < 10)
+          OR ($4 = ''중형'' AND pt.weight >= 10 AND pt.weight < 25)
+          OR ($4 = ''대형'' AND pt.weight >= 25)
+        )
         AND (
           $5 IS NULL OR $6 IS NULL
           OR ($5 = ''보호자 닉네임'' AND m.nickname ILIKE ''%%'' || $6 || ''%%'')
