@@ -25,23 +25,34 @@
   }
 
   /* ── A-1: 결제내역 탭 ── */
-  var payDateFrom, payDateTo, payStatus, paySearchField, paySearchInput;
-  var payBtnSearch, payBtnExcel, payResultCount, payListBody, payPagination;
+  var payDateFrom, payDateTo, payMethod, payStatus, paySearchField, paySearchInput;
+  var payAmountMin, payAmountMax;
+  var payBtnSearch, payBtnReset, payBtnExcel, payResultCount, payListBody, payPagination;
+  var payFilterBar;
   var payPage = 1;
+  var PAY_COL_COUNT = 13;
 
   function cachePayDom() {
     var tab = document.getElementById('tab-payment');
     if (!tab) return;
+    payFilterBar = tab.querySelector('.filter-bar');
     var dates = tab.querySelectorAll('.filter-input--date');
     payDateFrom = dates[0];
     payDateTo   = dates[1];
 
     var selects = tab.querySelectorAll('.filter-select');
-    payStatus      = selects[0];
-    paySearchField = selects[1];
+    payMethod      = selects[0]; // 결제수단
+    payStatus      = selects[1]; // 결제상태
+    paySearchField = selects[2]; // 검색 기준
     paySearchInput = tab.querySelector('.filter-input--search');
-    payBtnSearch   = tab.querySelector('.btn-search');
-    payBtnExcel    = tab.querySelector('.btn-excel');
+
+    var amounts = tab.querySelectorAll('.filter-input--amount');
+    payAmountMin = amounts[0];
+    payAmountMax = amounts[1];
+
+    payBtnReset  = tab.querySelector('.btn-reset');
+    payBtnSearch = tab.querySelector('.btn-search');
+    payBtnExcel  = tab.querySelector('.btn-excel');
 
     payResultCount = tab.querySelector('.result-header__count strong');
     payListBody    = document.getElementById('payListBody');
@@ -51,80 +62,134 @@
   /** 조인된 객체에서 값 추출 헬퍼 */
   function jv(obj, key) { return (obj && obj[key]) ? obj[key] : ''; }
 
-  function buildPayFilters() {
-    var f = [];
-    if (payDateFrom && payDateFrom.value) f.push({ column: 'paid_at', op: 'gte', value: payDateFrom.value + 'T00:00:00' });
-    if (payDateTo && payDateTo.value) f.push({ column: 'paid_at', op: 'lte', value: payDateTo.value + 'T23:59:59' });
-    if (payStatus && payStatus.value !== '전체') f.push({ column: 'status', op: 'eq', value: payStatus.value });
-    return f;
+  /** RPC 파라미터 조립 */
+  function buildPayRpcParams(page, perPage) {
+    var params = {
+      p_date_from:      (payDateFrom && payDateFrom.value) ? payDateFrom.value + 'T00:00:00' : null,
+      p_date_to:        (payDateTo && payDateTo.value) ? payDateTo.value + 'T23:59:59' : null,
+      p_payment_method: (payMethod && payMethod.value) ? payMethod.value : null,
+      p_status:         (payStatus && payStatus.value) ? payStatus.value : null,
+      p_search_type:    null,
+      p_search_keyword: null,
+      p_amount_min:     (payAmountMin && payAmountMin.value) ? Number(payAmountMin.value) : null,
+      p_amount_max:     (payAmountMax && payAmountMax.value) ? Number(payAmountMax.value) : null,
+      p_page:           page || 1,
+      p_per_page:       perPage || PER_PAGE
+    };
+
+    if (paySearchInput && paySearchInput.value.trim()) {
+      params.p_search_type = paySearchField ? paySearchField.value : '보호자 닉네임';
+      params.p_search_keyword = paySearchInput.value.trim();
+    }
+
+    return params;
   }
 
-  function buildPaySearch() {
-    if (!paySearchInput || !paySearchInput.value.trim()) return null;
-    var field = paySearchField ? paySearchField.value : 'PG 거래번호';
-    if (field === 'PG 거래번호') return { column: 'pg_transaction_id', value: paySearchInput.value.trim() };
-    return null;
+  /** RPC 결과 파싱 (문자열 방어) */
+  function parsePayRpcResult(raw) {
+    if (!raw) return { data: [], count: 0 };
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch (e) { return { data: [], count: 0 }; }
+    }
+    return raw;
   }
 
   function renderPayRow(r, idx, offset) {
     var no = offset + idx + 1;
-    var memberName = jv(r.members, 'name');
+    var memberNickname = jv(r.members, 'nickname');
     var memberPhone = jv(r.members, 'phone');
     var kgName = jv(r.kindergartens, 'name');
     var petName = jv(r.pets, 'name');
     var statusBadge = api.autoBadge(r.status || '', { '결제완료': 'green', '결제취소': 'red' });
     return '<tr>' +
       '<td>' + no + '</td>' +
-      '<td>' + api.formatDate(r.paid_at || r.created_at) + '</td>' +
+      '<td>' + api.escapeHtml(r.id || '') + '</td>' +
       '<td>' + api.escapeHtml(r.pg_transaction_id || '') + '</td>' +
-      '<td>' + api.escapeHtml(r.approval_number || '') + '</td>' +
-      '<td>' + api.escapeHtml(memberName) + '</td>' +
+      '<td>' + api.formatDate(r.paid_at || r.created_at) + '</td>' +
+      '<td>' + api.escapeHtml(memberNickname) + '</td>' +
       '<td class="masked">' + api.maskPhone(memberPhone) + '</td>' +
       '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(petName) + '</td>' +
       '<td class="text-right">' + api.formatMoney(r.amount) + '</td>' +
       '<td>' + api.escapeHtml(r.payment_method || '') + '</td>' +
-      '<td>' + api.escapeHtml(r.card_company || '') + '</td>' +
-      '<td class="masked">' + api.escapeHtml(r.card_number || '') + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td>' + (r.reservation_id ? '<a href="reservation-detail.html?id=' + r.reservation_id + '" class="data-table__link">예약상세</a>' : '—') + '</td>' +
       '<td><a href="payment-detail.html?id=' + r.id + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
 
-  function loadPayList(page) {
+  async function loadPayList(page) {
     payPage = page || 1;
     var offset = (payPage - 1) * PER_PAGE;
-    api.showTableLoading(payListBody, 15);
+    api.showTableLoading(payListBody, PAY_COL_COUNT);
 
-    api.fetchList('payments', {
-      select: '*, members:member_id(name, nickname, phone), kindergartens:kindergarten_id(name), pets:pet_id(name)',
-      filters: buildPayFilters(), search: buildPaySearch(),
-      order: { column: 'paid_at', ascending: false },
-      page: payPage, perPage: PER_PAGE
-    }).then(function (res) {
-      var rows = res.data || [], total = res.count || 0;
-      payResultCount.textContent = api.formatNumber(total);
-      if (!rows.length) { api.showTableEmpty(payListBody, 15, '검색 결과가 없습니다.'); payPagination.innerHTML = ''; return; }
+    try {
+      var rpcResult = await window.__supabase.rpc('search_payments', buildPayRpcParams(payPage));
+
+      if (rpcResult.error) {
+        console.error('[payments] RPC error:', rpcResult.error);
+        api.showTableEmpty(payListBody, PAY_COL_COUNT, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
+        return;
+      }
+
+      var result = parsePayRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
+
+      if (payResultCount) payResultCount.textContent = api.formatNumber(total);
+
+      if (rows.length === 0) {
+        api.showTableEmpty(payListBody, PAY_COL_COUNT, '검색 결과가 없습니다.');
+        if (payPagination) payPagination.innerHTML = '';
+        return;
+      }
+
       payListBody.innerHTML = rows.map(function (r, i) { return renderPayRow(r, i, offset); }).join('');
-      api.renderPagination(payPagination, payPage, total, PER_PAGE, loadPayList);
-    }).catch(function () { api.showTableEmpty(payListBody, 15, '데이터를 불러오지 못했습니다.'); });
+      api.renderPagination(payPagination, payPage, total, PER_PAGE, function (p) { loadPayList(p); });
+    } catch (err) {
+      console.error('[payments] list exception:', err);
+      api.showTableEmpty(payListBody, PAY_COL_COUNT, '데이터를 불러오지 못했습니다.');
+    }
   }
 
   function bindPayEvents() {
     if (payBtnSearch) payBtnSearch.addEventListener('click', function () { loadPayList(1); });
     if (paySearchInput) paySearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') loadPayList(1); });
+    if (payBtnReset) payBtnReset.addEventListener('click', function () {
+      if (window.__resetFilters) window.__resetFilters(payFilterBar);
+    });
     if (payBtnExcel) payBtnExcel.addEventListener('click', function () {
-      api.fetchAll('payments', { select: '*, members:member_id(name), kindergartens:kindergarten_id(name)', filters: buildPayFilters(), search: buildPaySearch(), order: { column: 'paid_at', ascending: false } }).then(function (res) {
-        var allRows = (res.data || []);
-        api.exportExcel(allRows.map(function (r) {
-          return { '결제번호': r.id || '', '결제일시': r.paid_at || '', 'PG거래번호': r.pg_transaction_id || '', '보호자': jv(r.members, 'name'), '유치원명': jv(r.kindergartens, 'name'), '결제금액': r.amount || 0, '결제수단': r.payment_method || '', '카드사': r.card_company || '', '상태': r.status || '' };
+      var params = buildPayRpcParams(1, 10000);
+
+      window.__supabase.rpc('search_payments', params).then(function (rpcResult) {
+        if (rpcResult.error) { alert('다운로드 실패'); return; }
+        var result = parsePayRpcResult(rpcResult.data);
+        var rows = result.data || [];
+        if (rows.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
+        api.exportExcel(rows.map(function (r) {
+          return {
+            '결제번호': r.id || '',
+            'PG거래번호': r.pg_transaction_id || '',
+            '결제일시': r.paid_at || '',
+            '보호자 닉네임': jv(r.members, 'nickname'),
+            '보호자 연락처': jv(r.members, 'phone'),
+            '유치원명': jv(r.kindergartens, 'name'),
+            '반려동물명': jv(r.pets, 'name'),
+            '결제금액': r.amount || 0,
+            '결제수단': r.payment_method || '',
+            '결제상태': r.status || ''
+          };
         }), [
-          { key: '결제번호', label: '결제번호' }, { key: '결제일시', label: '결제일시' },
-          { key: 'PG거래번호', label: 'PG거래번호' }, { key: '보호자', label: '보호자' },
-          { key: '유치원명', label: '유치원명' }, { key: '결제금액', label: '결제금액' },
-          { key: '결제수단', label: '결제수단' }, { key: '카드사', label: '카드사' },
-          { key: '상태', label: '상태' }
+          { key: '결제번호', label: '결제번호' },
+          { key: 'PG거래번호', label: 'PG거래번호' },
+          { key: '결제일시', label: '결제일시' },
+          { key: '보호자 닉네임', label: '보호자 닉네임' },
+          { key: '보호자 연락처', label: '보호자 연락처' },
+          { key: '유치원명', label: '유치원명' },
+          { key: '반려동물명', label: '반려동물명' },
+          { key: '결제금액', label: '결제금액' },
+          { key: '결제수단', label: '결제수단' },
+          { key: '결제상태', label: '결제상태' }
         ], '결제내역');
       });
     });

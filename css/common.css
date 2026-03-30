@@ -390,6 +390,26 @@ ul, ol {
   opacity: 0.8;
 }
 
+/* ── 초기화 버튼 (필터 공통) ── */
+.btn-reset {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-reset:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
 /* ── Utility ── */
 .text-weak   { color: var(--text-weak); }
 .text-danger  { color: var(--danger); }

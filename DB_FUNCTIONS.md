@@ -25,6 +25,7 @@
 | 함수명 | 용도 | 반환타입 | 참조 테이블 및 컬럼 | 비고 |
 |--------|------|----------|---------------------|------|
 | `search_reservations` | 돌봄예약 통합 검색 (날짜유형, 기간, 상태, 크기, 검색어 필터 + 페이지네이션) | `json` | `reservations(id, status, requested_at, created_at, checkin_scheduled, checkout_scheduled, walk_count, pickup_requested)`, `members(name, nickname, phone)`, `pets(name, size_class)`, `kindergartens(name, address_complex, address_building_dong)`, `payments(id, amount, status, paid_at)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** 모바일 앱과 DB 공유 환경에서 일반 사용자 호출 방어용. 파라미터: `p_date_type`, `p_date_from`, `p_date_to`, `p_status`, `p_size_class`, `p_search_type`, `p_search_keyword`, `p_page`, `p_per_page`. 반환: `{data: [...], count: N}` |
+| `search_payments` | 결제내역 통합 검색 (결제일 기간, 결제수단, 결제상태, 금액 범위, 검색어 필터 + 페이지네이션) | `json` | `payments(id, pg_transaction_id, paid_at, created_at, amount, payment_method, status, reservation_id)`, `members(nickname, phone)`, `pets(name)`, `kindergartens(name)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** JOIN 구조: payments(p) → members(m), LEFT JOIN pets(pt), LEFT JOIN kindergartens(k). 파라미터: `p_date_from`, `p_date_to`, `p_payment_method`, `p_status`, `p_search_type`, `p_search_keyword`, `p_amount_min`, `p_amount_max`, `p_page`, `p_per_page`. 검색 매핑: 보호자 닉네임→m.nickname, 유치원명→k.name, PG 거래번호→p.pg_transaction_id, 보호자 연락처→m.phone. 반환: `{data: [...], count: N}` |
 
 ## 4. 시스템 자동화
 
@@ -89,3 +90,5 @@
 | 2026-03-29 | `search_reservations` 유치원 주소 반환 필드 변경 (`address_road` → `address_complex` + `address_building_dong`) | `sql/13_search_reservations.sql` |
 | 2026-03-29 | payments 테이블에 금액 내역 컬럼 3개 추가 (`care_fee`, `walk_fee`, `pickup_fee`) | `sql/15_payments_fee_columns.sql` |
 | 2026-03-29 | reservations 테이블 상태 CHECK 제약조건에 `'관리자취소'` 추가 (8→9개 상태) | `sql/16_add_admin_cancel_status.sql` |
+| 2026-03-30 | `search_payments` 함수 추가 — 결제내역 통합 검색 RPC (결제일/수단/상태/금액/검색어 필터 + 페이지네이션) | `sql/17_search_payments.sql` |
+| 2026-03-30 | payments 테이블 status CHECK 제약 변경: `결제완료/취소완료/부분취소` → `결제완료/결제취소` (부분취소 삭제 — 위약금은 별도 건 처리, 기존 결제는 전액 취소 방식) | `sql/18_payments_status_check_update.sql` |

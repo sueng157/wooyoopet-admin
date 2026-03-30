@@ -22,4 +22,9 @@
   margin-top: 4px;
 }
 
+/* ── 금액 필터 인풋 ── */
+.filter-input--amount {
+  width: 140px;
+}
+
 /* ── 모달 변형 스타일은 components.css 에 통합 ── */

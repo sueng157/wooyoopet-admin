@@ -77,31 +77,46 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
-          <!-- 1행: 기간 -->
+          <!-- 1행: 결제일 -->
           <div class="filter-row">
-            <span class="filter-label">기간</span>
+            <span class="filter-label">결제일</span>
             <input type="date" class="filter-input filter-input--date" value="2025-01-01">
             <span class="filter-separator">~</span>
-            <input type="date" class="filter-input filter-input--date" value="2026-03-17">
+            <input type="date" class="filter-input filter-input--date" value="2026-03-30">
           </div>
-          <!-- 2행: 결제상태 -->
+          <!-- 2행: 필터 (결제수단 + 결제상태) -->
           <div class="filter-row">
-            <span class="filter-label">상태</span>
+            <span class="filter-label">필터</span>
             <select class="filter-select">
-              <option>전체</option>
-              <option>결제완료</option>
-              <option>결제취소</option>
+              <option value="">결제수단: 전체</option>
+              <option value="카드결제">카드결제</option>
+              <option value="계좌이체">계좌이체</option>
+              <option value="가상계좌">가상계좌</option>
+            </select>
+            <select class="filter-select">
+              <option value="">결제상태: 전체</option>
+              <option value="결제완료">결제완료</option>
+              <option value="결제취소">결제취소</option>
             </select>
           </div>
           <!-- 3행: 검색 -->
           <div class="filter-row">
             <span class="filter-label">검색</span>
             <select class="filter-select">
-              <option>보호자 이름</option>
+              <option>보호자 닉네임</option>
               <option>유치원명</option>
               <option>PG 거래번호</option>
+              <option>보호자 연락처</option>
             </select>
             <input type="text" class="filter-input filter-input--search" placeholder="검색어를 입력하세요">
+          </div>
+          <!-- 4행: 결제금액 + 초기화/검색 버튼 -->
+          <div class="filter-row">
+            <span class="filter-label">결제금액</span>
+            <input type="number" class="filter-input filter-input--amount" placeholder="최소금액" min="0">
+            <span class="filter-separator">~</span>
+            <input type="number" class="filter-input filter-input--amount" placeholder="최대금액" min="0">
+            <button class="btn-reset">초기화</button>
             <button class="btn-search">검색</button>
           </div>
         </div>
@@ -123,167 +138,22 @@
             <thead>
               <tr>
                 <th>번호</th>
-                <th>결제일시</th>
+                <th>결제번호</th>
                 <th>PG 거래번호</th>
-                <th>승인번호</th>
-                <th>보호자 이름</th>
+                <th>결제일시</th>
+                <th>보호자 닉네임</th>
                 <th>보호자 연락처</th>
                 <th>유치원명</th>
                 <th>반려동물명</th>
                 <th>결제금액</th>
                 <th>결제수단</th>
-                <th>카드사</th>
-                <th>카드번호</th>
                 <th>결제상태</th>
                 <th>연동 예약번호</th>
                 <th>상세</th>
               </tr>
             </thead>
             <tbody id="payListBody">
-              <!-- 1행: 결제완료 -->
-              <tr>
-                <td>1</td>
-                <td>2026-03-15 09:15</td>
-                <td>INI-20260315-0001</td>
-                <td>12345678</td>
-                <td>김민수</td>
-                <td class="masked">010-****-1234</td>
-                <td>밤톨이네</td>
-                <td>코코</td>
-                <td class="text-right">55,000원</td>
-                <td>신용카드</td>
-                <td>삼성카드</td>
-                <td class="masked">1234-****-****-5678</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001234</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 2행: 결제완료 -->
-              <tr>
-                <td>2</td>
-                <td>2026-03-14 14:32</td>
-                <td>INI-20260314-0015</td>
-                <td>23456789</td>
-                <td>이영희</td>
-                <td class="masked">010-****-5678</td>
-                <td>사랑이네</td>
-                <td>몽이</td>
-                <td class="text-right">90,000원</td>
-                <td>신용카드</td>
-                <td>현대카드</td>
-                <td class="masked">9876-****-****-1234</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001230</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 3행: 결제취소 -->
-              <tr>
-                <td>3</td>
-                <td>2026-03-13 11:20</td>
-                <td>INI-20260313-0008</td>
-                <td>34567890</td>
-                <td>박서연</td>
-                <td class="masked">010-****-9012</td>
-                <td>행복한강아지</td>
-                <td>초코</td>
-                <td class="text-right">35,000원</td>
-                <td>간편결제</td>
-                <td>카카오페이</td>
-                <td class="masked">****-****-****-3456</td>
-                <td><span class="badge badge--c-red">결제취소</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001225</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 4행: 결제완료 -->
-              <tr>
-                <td>4</td>
-                <td>2026-03-12 08:45</td>
-                <td>INI-20260312-0003</td>
-                <td>45678901</td>
-                <td>최지훈</td>
-                <td class="masked">010-****-3456</td>
-                <td>밤톨이네</td>
-                <td>뽀삐</td>
-                <td class="text-right">120,000원</td>
-                <td>신용카드</td>
-                <td>신한카드</td>
-                <td class="masked">5555-****-****-7890</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001218</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 5행: 결제완료 -->
-              <tr>
-                <td>5</td>
-                <td>2026-03-11 16:30</td>
-                <td>INI-20260311-0012</td>
-                <td>56789012</td>
-                <td>정하늘</td>
-                <td class="masked">010-****-7890</td>
-                <td>사랑이네</td>
-                <td>보리</td>
-                <td class="text-right">25,000원</td>
-                <td>체크카드</td>
-                <td>국민카드</td>
-                <td class="masked">4321-****-****-8765</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001210</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 6행: 결제취소 -->
-              <tr>
-                <td>6</td>
-                <td>2026-03-10 10:05</td>
-                <td>INI-20260310-0006</td>
-                <td>67890123</td>
-                <td>한수정</td>
-                <td class="masked">010-****-2345</td>
-                <td>행복한강아지</td>
-                <td>루이</td>
-                <td class="text-right">70,000원</td>
-                <td>신용카드</td>
-                <td>롯데카드</td>
-                <td class="masked">7777-****-****-4321</td>
-                <td><span class="badge badge--c-red">결제취소</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001198</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 7행: 결제완료 -->
-              <tr>
-                <td>7</td>
-                <td>2026-03-09 13:50</td>
-                <td>INI-20260309-0009</td>
-                <td>78901234</td>
-                <td>김민수</td>
-                <td class="masked">010-****-1234</td>
-                <td>밤톨이네</td>
-                <td>두부</td>
-                <td class="text-right">15,000원</td>
-                <td>간편결제</td>
-                <td>네이버페이</td>
-                <td class="masked">****-****-****-9999</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001190</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <!-- 8행: 결제완료 -->
-              <tr>
-                <td>8</td>
-                <td>2026-03-08 09:20</td>
-                <td>INI-20260308-0002</td>
-                <td>89012345</td>
-                <td>이영희</td>
-                <td class="masked">010-****-5678</td>
-                <td>사랑이네</td>
-                <td>몽이</td>
-                <td class="text-right">20,000원</td>
-                <td>신용카드</td>
-                <td>삼성카드</td>
-                <td class="masked">1111-****-****-2222</td>
-                <td><span class="badge badge--c-green">결제완료</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001182</a></td>
-                <td><a href="payment-detail.html" class="data-table__link">상세</a></td>
-              </tr>
+              <!-- JS 로드 후 RPC 데이터로 대체됨 -->
             </tbody>
           </table>
         </div>

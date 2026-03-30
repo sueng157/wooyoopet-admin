@@ -137,5 +137,31 @@
       btn.textContent = isExpanded ? '접기' : '더보기';
     });
 
+    // ──────────────────────────────────────────
+    // 5. 필터 초기화 공용 함수
+    //    container 내의 모든 필터 입력을 기본값으로 리셋
+    //    각 페이지 JS에서 window.__resetFilters(filterBarEl) 호출
+    // ──────────────────────────────────────────
+
+    window.__resetFilters = function (container) {
+      if (!container) return;
+      // date 입력 → 기본값(defaultValue) 복원
+      container.querySelectorAll('input[type="date"]').forEach(function (el) {
+        el.value = el.defaultValue;
+      });
+      // number 입력 → 빈값으로 초기화
+      container.querySelectorAll('input[type="number"]').forEach(function (el) {
+        el.value = '';
+      });
+      // text 입력 → 빈값으로 초기화
+      container.querySelectorAll('input[type="text"]').forEach(function (el) {
+        el.value = '';
+      });
+      // select → 첫 번째 옵션(기본값)으로 복원
+      container.querySelectorAll('select').forEach(function (el) {
+        el.selectedIndex = 0;
+      });
+    };
+
   });
 })();
