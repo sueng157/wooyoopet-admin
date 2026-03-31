@@ -140,43 +140,79 @@ ORDER BY transaction_type;
 
 
 -- ============================================================
--- 12. RPC 검증 — search_payments (돌봄만 반환 확인)
+-- 12. 데이터 검증 — search_payments 로직 검증 (돌봄만 반환 확인)
 -- ============================================================
--- 기대: count = 11 (돌봄 결제 11건), 위약금 결제 건은 포함되지 않음
--- 파라미터: p_payment_type DEFAULT '돌봄' (파라미터 없이 호출 시 돌봄만)
-SELECT (public.search_payments())::json->'count' AS payment_count;
+-- RPC 함수는 is_admin() 권한이 필요하므로 SQL Editor에서는 직접 호출 불가
+-- search_payments의 핵심 로직(payment_type='돌봄' 필터)을 직접 쿼리로 검증
+-- 기대: payment_count = 11 (돌봄 결제 11건), 위약금 결제 건은 포함되지 않음
+SELECT COUNT(*) AS payment_count
+FROM payments
+WHERE payment_type = '돌봄';
 
 
 -- ============================================================
--- 13. RPC 검증 — search_refunds (환불 전체 + 위약금 결제 정보 포함)
+-- 13. 데이터 검증 — search_refunds 로직 검증 (환불 전체 + 위약금 결제 정보)
 -- ============================================================
--- 기대: count = 5 (전체 refund 5건), penalty_payment 객체가 1건(refund #4)에 포함
-SELECT jsonb_pretty((public.search_refunds())::jsonb);
+-- 기대: refund_count = 5 (전체 refund 5건)
+--       penalty_linked_count = 1 (penalty_payment_id가 연결된 건 1건)
+SELECT COUNT(*) AS refund_count FROM refunds;
+SELECT COUNT(*) AS penalty_linked_count
+FROM refunds WHERE penalty_payment_id IS NOT NULL;
 
 
 -- ============================================================
--- 14. RPC 검증 — get_dashboard_monthly_sales
+-- 14. 데이터 검증 — get_dashboard_monthly_sales 로직 검증
 -- ============================================================
 -- 기대: care_payment는 돌봄 결제금만, penalty_payment는 위약금 결제금만
-SELECT jsonb_pretty((public.get_dashboard_monthly_sales())::jsonb) AS monthly_sales;
+SELECT
+  SUM(CASE WHEN payment_type = '돌봄'  AND status = '결제완료' THEN amount ELSE 0 END) AS care_payment,
+  SUM(CASE WHEN payment_type = '위약금' AND status = '결제완료' THEN amount ELSE 0 END) AS penalty_payment
+FROM payments
+WHERE paid_at >= date_trunc('month', CURRENT_DATE);
 
 
 -- ============================================================
--- 15. RPC 검증 — get_dashboard_today_stats
+-- 15. 데이터 검증 — get_dashboard_today_stats 로직 검증
 -- ============================================================
--- 기대: today_payments에 돌봄 결제만 포함 (위약금 제외)
-SELECT jsonb_pretty((public.get_dashboard_today_stats())::jsonb) AS today_stats;
+-- 기대: today_care_payments에 돌봄 결제만 포함 (위약금 제외)
+SELECT COALESCE(SUM(amount), 0) AS today_care_payments
+FROM payments
+WHERE paid_at::date = CURRENT_DATE
+  AND status = '결제완료'
+  AND payment_type = '돌봄';
 
 
 -- ============================================================
--- 16. RPC 검증 — get_settlement_summary (기간 필터 포함)
+-- 16. 데이터 검증 — get_settlement_summary 로직 검증 (기간 필터 포함)
 -- ============================================================
--- 기대: care_payment, penalty_payment 분리 표시, 기간 필터 파라미터 동작 확인
--- 16-a. 파라미터 없이 호출 (전체 기간)
-SELECT jsonb_pretty((public.get_settlement_summary())::jsonb) AS settlement_summary_all;
+-- 16-a. 전체 기간 — 결제 유형별 집계
+SELECT
+  SUM(CASE WHEN payment_type = '돌봄'  AND status = '결제완료' THEN amount ELSE 0 END) AS care_payment,
+  SUM(CASE WHEN payment_type = '위약금' AND status = '결제완료' THEN amount ELSE 0 END) AS penalty_payment,
+  SUM(CASE WHEN status = '결제완료' THEN amount ELSE 0 END) AS total_valid
+FROM payments;
 
--- 16-b. 기간 필터 적용 (2026년 3월)
-SELECT jsonb_pretty((public.get_settlement_summary('2026-03-01', '2026-03-31'))::jsonb) AS settlement_summary_march;
+-- 16-b. 전체 기간 — 정산 상태별 건수/금액
+SELECT status, COUNT(*) AS cnt, COALESCE(SUM(settlement_amount), 0) AS total_amount
+FROM settlements
+GROUP BY status
+ORDER BY status;
+
+-- 16-c. 기간 필터 (2026년 3월) — 결제
+SELECT
+  SUM(CASE WHEN payment_type = '돌봄'  AND status = '결제완료' THEN amount ELSE 0 END) AS care_payment,
+  SUM(CASE WHEN payment_type = '위약금' AND status = '결제완료' THEN amount ELSE 0 END) AS penalty_payment
+FROM payments
+WHERE paid_at >= '2026-03-01'::timestamptz
+  AND paid_at <= '2026-03-31'::timestamptz;
+
+-- 16-d. 기간 필터 (2026년 3월) — 정산
+SELECT status, COUNT(*) AS cnt, COALESCE(SUM(settlement_amount), 0) AS total_amount
+FROM settlements
+WHERE scheduled_date >= '2026-03-01'::date
+  AND scheduled_date <= '2026-03-31'::date
+GROUP BY status
+ORDER BY status;
 
 
 -- ============================================================
@@ -297,7 +333,7 @@ BEGIN
   RAISE NOTICE '검증 항목 (총 23개):';
   RAISE NOTICE '  1-6.   스키마/제약/FK/인덱스 확인';
   RAISE NOTICE '  7-11.  데이터 정합성 확인 (건수, fee NULL, JOIN, 예약별, settlements)';
-  RAISE NOTICE '  12-16. RPC 함수 동작 확인 (search_payments, search_refunds, dashboard, settlement_summary)';
+  RAISE NOTICE '  12-16. RPC 로직 검증 — 직접 쿼리 (search_payments, search_refunds, dashboard, settlement_summary)';
   RAISE NOTICE '  17-19. 참조 무결성 확인 (orphan, penalty type mismatch)';
   RAISE NOTICE '  20-22. 상세 데이터 확인 (refund #4, 예약 #4 로그, 노쇼 건)';
   RAISE NOTICE '  23.    전체 건수 요약 (payments 12, refunds 5, settlements 4)';
