@@ -4,7 +4,7 @@
 > 채팅 컨텍스트가 압축되더라도 이 문서를 참조하면 작업을 이어갈 수 있습니다.
 >
 > **최종 업데이트**: 2026-03-31
-> **관련 PR**: #83 (Phase A SQL 4종), #84 (fee NOT NULL + 오버로드 충돌 + 검증 권한 우회), #85 (SQL 22 RPC→직접 쿼리), #86 (refund #4 INSERT fallback)
+> **관련 PR**: #83 (Phase A SQL 4종), #84 (fee NOT NULL + 오버로드 충돌 + 검증 권한 우회), #85 (SQL 22 RPC→직접 쿼리), #86 (refund #4 INSERT fallback), #89 (Phase B UI 수정)
 
 ---
 
@@ -185,16 +185,34 @@
 
 ### Phase B: 결제관리 UI 수정
 
-**상태: 미착수 (Phase A 완료 후 진행)**
+**상태: ✅ 완료 (2026-03-31) — PR #89**
 
-수정 대상 파일:
+Phase B-1 (목록 탭)과 B-2 (상세 페이지)로 분리하여 순차 진행 완료.
+
+#### Phase B-1: 목록 탭 변경
 
 | 파일 | 수정 내용 |
 |------|----------|
-| `js/payments.js` | search_payments RPC 호출 시 `payment_type` 파라미터 전달 (기본값 `'돌봄'`), search_refunds 결과에서 penalty_payment 객체 활용, 환불 탭 테이블에 위약금 결제번호 표시. **단, `payment-detail.html`용 `payment_type` 분기 로직은 삭제** (돌봄 전용이므로 불필요) |
-| `payments.html` | 결제내역 탭: 돌봄 결제만 표시 (기존과 동일), 환불/위약금 탭: penalty_payment 정보 컬럼 표시 |
-| `payment-detail.html` | **돌봄 결제 전용 페이지** — `payment_type` 분기 로직 없음. 돌봄비 상세(돌봄비, 산책비, 픽업비 내역)만 표시 |
-| `refund-detail.html` | **위약금 결제 정보 섹션 추가** — `penalty_payment_id` JOIN으로 위약금 결제 상세 표시 (PG 거래번호, 승인번호, 결제수단, 금액, 결제일시). 위약금이 없는 환불 건은 해당 섹션 미표시 |
+| `js/payments.js` | ① `buildPayRpcParams()`에 `p_payment_type: '돌봄'` 추가 — 결제내역 탭이 돌봄 결제만 조회하도록 RPC 파라미터 명시 |
+| | ② `renderRefRow()`에서 "위약금 결제번호" 컬럼 삭제 (위약금 상세는 refund-detail.html에서 확인), "원 결제번호" 컬럼을 `payment-detail.html` 텍스트 링크("원 결제상세")로 변경, `REF_COL_COUNT` 14→13 |
+| | ③ 엑셀 다운로드: "위약금 결제번호" 필드 및 컬럼 정의 삭제 |
+| `payments.html` | 환불/위약금 탭 `<thead>`에서 `<th>위약금 결제번호</th>` 삭제 (14→13컬럼) |
+| `payment-detail.html` | 변경 없음 — 돌봄 결제 전용 페이지 유지 |
+
+#### Phase B-2: 상세 페이지 변경
+
+| 파일 | 수정 내용 |
+|------|----------|
+| `js/payments.js` | ④ `loadRefundDetail()` select 절에 `penalty_payment:penalty_payment_id(id, pg_transaction_id, approval_number, amount, payment_method, status, paid_at)` JOIN 추가 |
+| | ⑤ 영역 ④ 렌더링: `penalty_payment` 객체에서 7필드(결제번호·PG거래번호·승인번호·금액·결제수단·결제일시·결제상태) 표시, 위약금 결제번호는 UUID 텍스트만 표시(링크 없음), 위약금 미발생 시 영역 ④ 숨김 |
+| `refund-detail.html` | 영역 ④ HTML 구조 변경: 기존 5필드(거래번호·금액·결제수단·결제상태·유치원입금여부) → 7필드(결제번호·PG거래번호·승인번호·금액·결제수단·결제일시·결제상태) placeholder로 교체 |
+
+#### FK 조인 검증
+
+- `penalty_payment:penalty_payment_id(...)` 구문: Supabase에서 정상 동작 확인 (ambiguity 에러 없음)
+- `refunds` 테이블에 `payment_id`(원 결제)와 `penalty_payment_id`(위약금 결제) 두 FK가 존재하지만, 별칭(`penalty_payment:penalty_payment_id`)으로 구분하여 충돌 해소
+- 테스트 A (위약금 있는 건 11111111-0004): `penalty_payment` 객체 정상 반환 (7필드)
+- 테스트 B (위약금 없는 건 11111111-0001): `penalty_payment: null` 정상 반환
 
 ### Phase C: 기타 메뉴 점검 및 수정
 
@@ -350,3 +368,8 @@
 | | PR #86: SQL 20 refund #4 UPDATE→INSERT fallback (기존 DB에 refund #4 부재 시 대비) |
 | | DB 적용 완료: SQL 20 → 21 → 22 실행, 23개 검증 항목 전체 통과 |
 | | 최종 확인: payments 12건, refunds 5건, settlements 4건 |
+| 2026-03-31 | **Phase B 완료 (결제관리 UI 수정) — PR #89** |
+| | Phase B-1: `buildPayRpcParams()`에 `p_payment_type:'돌봄'` 추가, 환불/위약금 탭 "위약금 결제번호" 컬럼 전면 삭제 (JS·HTML·엑셀), "원 결제번호" 텍스트 링크 변경, REF_COL_COUNT 14→13 |
+| | Phase B-2: `loadRefundDetail()`에 `penalty_payment:penalty_payment_id(...)` JOIN 추가, `refund-detail.html` 영역 ④를 5필드→7필드 구조로 변경, FK 조인 검증 통과 |
+| | 수정 파일: `js/payments.js`, `payments.html`, `refund-detail.html` (3개) |
+| | 파일명 변경: `payment_refactoring_plan.md` → `PAYMENT_REFACTORING_PLAN.md` (대문자)

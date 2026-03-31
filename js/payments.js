@@ -74,7 +74,8 @@
       p_amount_min:     (payAmountMin && payAmountMin.value) ? Number(payAmountMin.value) : null,
       p_amount_max:     (payAmountMax && payAmountMax.value) ? Number(payAmountMax.value) : null,
       p_page:           page || 1,
-      p_per_page:       perPage || PER_PAGE
+      p_per_page:       perPage || PER_PAGE,
+      p_payment_type:   '돌봄'
     };
 
     if (paySearchInput && paySearchInput.value.trim()) {
@@ -255,7 +256,6 @@
 
     return '<tr>' +
       '<td>' + no + '</td>' +
-      '<td>' + api.escapeHtml(r.penalty_payment_id || '') + '</td>' +
       '<td>' + api.formatDate(r.requested_at) + '</td>' +
       '<td>' + reqBadge + '</td>' +
       '<td>' + api.escapeHtml(memberNickname) + '</td>' +
@@ -266,12 +266,12 @@
       '<td class="text-right">' + api.formatMoney(r.penalty_amount) + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td>' + (api.formatDate(r.completed_at) || '—') + '</td>' +
-      '<td>' + (r.payment_id ? '<a href="payment-detail.html?id=' + r.payment_id + '" class="data-table__link">' + api.escapeHtml(r.payment_id) + '</a>' : '—') + '</td>' +
+      '<td>' + (r.payment_id ? '<a href="payment-detail.html?id=' + r.payment_id + '" class="data-table__link">원 결제상세</a>' : '—') + '</td>' +
       '<td><a href="refund-detail.html?id=' + r.id + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
 
-  var REF_COL_COUNT = 14;
+  var REF_COL_COUNT = 13;
 
   async function loadRefList(page) {
     refPage = page || 1;
@@ -323,7 +323,6 @@
         if (rows.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
         api.exportExcel(rows.map(function (r) {
           return {
-            '위약금 결제번호': r.penalty_payment_id || '',
             '환불요청일시': r.requested_at || '',
             '요청자': r.requester || '',
             '보호자 닉네임': jv(r.members, 'nickname'),
@@ -337,7 +336,6 @@
             '원 결제번호': r.payment_id || ''
           };
         }), [
-          { key: '위약금 결제번호', label: '위약금 결제번호' },
           { key: '환불요청일시', label: '환불요청일시' },
           { key: '요청자', label: '요청자' },
           { key: '보호자 닉네임', label: '보호자 닉네임' },
@@ -478,7 +476,7 @@
   function loadRefundDetail() {
     var id = api.getParam('id');
     if (!id) return;
-    api.fetchDetail('refunds', id, '*, payments:payment_id(id, amount), reservations:reservation_id(id, checkin_scheduled)').then(function (result) {
+    api.fetchDetail('refunds', id, '*, payments:payment_id(id, amount), reservations:reservation_id(id, checkin_scheduled), penalty_payment:penalty_payment_id(id, pg_transaction_id, approval_number, amount, payment_method, status, paid_at)').then(function (result) {
       var r = result.data;
       if (!r || result.error) return;
 
@@ -523,15 +521,20 @@
         ]);
       }
 
-      // 영역 4: 위약금 결제 정보 (조건부)
+      // 영역 4: 위약금 결제 정보 (조건부 — penalty_payment JOIN)
+      var pp = r.penalty_payment || null;
       var penalty = document.getElementById('detailRefPenalty');
       if (penalty) {
-        if (r.penalty_amount > 0) {
+        if (pp) {
           penalty.closest('.detail-card').style.display = '';
           api.setHtml(penalty, [
-            ['위약금 거래번호', api.escapeHtml(r.penalty_tx_id || '')],
-            ['위약금 금액', api.formatMoney(r.penalty_amount)],
-            ['위약금 결제상태', api.autoBadge(r.penalty_payment_status || '', { '결제완료': 'green', '미결제': 'gray', '결제실패': 'red' })]
+            ['위약금 결제번호', api.escapeHtml(pp.id || '')],
+            ['PG 거래번호', api.escapeHtml(pp.pg_transaction_id || '')],
+            ['승인번호', api.escapeHtml(pp.approval_number || '')],
+            ['위약금 금액', '<span class="payment-amount-highlight">' + api.formatMoney(pp.amount) + '</span>'],
+            ['결제수단', api.escapeHtml(pp.payment_method || '')],
+            ['결제일시', api.formatDate(pp.paid_at)],
+            ['결제상태', api.autoBadge(pp.status || '', { '결제완료': 'green', '결제취소': 'red' })]
           ]);
         } else {
           penalty.closest('.detail-card').style.display = 'none';
