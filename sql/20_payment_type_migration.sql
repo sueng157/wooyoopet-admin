@@ -44,6 +44,21 @@ ALTER TABLE payments
 
 COMMENT ON COLUMN payments.payment_type IS '결제 타입: 돌봄(서비스 이용료), 위약금(예약 취소 위약금). 향후 훈련, 구독 등 확장 가능';
 
+-- fee 컬럼 NOT NULL 제약 제거 (위약금 결제 시 fee = NULL "해당 없음")
+-- 기존 돌봄 결제 데이터는 fee가 0 이상이므로 영향 없음
+ALTER TABLE payments ALTER COLUMN care_fee DROP NOT NULL;
+ALTER TABLE payments ALTER COLUMN walk_fee DROP NOT NULL;
+ALTER TABLE payments ALTER COLUMN pickup_fee DROP NOT NULL;
+
+-- 돌봄 결제일 때만 fee NOT NULL 강제 (조건부 CHECK)
+-- 위약금 결제는 fee = NULL 허용, 돌봄 결제는 fee 필수
+ALTER TABLE payments ADD CONSTRAINT payments_care_fee_required
+  CHECK (payment_type = '위약금' OR care_fee IS NOT NULL);
+ALTER TABLE payments ADD CONSTRAINT payments_walk_fee_required
+  CHECK (payment_type = '위약금' OR walk_fee IS NOT NULL);
+ALTER TABLE payments ADD CONSTRAINT payments_pickup_fee_required
+  CHECK (payment_type = '위약금' OR pickup_fee IS NOT NULL);
+
 
 -- ============================================================
 -- STEP 2: refunds 테이블에 penalty_payment_id FK 추가

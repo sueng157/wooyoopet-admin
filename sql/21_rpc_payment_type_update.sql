@@ -15,6 +15,26 @@
 
 
 -- ============================================================
+-- 0. 기존 함수 시그니처 제거 (오버로드 충돌 방지)
+-- ============================================================
+-- search_payments: SQL 17에서 10개 파라미터로 생성됨
+--   SQL 21에서 p_payment_type 파라미터를 추가하면 11개가 되어
+--   PostgreSQL이 두 개의 오버로드로 인식 → 호출 시 ambiguity 에러
+-- get_settlement_summary: SQL 12에서 0개 파라미터로 생성됨
+--   SQL 21에서 p_date_from, p_date_to를 추가하면 2개가 되어 동일 문제
+--
+-- DROP 후 CREATE OR REPLACE로 새 시그니처만 남김
+
+-- 기존 search_payments (10 params) 제거
+DROP FUNCTION IF EXISTS public.search_payments(
+  text, text, text, text, text, text, numeric, numeric, int, int
+);
+
+-- 기존 get_settlement_summary (0 params) 제거
+DROP FUNCTION IF EXISTS public.get_settlement_summary();
+
+
+-- ============================================================
 -- 1. search_payments — 결제내역 탭 (파라미터화된 payment_type 필터)
 -- ============================================================
 -- 변경사항:
