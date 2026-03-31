@@ -4,7 +4,7 @@
 > 채팅 컨텍스트가 압축되더라도 이 문서를 참조하면 작업을 이어갈 수 있습니다.
 >
 > **최종 업데이트**: 2026-03-31
-> **관련 PR**: (Phase별 PR 생성 시 업데이트)
+> **관련 PR**: #83 (Phase A SQL 4종), #84 (fee NOT NULL + 오버로드 충돌 + 검증 권한 우회), #85 (SQL 22 RPC→직접 쿼리), #86 (refund #4 INSERT fallback)
 
 ---
 
@@ -140,23 +140,27 @@
 
 ### Phase A: DB 스키마 변경 (SQL 스크립트)
 
-**상태: 초안 작성 완료 → 피드백 반영 수정 중**
+**상태: ✅ 완료 (2026-03-31) — DB 적용 및 검증 통과**
 
 | 파일 | 용도 | 상태 |
 |------|------|------|
-| `sql/20_payment_type_migration.sql` | 마이그레이션: 컬럼 추가, 인덱스, 테스트 데이터, settlements 통일 | 수정 중 |
-| `sql/21_rpc_payment_type_update.sql` | RPC 함수 5개 업데이트 | 수정 중 |
-| `sql/10_test_data.sql` | 테스트 데이터 (payment_type 반영, 노쇼 시나리오 수정) | 수정 중 |
+| `sql/20_payment_type_migration.sql` | 마이그레이션: 컬럼 추가, fee NOT NULL 제거, 인덱스, 테스트 데이터, settlements 통일 | ✅ 완료 |
+| `sql/21_rpc_payment_type_update.sql` | 기존 함수 DROP + RPC 함수 5개 업데이트 | ✅ 완료 |
+| `sql/10_test_data.sql` | 테스트 데이터 (payment_type 반영, 위약금 결제, 노쇼 시나리오) | ✅ 완료 |
 
-#### SQL 20 수정 사항 (피드백 반영)
+#### SQL 20 수정 이력
 
 1. **노쇼 시나리오 제거**: 위약금 결제 건 f0f0f0f0-0013 삭제, refund #6 삭제, f0f0f0f0-0007 상태 변경 삭제
 2. **예약 #4 정합성**: 예약 e0e0e0e0-0004 상태를 '예약확정'→'보호자취소'로, refund #4 requester를 '보호자'로
+3. **fee NOT NULL 제거** (PR #84): `care_fee`, `walk_fee`, `pickup_fee` NOT NULL 제약 제거 + 조건부 CHECK 추가 (`payment_type='위약금'`이면 NULL 허용)
+4. **refund #4 INSERT fallback** (PR #86): UPDATE 후 NOT FOUND이면 INSERT 실행 (기존 DB에 refund #4가 없는 경우 대비)
 
-#### SQL 21 수정 사항 (피드백 반영)
+#### SQL 21 수정 이력
 
 1. **search_payments 파라미터화**: `p_payment_type text DEFAULT '돌봄'` 파라미터 추가
 2. **get_settlement_summary 기간 필터**: `p_date_from`, `p_date_to` 파라미터 추가
+3. **get_settlement_summary settlements 서브쿼리**: `scheduled_date` 기준 날짜 필터 추가 (4개 서브쿼리)
+4. **오버로드 충돌 해결** (PR #84): `search_payments`(10→11 params), `get_settlement_summary`(0→2 params) 기존 시그니처 DROP 추가
 
 #### 최종 데이터 건수 (수정 후 기대값)
 
@@ -168,11 +172,16 @@
 
 ### Phase A-1: DB 변경 검증
 
-**상태: 검증 쿼리 초안 작성 완료 → 기대값 수정 필요**
+**상태: ✅ 완료 (2026-03-31) — 23개 검증 항목 전체 통과**
 
-| 파일 | 용도 |
-|------|------|
-| `sql/22_validation_queries.sql` | 19개 검증 항목 (스키마/데이터/RPC/참조 무결성) |
+| 파일 | 용도 | 상태 |
+|------|------|------|
+| `sql/22_validation_queries.sql` | 23개 검증 항목 (스키마/데이터/RPC 로직/참조 무결성) | ✅ 완료 |
+
+#### SQL 22 수정 이력
+
+1. **검증 항목 19→23개 확장**: refund #4 상세, 예약 #4 로그, 노쇼 건, 전체 건수 요약 추가
+2. **RPC 호출→직접 쿼리 대체** (PR #85): #12~#16 `is_admin()` 권한 문제로 RPC 직접 호출 불가 → 동일 로직의 직접 SELECT 쿼리로 대체
 
 ### Phase B: 결제관리 UI 수정
 
@@ -334,3 +343,10 @@
 | 2026-03-31 | 섹션 6 refund #4 데이터 값 보정: 새 로직(위약금 별도 결제, 돌봄비 전액 환불) 반영 |
 | |  refund_rate 50→100, refund_amount 72,500→145,000, cancel_reason/applied_rule 수정 |
 | | 섹션 2-4 관리자 직권 취소 보충: 위약금 임의 지정/면제 가능, 테스트 데이터 미생성 명시 |
+| 2026-03-31 | **Phase A / A-1 완료** |
+| | PR #83: Phase A SQL 스크립트 4종 (sql/20, 21, 22, 10) 최초 작성 및 merge |
+| | PR #84: SQL 20 fee NOT NULL 제거 + SQL 21 오버로드 충돌 해결 (DROP FUNCTION 추가) + SQL 22 권한 우회 |
+| | PR #85: SQL 22 RPC 직접 호출 → 직접 쿼리 대체 (is_admin 권한 체크 우회) |
+| | PR #86: SQL 20 refund #4 UPDATE→INSERT fallback (기존 DB에 refund #4 부재 시 대비) |
+| | DB 적용 완료: SQL 20 → 21 → 22 실행, 23개 검증 항목 전체 통과 |
+| | 최종 확인: payments 12건, refunds 5건, settlements 4건 |
