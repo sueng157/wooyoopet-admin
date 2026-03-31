@@ -364,8 +364,8 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | RPC 함수명 | 적용 메뉴 | SQL 파일 | JOIN 구조 |
 |------------|----------|---------|-----------|
 | `search_reservations` | 돌봄예약관리 목록 | `sql/13_search_reservations.sql` | reservations → members, pets, kindergartens, payments |
-| `search_payments` | 결제관리 > 결제내역 탭 | `sql/17_search_payments.sql` | payments → members, pets, kindergartens |
-| `search_refunds` | 결제관리 > 환불/위약금 탭 | `sql/19_search_refunds.sql` | refunds → members, kindergartens, reservations → pets |
+| `search_payments` | 결제관리 > 결제내역 탭 | `sql/21_rpc_payment_type_update.sql` | payments → members, pets, kindergartens (payment_type 필터 적용) |
+| `search_refunds` | 결제관리 > 환불/위약금 탭 | `sql/21_rpc_payment_type_update.sql` | refunds → members, kindergartens, reservations → pets, payments(penalty_payment) |
 
 **RPC 함수 공통 구조:**
 1. **파라미터 설계**: `p_date_from`, `p_date_to` (기간), `p_status` (상태 필터), `p_search_type` + `p_search_keyword` (검색 기준/키워드), `p_page` + `p_per_page` (페이지네이션). 필요에 따라 추가 필터 파라미터 포함
@@ -389,25 +389,32 @@ var result = parseRpcResult(rpcResult.data);  // {data: [], count: 0}
 
 **신규 메뉴 개발 가이드:** 다른 테이블의 데이터를 조인하여 검색하는 필터가 필요한 경우, RPC 함수 방식을 표준 구현 패턴으로 사용. `search_reservations` / `search_payments` / `search_refunds`의 구조를 참고하여 동일한 패턴으로 RPC 함수를 생성할 것.
 
-### 5-13. 보류 중인 작업 — 위약금 결제 흐름 DB 반영
+### 5-13. 위약금 결제 흐름 DB 반영 — Phase A 완료 (2026-03-31)
 
-**현재 서비스의 환불/위약금 로직:**
+> 상세 계획서: `payment_refactoring_plan.md` 참조 (PR #83~#87)
+
+**서비스의 환불/위약금 로직:**
 - 보호자가 돌봄 예약을 취소할 때 위약금을 PG사를 통해 별도 결제하고, 기존 돌봄비 결제 건은 전액 환불하는 방식
 - 위약금 결제는 돌봄비 결제와 완전히 동일한 PG 결제 프로세스를 거침 (모바일 앱에 이미 구현 완료)
 
-**현재 DB 상태:**
-- `payments` 테이블에는 돌봄비 결제 건만 존재하며, 위약금 결제 건이 별도로 저장되는 구조가 아직 반영되지 않음
-- `refunds` 테이블의 `penalty_amount`, `penalty_tx_id` 등 위약금 관련 컬럼은 존재하지만 실제 데이터는 비어있는 상태
+**Phase A 완료 (DB 스키마 변경 + RPC 업데이트):**
+1. ✅ `payments` 테이블에 `payment_type` 컬럼 추가 (`'돌봄'` / `'위약금'`, CHECK 제약)
+2. ✅ `refunds` 테이블에 `penalty_payment_id` 컬럼 추가 (FK → payments.id)
+3. ✅ `search_payments` RPC: `p_payment_type` 파라미터 추가 (DEFAULT `'돌봄'`), 기존 시그니처 DROP
+4. ✅ `search_refunds` RPC: `penalty_payment_id`로 payments LEFT JOIN, 위약금 결제 정보 반환
+5. ✅ `get_dashboard_monthly_sales` / `get_dashboard_today_stats`: 돌봄/위약금 분리 집계
+6. ✅ `get_settlement_summary`: 기간 필터 추가, 기존 시그니처 DROP
+7. ✅ `settlements.transaction_type`: `'돌봄결제'` → `'돌봄'` 통일, CHECK 제약 추가
+8. ✅ fee 컬럼 (`care_fee`, `walk_fee`, `pickup_fee`): NOT NULL 제거, 조건부 CHECK (위약금 시 NULL 허용)
+9. ✅ 검증 쿼리 23항목 통과 (payments 12건, refunds 5건, settlements 4건)
 
-**향후 필요한 작업:**
-1. `payments` 테이블에 `payment_type` 컬럼 추가 (돌봄결제 / 위약금결제 구분)
-2. `refunds` 테이블에 `penalty_payment_id` 컬럼 추가 (FK → payments.id, 위약금 결제 건 참조)
-3. 결제 내역 탭에서 `payment_type = '돌봄결제'`만 필터링하여 노출
-4. 환불/위약금 탭에서 `penalty_payment_id`로 위약금 결제 정보를 JOIN하여 노출
-5. `payments` 테이블을 참조하는 다른 메뉴들(회원관리, 유치원관리, 반려동물관리, 돌봄예약관리 등)에서 `payment_type`에 따른 노출 방식 결정 필요
-6. 돌봄비 결제 상세와 위약금 결제 상세는 표시해야 할 정보 구성이 다르므로 상세 페이지를 별도로 구성해야 함
+**Phase B 예정 (UI 수정):**
+- `js/payments.js`, `payments.html`: search_payments에 payment_type 파라미터, 환불 탭에 penalty_payment 표시
+- `payment-detail.html`: 돌봄 결제 전용 (payment_type 분기 없음)
+- `refund-detail.html`: 위약금 결제 정보 섹션 추가 (penalty_payment_id JOIN)
 
-**권장 시점:** 모바일 앱과 DB를 연결하는 시점에 함께 설계·적용. 현재는 관리자 페이지 작업 속도를 우선하여 기존 `refunds` 테이블 구조로 환불/위약금 탭을 구성한 상태이며, 위약금 결제번호는 "—"으로 표시됨.
+**Phase C 예정 (기타 메뉴):**
+- `payments` 테이블을 참조하는 다른 메뉴들(대시보드, 회원관리, 유치원관리, 돌봄예약관리, 정산관리)에서 `payment_type`에 따른 노출 방식 점검
 
 ---
 
