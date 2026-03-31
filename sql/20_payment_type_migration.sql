@@ -112,20 +112,49 @@ INSERT INTO payments (
 -- (참고: payment_refactoring_plan.md 섹션 6)
 
 -- 4-1. refund #4 데이터 보정 및 penalty_payment_id 연결
-UPDATE refunds
-SET
-  requester = '보호자',
-  cancel_reason = '개인 사정으로 취소합니다',
-  applied_rule = '24~72시간 전 취소 – 위약금 50%',
-  refund_rate = 100,                          -- 돌봄비 전액 환불
-  refund_amount = 145000,                     -- = original_amount (돌봄비 전액)
-  -- penalty_rate = 50 유지, penalty_amount = 72500 유지
-  status = '환불완료',
-  completed_at = '2026-03-26 10:10:00+09',
-  pg_refund_tx_id = 'RF20260326100001',
-  penalty_payment_status = '결제완료',
-  penalty_payment_id = 'f0f0f0f0-0012-4000-a000-000000000012'
-WHERE id = '11111111-0004-4000-a000-000000000004';
+-- UPDATE 먼저 시도 → 해당 건이 없으면 INSERT (기존 DB에 refund #4가 없는 경우 대비)
+DO $$
+BEGIN
+  UPDATE refunds
+  SET
+    requester = '보호자',
+    cancel_reason = '개인 사정으로 취소합니다',
+    applied_rule = '24~72시간 전 취소 – 위약금 50%',
+    refund_rate = 100,
+    refund_amount = 145000,
+    status = '환불완료',
+    completed_at = '2026-03-26 10:10:00+09',
+    pg_refund_tx_id = 'RF20260326100001',
+    penalty_payment_status = '결제완료',
+    penalty_payment_id = 'f0f0f0f0-0012-4000-a000-000000000012'
+  WHERE id = '11111111-0004-4000-a000-000000000004';
+
+  IF NOT FOUND THEN
+    INSERT INTO refunds (
+      id, payment_id, reservation_id, member_id, kindergarten_id,
+      requester, cancel_reason, requested_at, hours_before_checkin,
+      applied_rule, original_amount, refund_rate, refund_amount,
+      penalty_rate, penalty_amount, status, completed_at,
+      pg_refund_tx_id, refund_method, penalty_payment_status,
+      penalty_payment_id, created_at
+    ) VALUES (
+      '11111111-0004-4000-a000-000000000004',
+      'f0f0f0f0-0004-4000-a000-000000000004',
+      'e0e0e0e0-0004-4000-a000-000000000004',
+      'd0d0d0d0-0003-4000-a000-000000000003',
+      'b0b0b0b0-0002-4000-a000-000000000002',
+      '보호자', '개인 사정으로 취소합니다',
+      '2026-03-26 10:00:00+09', 48.0,
+      '24~72시간 전 취소 – 위약금 50%',
+      145000, 100, 145000, 50, 72500,
+      '환불완료', '2026-03-26 10:10:00+09',
+      'RF20260326100001', '신한카드', '결제완료',
+      'f0f0f0f0-0012-4000-a000-000000000012',
+      '2026-03-26 10:00:00+09'
+    );
+    RAISE NOTICE 'refund #4 not found — INSERT executed';
+  END IF;
+END $$;
 
 -- 4-2. 원 결제 f0f0f0f0-0004 상태 변경: '결제완료' → '결제취소'
 UPDATE payments
