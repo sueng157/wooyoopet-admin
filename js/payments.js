@@ -530,18 +530,57 @@
     return !!document.getElementById('detailRefBasic');
   }
 
-  function loadRefundDetail() {
-    var id = api.getParam('id');
-    if (!id) return;
-    api.fetchDetail('refunds', id, '*, payments:payment_id(id, amount), reservations:reservation_id(id, checkin_scheduled), penalty_payment:penalty_payment_id(id, pg_transaction_id, approval_number, amount, payment_method, status, paid_at)').then(function (result) {
-      var r = result.data;
-      if (!r || result.error) return;
+  /** 환불/위약금 상세 에러 메시지 표시 */
+  function showRefundDetailError(msg) {
+    var ids = ['detailRefBasic', 'detailRefPenalty', 'detailRefCalc', 'detailRefProc', 'detailRefLinks'];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<span style="color:var(--danger);padding:12px;">' + api.escapeHtml(msg) + '</span>';
+    });
+  }
 
-      // 영역 1: 환불 기본정보
+  async function loadRefundDetail() {
+    console.log('[refund-detail] loadRefundDetail START');
+    var id = api.getParam('id');
+    console.log('[refund-detail] id from URL:', id);
+    if (!id) {
+      showRefundDetailError('환불 ID가 URL에 없습니다.');
+      return;
+    }
+
+    try {
+      // ── 메인 쿼리: refunds 본 데이터 (payments, penalty_payment 조인 제외 — PGRST201 방지) ──
+      var refSelect = '*, members:member_id(id, nickname), kindergartens:kindergarten_id(id, name), reservations:reservation_id(id, checkin_scheduled, pets:pet_id(id, name))';
+      console.log('[refund-detail] fetching refund data...');
+      var result = await api.fetchDetail('refunds', id, refSelect);
+      console.log('[refund-detail] fetchDetail result:', result);
+
+      if (result.error) {
+        console.error('[refund-detail] fetchDetail error:', result.error);
+        showRefundDetailError('데이터를 불러오지 못했습니다. (코드: ' + (result.error.code || result.error.message || 'unknown') + ')');
+        return;
+      }
+      var r = result.data;
+      if (!r) {
+        showRefundDetailError('환불 데이터를 찾을 수 없습니다.');
+        return;
+      }
+      console.log('[refund-detail] refund data loaded:', r.id);
+
+      var m = r.members || {};
+      var kg = r.kindergartens || {};
+      var resv = r.reservations || {};
+      var pet = (resv && resv.pets) ? resv.pets : {};
+
+      // ── 영역 1: 환불 기본정보 ──
       var basic = document.getElementById('detailRefBasic');
       if (basic) {
         api.setHtml(basic, [
-          ['환불 고유번호', r.id],
+          ['환불 고유번호', api.escapeHtml(r.id || '')],
+          ['기존 예약번호', r.reservation_id ? '<a href="reservation-detail.html?id=' + encodeURIComponent(r.reservation_id) + '" class="info-grid__value--link">' + api.escapeHtml(r.reservation_id) + '</a>' : '—'],
+          ['보호자 닉네임', m.id ? '<a href="member-detail.html?id=' + encodeURIComponent(m.id) + '" class="info-grid__value--link">' + api.escapeHtml(m.nickname || '') + '</a>' : api.escapeHtml(m.nickname || '—')],
+          ['반려동물 이름', pet.id ? '<a href="pet-detail.html?id=' + encodeURIComponent(pet.id) + '" class="info-grid__value--link">' + api.escapeHtml(pet.name || '') + '</a>' : api.escapeHtml(pet.name || '—')],
+          ['유치원명', kg.id ? '<a href="kindergarten-detail.html?id=' + encodeURIComponent(kg.id) + '" class="info-grid__value--link">' + api.escapeHtml(kg.name || '') + '</a>' : api.escapeHtml(kg.name || '—')],
           ['취소 요청일시', api.formatDate(r.requested_at)],
           ['요청자', api.autoBadge(r.requester || '', { '보호자': 'brown', '유치원': 'pink', '관리자': 'red' })],
           ['취소 사유', api.escapeHtml(r.cancel_reason || '')],
@@ -551,22 +590,49 @@
         ]);
       }
 
-      // 영역 2: 위약금 산정
+      // ── 별도 쿼리 1: 위약금 결제 정보 (penalty_payment_id → payments) ──
+      var penaltyEl = document.getElementById('detailRefPenalty');
+      if (penaltyEl) {
+        if (r.penalty_payment_id) {
+          console.log('[refund-detail] fetching penalty payment:', r.penalty_payment_id);
+          var ppResult = await api.fetchDetail('payments', r.penalty_payment_id, 'id, pg_transaction_id, approval_number, amount, payment_method, status, paid_at');
+          console.log('[refund-detail] penalty payment result:', ppResult);
+          var pp = ppResult.data;
+          if (pp) {
+            penaltyEl.closest('.detail-card').style.display = '';
+            api.setHtml(penaltyEl, [
+              ['위약금 결제번호', api.escapeHtml(pp.id || '')],
+              ['PG 거래번호', api.escapeHtml(pp.pg_transaction_id || '')],
+              ['승인번호', api.escapeHtml(pp.approval_number || '')],
+              ['위약금 금액', '<span class="payment-amount-highlight">' + api.formatMoney(pp.amount) + '</span>'],
+              ['결제수단', api.escapeHtml(mapPaymentMethod(pp.payment_method))],
+              ['결제일시', api.formatDate(pp.paid_at)],
+              ['결제상태', api.autoBadge(pp.status || '', { '결제완료': 'green', '결제취소': 'red' })]
+            ]);
+          } else {
+            penaltyEl.closest('.detail-card').style.display = 'none';
+          }
+        } else {
+          penaltyEl.closest('.detail-card').style.display = 'none';
+        }
+      }
+
+      // ── 영역 3: 위약금 산정 (순서 변경: 환불금액 → 등원예정 → 취소요청 → 남은시간 → 규정 → 비율 → 금액) ──
       var calc = document.getElementById('detailRefCalc');
       if (calc) {
         calc.innerHTML =
           '<div class="info-grid info-grid--wide">' +
-          '<div class="info-grid__label">등원 예정일시</div><div class="info-grid__value">' + api.formatDate(r.reservations ? r.reservations.checkin_scheduled : '') + '</div>' +
+          '<div class="info-grid__label">환불(기존 결제 취소) 금액</div><div class="info-grid__value"><span class="payment-amount-highlight">' + api.formatMoney(r.refund_amount || 0) + '</span></div>' +
+          '<div class="info-grid__label">등원 예정일시</div><div class="info-grid__value">' + api.formatDate(resv.checkin_scheduled || '') + '</div>' +
           '<div class="info-grid__label">취소 요청일시</div><div class="info-grid__value">' + api.formatDate(r.requested_at) + '</div>' +
           '<div class="info-grid__label">등원까지 남은시간</div><div class="info-grid__value" style="font-weight:700;">' + (r.hours_before_checkin != null ? r.hours_before_checkin + '시간' : '—') + '</div>' +
           '<div class="info-grid__label">위약금 적용 규정</div><div class="info-grid__value">' + api.escapeHtml(r.applied_rule || '—') + '</div>' +
           '<div class="info-grid__label">위약금 비율</div><div class="info-grid__value"><span class="refund-penalty-rate--highlighted">' + (r.penalty_rate || 0) + '%</span></div>' +
           '<div class="info-grid__label">위약금 금액</div><div class="info-grid__value"><span class="refund-penalty-rate--highlighted">' + api.formatMoney(r.penalty_amount || 0) + '</span></div>' +
-          '<div class="info-grid__label">환불(기존 결제 취소) 금액</div><div class="info-grid__value"><span class="payment-amount-highlight">' + api.formatMoney(r.refund_amount || 0) + '</span></div>' +
           '</div>';
       }
 
-      // 영역 3: 환불 처리 정보
+      // ── 영역 4: 환불 처리 정보 ──
       var proc = document.getElementById('detailRefProc');
       if (proc) {
         api.setHtml(proc, [
@@ -578,37 +644,22 @@
         ]);
       }
 
-      // 영역 4: 위약금 결제 정보 (조건부 — penalty_payment JOIN)
-      var pp = r.penalty_payment || null;
-      var penalty = document.getElementById('detailRefPenalty');
-      if (penalty) {
-        if (pp) {
-          penalty.closest('.detail-card').style.display = '';
-          api.setHtml(penalty, [
-            ['위약금 결제번호', api.escapeHtml(pp.id || '')],
-            ['PG 거래번호', api.escapeHtml(pp.pg_transaction_id || '')],
-            ['승인번호', api.escapeHtml(pp.approval_number || '')],
-            ['위약금 금액', '<span class="payment-amount-highlight">' + api.formatMoney(pp.amount) + '</span>'],
-            ['결제수단', api.escapeHtml(pp.payment_method || '')],
-            ['결제일시', api.formatDate(pp.paid_at)],
-            ['결제상태', api.autoBadge(pp.status || '', { '결제완료': 'green', '결제취소': 'red' })]
-          ]);
-        } else {
-          penalty.closest('.detail-card').style.display = 'none';
-        }
-      }
-
-      // 영역 5: 관련 링크
+      // ── 영역 5: 관련 링크 ──
       var links = document.getElementById('detailRefLinks');
       if (links) {
         api.setHtml(links, [
-          ['원 결제번호', r.payment_id ? api.renderDetailLink('payment-detail.html', r.payment_id) : '—'],
-          ['예약번호', r.reservation_id ? api.renderDetailLink('reservation-detail.html', r.reservation_id) : '—'],
+          ['원 결제번호', r.payment_id ? '<a href="payment-detail.html?id=' + encodeURIComponent(r.payment_id) + '" class="info-grid__value--link">' + api.escapeHtml(r.payment_id) + '</a>' : '—'],
+          ['예약번호', r.reservation_id ? '<a href="reservation-detail.html?id=' + encodeURIComponent(r.reservation_id) + '" class="info-grid__value--link">' + api.escapeHtml(r.reservation_id) + '</a>' : '—'],
           ['정산번호', '—']
         ]);
       }
 
-    }).catch(function (err) { console.error('[payments] refund detail error:', err); });
+      console.log('[refund-detail] loadRefundDetail DONE');
+
+    } catch (err) {
+      console.error('[refund-detail] detail exception:', err);
+      showRefundDetailError('데이터를 불러오는 중 오류가 발생했습니다. (' + (err.message || err) + ')');
+    }
   }
 
   function bindRefundDetailModals() {
@@ -654,6 +705,7 @@
   }
 
   function initRefundDetail() {
+    console.log('[refund-detail] initRefundDetail called');
     loadRefundDetail();
     bindRefundDetailModals();
     api.hideIfReadOnly(PERM_KEY);

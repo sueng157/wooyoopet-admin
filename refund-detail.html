@@ -82,109 +82,39 @@
           <h2 class="detail-card__title">환불 기본정보</h2>
         </div>
         <div class="info-grid" id="detailRefBasic">
-          <div class="info-grid__label">환불 고유번호</div>
-          <div class="info-grid__value">RF-00000567</div>
-
-          <div class="info-grid__label">취소 요청일시</div>
-          <div class="info-grid__value">2026-03-16 14:30</div>
-
-          <div class="info-grid__label">요청자</div>
-          <div class="info-grid__value"><span class="badge badge--c-brown">보호자</span></div>
-
-          <div class="info-grid__label">취소 사유</div>
-          <div class="info-grid__value">일정 변경으로 인한 취소</div>
-
-          <div class="info-grid__label">처리상태</div>
-          <div class="info-grid__value"><span class="badge badge--c-green">환불완료</span></div>
-
-          <div class="info-grid__label">완료일시</div>
-          <div class="info-grid__value">2026-03-16 15:00</div>
-
-          <div class="info-grid__label">실패 사유</div>
-          <div class="info-grid__value" style="color: var(--text-weak);">—</div>
+          <div class="info-grid__value" style="color:var(--text-weak);">로딩중...</div>
         </div>
       </div>
 
-      <!-- ========== 영역 ②: 위약금 산정 ========== -->
+      <!-- ========== 영역 ②: 위약금 결제 정보 (조건부) ========== -->
+      <div class="detail-card conditional-section">
+        <div class="detail-card__header">
+          <h2 class="detail-card__title">위약금 결제 정보 <span class="conditional-section__badge">위약금 발생</span></h2>
+        </div>
+        <div class="info-grid" id="detailRefPenalty">
+          <div class="info-grid__value" style="color:var(--text-weak);">로딩중...</div>
+        </div>
+      </div>
+
+      <!-- ========== 영역 ③: 위약금 산정 ========== -->
       <div class="detail-card">
         <div class="detail-card__header">
           <h2 class="detail-card__title">위약금 산정</h2>
         </div>
         <div class="penalty-calc-highlight" id="detailRefCalc">
           <div class="info-grid info-grid--wide">
-            <div class="info-grid__label">등원 예정일시</div>
-            <div class="info-grid__value">2026-03-18 09:00</div>
-
-            <div class="info-grid__label">취소 요청일시</div>
-            <div class="info-grid__value">2026-03-16 14:30</div>
-
-            <div class="info-grid__label">등원까지 남은시간</div>
-            <div class="info-grid__value" style="font-weight: 700;">42시간 30분</div>
-
-            <div class="info-grid__label">위약금 적용 규정</div>
-            <div class="info-grid__value">24~72시간 전 취소 — 50% 환불</div>
-
-            <div class="info-grid__label">위약금 비율</div>
-            <div class="info-grid__value"><span class="refund-penalty-rate--highlighted">50%</span></div>
-
-            <div class="info-grid__label">위약금 금액</div>
-            <div class="info-grid__value"><span class="refund-penalty-rate--highlighted">27,500원</span></div>
-
-            <div class="info-grid__label">환불(기존 결제 취소) 금액</div>
-            <div class="info-grid__value"><span class="payment-amount-highlight">55,000원</span></div>
+            <div class="info-grid__value" style="color:var(--text-weak);">로딩중...</div>
           </div>
         </div>
       </div>
 
-      <!-- ========== 영역 ③: 환불 처리 정보 ========== -->
+      <!-- ========== 영역 ④: 환불 처리 정보 ========== -->
       <div class="detail-card">
         <div class="detail-card__header">
           <h2 class="detail-card__title">환불 처리 정보</h2>
         </div>
         <div class="info-grid" id="detailRefProc">
-          <div class="info-grid__label">PG 환불 거래번호</div>
-          <div class="info-grid__value">INI-RF-20260316-0001</div>
-
-          <div class="info-grid__label">환불 수단</div>
-          <div class="info-grid__value">원래 결제수단 (신용카드)</div>
-
-          <div class="info-grid__label">환불 처리상태</div>
-          <div class="info-grid__value"><span class="badge badge--c-green">환불완료</span></div>
-
-          <div class="info-grid__label">환불 완료일시</div>
-          <div class="info-grid__value">2026-03-16 15:00</div>
-
-          <div class="info-grid__label">환불 실패 사유</div>
-          <div class="info-grid__value" style="color: var(--text-weak);">—</div>
-        </div>
-      </div>
-
-      <!-- ========== 영역 ④: 위약금 결제 정보 (조건부) ========== -->
-      <div class="detail-card conditional-section">
-        <div class="detail-card__header">
-          <h2 class="detail-card__title">위약금 결제 정보 <span class="conditional-section__badge">위약금 발생</span></h2>
-        </div>
-        <div class="info-grid" id="detailRefPenalty">
-          <div class="info-grid__label">위약금 결제번호</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">PG 거래번호</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">승인번호</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">위약금 금액</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">결제수단</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">결제일시</div>
-          <div class="info-grid__value">—</div>
-
-          <div class="info-grid__label">결제상태</div>
-          <div class="info-grid__value">—</div>
+          <div class="info-grid__value" style="color:var(--text-weak);">로딩중...</div>
         </div>
       </div>
 
@@ -194,14 +124,7 @@
           <h2 class="detail-card__title">관련 링크</h2>
         </div>
         <div class="info-grid" id="detailRefLinks">
-          <div class="info-grid__label">원 결제번호</div>
-          <div class="info-grid__value"><a href="payment-detail.html" class="info-grid__value--link">PAY-00001234</a></div>
-
-          <div class="info-grid__label">예약번호</div>
-          <div class="info-grid__value"><a href="reservation-detail.html" class="info-grid__value--link">R-00001234</a></div>
-
-          <div class="info-grid__label">정산번호</div>
-          <div class="info-grid__value"><a href="#" class="info-grid__value--link">STL-00000123</a></div>
+          <div class="info-grid__value" style="color:var(--text-weak);">로딩중...</div>
         </div>
       </div>
 
