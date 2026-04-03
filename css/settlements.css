@@ -66,8 +66,12 @@
   color: var(--primary);
 }
 
-/* ── 상단 요약 2행 래퍼 ── */
+/* ── 상단 요약 카드 래퍼 ── */
 .summary-section {
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-card);
+  padding: 24px;
   margin-bottom: 24px;
 }
 
@@ -78,5 +82,44 @@
 .summary-section .stat-cards:last-child {
   margin-bottom: 0;
 }
+
+/* ── 기간 버튼 (filter-period-btn) ── */
+.filter-period-btn {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+}
+
+.filter-period-btn:first-of-type {
+  margin-left: 12px;
+}
+
+.filter-period-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-period-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* ── (삭제됨) 2행 compact 스타일 → 1행과 동일한 폰트 크기로 통일 ──
+   stat-card--compact 클래스 제거, 기본 stat-card 스타일을 그대로 사용 */
+
+/* ── 금액 필터 인풋 (payments.css 미로드이므로 settlements.css에 추가) ── */
+.filter-input--amount {
+  width: 140px;
+}
+
 
 /* ── 체크박스 칼럼 → components.css 에 통합 ── */

@@ -301,21 +301,30 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
-          <!-- 1행: 기간 -->
+          <!-- 1행: 예정일 -->
           <div class="filter-row">
-            <span class="filter-label">기간</span>
-            <input type="date" class="filter-input" value="2026-01-01">
-            <span class="filter-label" style="min-width:auto; text-align:center;">~</span>
-            <input type="date" class="filter-input" value="2026-03-17">
+            <span class="filter-label">예정일</span>
+            <input type="date" class="filter-input filter-input--date" value="">
+            <span class="filter-separator">~</span>
+            <input type="date" class="filter-input filter-input--date" value="">
+            <button type="button" class="filter-period-btn active" data-period="all">전체</button>
+            <button type="button" class="filter-period-btn" data-period="this-month">당월</button>
+            <button type="button" class="filter-period-btn" data-period="1month">최근 1개월</button>
+            <button type="button" class="filter-period-btn" data-period="1week">최근 1주일</button>
           </div>
-          <!-- 2행: 정산상태 -->
+          <!-- 2행: 필터 -->
           <div class="filter-row">
-            <span class="filter-label">정산상태</span>
+            <span class="filter-label">필터</span>
             <select class="filter-select">
-              <option>전체</option>
-              <option>정산예정</option>
-              <option>정산완료</option>
-              <option>정산보류</option>
+              <option value="">정산상태: 전체</option>
+              <option value="정산예정">정산예정</option>
+              <option value="정산완료">정산완료</option>
+              <option value="정산보류">정산보류</option>
+            </select>
+            <select class="filter-select">
+              <option value="">거래유형: 전체</option>
+              <option value="돌봄">돌봄</option>
+              <option value="위약금">위약금</option>
             </select>
           </div>
           <!-- 3행: 검색 -->
@@ -323,74 +332,80 @@
             <span class="filter-label">검색</span>
             <select class="filter-select" style="max-width:160px;">
               <option>유치원명</option>
-              <option>보호자 이름</option>
+              <option>운영자 성명</option>
+              <option>사업자등록번호</option>
             </select>
-            <input type="text" class="filter-input" placeholder="검색어를 입력하세요">
+            <input type="text" class="filter-input filter-input--search" placeholder="검색어를 입력하세요">
+          </div>
+          <!-- 4행: 금액 + 초기화·검색 -->
+          <div class="filter-row">
+            <span class="filter-label">금액</span>
+            <select class="filter-select" style="max-width:140px;">
+              <option value="payment_amount">결제금액</option>
+              <option value="commission_amount">수수료금액</option>
+              <option value="settlement_amount">정산금액</option>
+            </select>
+            <input type="number" class="filter-input filter-input--amount" placeholder="최소금액" min="0">
+            <span class="filter-separator">~</span>
+            <input type="number" class="filter-input filter-input--amount" placeholder="최대금액" min="0">
+            <button class="btn-reset">초기화</button>
             <button class="btn-search">검색</button>
           </div>
         </div>
 
-        <!-- 상단 요약 영역 -->
+        <!-- 상단 요약 영역 (filter-bar 아래, result-header 위) -->
         <div class="summary-section">
-          <!-- 1행: 5col -->
+          <!-- 1행: 5col 금액 카드 -->
           <div class="stat-cards">
             <div class="stat-card">
-              <div class="stat-card__label">조회 기간</div>
-              <div class="stat-card__value" style="font-size:14px;">2026-01-01 ~ 2026-03-17</div>
-            </div>
-            <div class="stat-card">
               <div class="stat-card__label">돌봄 결제금액</div>
-              <div class="stat-card__value">12,500,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__value">0<span class="stat-card__unit">원</span></div>
             </div>
             <div class="stat-card">
               <div class="stat-card__label">위약금 결제금액</div>
-              <div class="stat-card__value">1,800,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__value">0<span class="stat-card__unit">원</span></div>
             </div>
             <div class="stat-card stat-card--highlight">
               <div class="stat-card__label">유효 거래금액</div>
-              <div class="stat-card__value">14,300,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__value">0<span class="stat-card__unit">원</span></div>
             </div>
             <div class="stat-card stat-card--fee">
               <div class="stat-card__label">플랫폼 수수료 (20%)</div>
-              <div class="stat-card__value">2,860,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__value">0<span class="stat-card__unit">원</span></div>
             </div>
-          </div>
-          <!-- 2행: 5col -->
-          <div class="stat-cards">
             <div class="stat-card stat-card--settlement">
               <div class="stat-card__label">유치원 정산금액</div>
-              <div class="stat-card__value">11,440,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__value">0<span class="stat-card__unit">원</span></div>
+            </div>
+          </div>
+          <!-- 2행: 5col 그리드, 가운데 3칸(2·3·4번째)에 배치 -->
+          <div class="stat-cards">
+            <div class="stat-card" style="grid-column:2">
+              <div class="stat-card__label">정산 예정</div>
+              <div class="stat-card__value"><span id="summPendingCount">0</span>건 / <span id="summPendingAmount">0</span>원</div>
             </div>
             <div class="stat-card">
-              <div class="stat-card__label">정산 예정 건수</div>
-              <div class="stat-card__value">45<span class="stat-card__unit">건</span></div>
+              <div class="stat-card__label">정산 완료</div>
+              <div class="stat-card__value"><span id="summCompletedCount">0</span>건 / <span id="summCompletedAmount">0</span>원</div>
             </div>
             <div class="stat-card">
-              <div class="stat-card__label">정산 예정 금액</div>
-              <div class="stat-card__value">4,950,000<span class="stat-card__unit">원</span></div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card__label">정산 완료 건수</div>
-              <div class="stat-card__value">312<span class="stat-card__unit">건</span></div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card__label">정산 완료 금액</div>
-              <div class="stat-card__value">6,490,000<span class="stat-card__unit">원</span></div>
+              <div class="stat-card__label">정산 보류</div>
+              <div class="stat-card__value"><span id="summHoldCount">0</span>건 / <span id="summHoldAmount">0</span>원</div>
             </div>
           </div>
         </div>
 
         <!-- 결과 헤더 -->
         <div class="result-header">
-          <div class="result-header__count">검색 결과 <strong>357</strong>건</div>
+          <div class="result-header__count">검색 결과 <strong>0</strong>건</div>
           <div>
-            <button class="btn-batch-settle">✅ 일괄 정산완료</button>
+            <button class="btn-batch-settle">일괄 정산완료</button>
             <button class="btn-excel">
-            <svg class="btn-excel__icon" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 12l-4-4h2.5V3h3v5H12L8 12zm-6 2h12v1.5H2V14z"/>
-            </svg>
-            내역 다운로드
-          </button>
+              <svg class="btn-excel__icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 12l-4-4h2.5V3h3v5H12L8 12zm-6 2h12v1.5H2V14z"/>
+              </svg>
+              내역 다운로드
+            </button>
           </div>
         </div>
 
@@ -404,164 +419,20 @@
                 <th>정산 예정일</th>
                 <th>유치원명</th>
                 <th>운영자 성명</th>
-                <th>보호자 이름</th>
-                <th>예약번호</th>
                 <th>거래유형</th>
                 <th>결제금액</th>
                 <th>수수료율</th>
                 <th>수수료 금액</th>
                 <th>정산금액</th>
-                <th>정산계좌</th>
+                <th>정산 은행</th>
+                <th>계좌번호</th>
                 <th>정산상태</th>
                 <th>완료일</th>
                 <th>상세</th>
               </tr>
             </thead>
             <tbody id="stlHistBody">
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>1</td>
-                <td>2026-03-20</td>
-                <td>밤톨이네</td>
-                <td>홍길동</td>
-                <td>김민수</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001234</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">55,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">11,000원</td>
-                <td style="text-align:right;">44,000원</td>
-                <td>국민 1234-****-**56</td>
-                <td><span class="badge badge--c-orange">정산예정</span></td>
-                <td>—</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>2</td>
-                <td>2026-03-20</td>
-                <td>사랑이네</td>
-                <td>이영희</td>
-                <td>이영희</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001230</a></td>
-                <td><span class="badge badge--c-orange">위약금</span></td>
-                <td style="text-align:right;">27,500원</td>
-                <td>20%</td>
-                <td style="text-align:right;">5,500원</td>
-                <td style="text-align:right;">22,000원</td>
-                <td>신한 9876-****-**34</td>
-                <td><span class="badge badge--c-orange">정산예정</span></td>
-                <td>—</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>3</td>
-                <td>2026-03-18</td>
-                <td>행복한강아지</td>
-                <td>박서연</td>
-                <td>박서연</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001225</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">35,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">7,000원</td>
-                <td style="text-align:right;">28,000원</td>
-                <td>카카오 3333-****-**78</td>
-                <td><span class="badge badge--c-green">정산완료</span></td>
-                <td>2026-03-18</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>4</td>
-                <td>2026-03-18</td>
-                <td>뽀뚜이네</td>
-                <td>최지훈</td>
-                <td>최지훈</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001218</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">120,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">24,000원</td>
-                <td style="text-align:right;">96,000원</td>
-                <td>신한 5555-****-**90</td>
-                <td><span class="badge badge--c-green">정산완료</span></td>
-                <td>2026-03-18</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>5</td>
-                <td>2026-03-15</td>
-                <td>밤톨이네</td>
-                <td>홍길동</td>
-                <td>정하늘</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001210</a></td>
-                <td><span class="badge badge--c-orange">위약금</span></td>
-                <td style="text-align:right;">12,500원</td>
-                <td>20%</td>
-                <td style="text-align:right;">2,500원</td>
-                <td style="text-align:right;">10,000원</td>
-                <td>국민 1234-****-**56</td>
-                <td><span class="badge badge--c-red">정산보류</span></td>
-                <td>—</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>6</td>
-                <td>2026-03-15</td>
-                <td>별이네</td>
-                <td>한수정</td>
-                <td>한수정</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001198</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">70,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">14,000원</td>
-                <td style="text-align:right;">56,000원</td>
-                <td>우리 7777-****-**21</td>
-                <td><span class="badge badge--c-green">정산완료</span></td>
-                <td>2026-03-15</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>7</td>
-                <td>2026-03-13</td>
-                <td>두부네</td>
-                <td>김민수</td>
-                <td>김민수</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001190</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">15,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">3,000원</td>
-                <td style="text-align:right;">12,000원</td>
-                <td>국민 8888-****-**43</td>
-                <td><span class="badge badge--c-orange">정산예정</span></td>
-                <td>—</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td class="data-table__checkbox"><input type="checkbox"></td>
-                <td>8</td>
-                <td>2026-03-10</td>
-                <td>몽이네</td>
-                <td>이서준</td>
-                <td>이서준</td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001182</a></td>
-                <td><span class="badge badge--c-blue">돌봄결제</span></td>
-                <td style="text-align:right;">20,000원</td>
-                <td>20%</td>
-                <td style="text-align:right;">4,000원</td>
-                <td style="text-align:right;">16,000원</td>
-                <td>하나 1111-****-**65</td>
-                <td><span class="badge badge--c-green">정산완료</span></td>
-                <td>2026-03-10</td>
-                <td><a href="settlement-detail.html" class="data-table__link">상세</a></td>
-              </tr>
+              <!-- JS 로드 후 RPC 데이터로 대체됨 -->
             </tbody>
           </table>
         </div>
@@ -571,10 +442,6 @@
           <button class="pagination__btn disabled">&laquo;</button>
           <button class="pagination__btn disabled">&lsaquo;</button>
           <button class="pagination__btn active">1</button>
-          <button class="pagination__btn">2</button>
-          <button class="pagination__btn">3</button>
-          <button class="pagination__btn">4</button>
-          <button class="pagination__btn">5</button>
           <button class="pagination__btn">&rsaquo;</button>
           <button class="pagination__btn">&raquo;</button>
         </div>

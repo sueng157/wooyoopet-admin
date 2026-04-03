@@ -68,8 +68,8 @@
     return params;
   }
 
-  /** RPC 결과 파싱 (문자열 방어) */
-  function parseInfoRpcResult(raw) {
+  /** RPC 결과 파싱 — 두 탭 공용 (문자열 방어) */
+  function parseRpcResult(raw) {
     if (!raw) return { data: [], count: 0 };
     if (typeof raw === 'string') {
       try { return JSON.parse(raw); } catch (e) { return { data: [], count: 0 }; }
@@ -115,7 +115,7 @@
         return;
       }
 
-      var result = parseInfoRpcResult(rpcResult.data);
+      var result = parseRpcResult(rpcResult.data);
       var rows = result.data || [];
       var total = result.count || 0;
 
@@ -144,61 +144,118 @@
     if (infoBtnExcel) infoBtnExcel.addEventListener('click', function () {
       var params = buildInfoRpcParams(1, 10000);
       window.__supabase.rpc('search_settlement_infos', params).then(function (rpcResult) {
-        var result = parseInfoRpcResult(rpcResult.data);
+        var result = parseRpcResult(rpcResult.data);
         var rows = result.data || [];
         api.exportExcel(rows.map(function (r) {
-          return { '유치원명': (r.kindergartens && r.kindergartens.name) || '', '운영자': r.operator_name || '', '사업자유형': r.business_type || '', '사업자등록번호': r.business_reg_number || '', '판매자ID': r.inicis_seller_id || '', '은행': r.account_bank || '', '이니시스상태': r.inicis_status || '', '신청일': r.created_at || '' };
-        }), '정산정보');
+          return {
+            유치원명: (r.kindergartens && r.kindergartens.name) || '',
+            운영자: r.operator_name || '',
+            사업자유형: r.business_type || '',
+            사업자등록번호: r.business_reg_number || '',
+            판매자ID: r.inicis_seller_id || '',
+            은행: r.account_bank || '',
+            이니시스상태: r.inicis_status || '',
+            신청일: r.created_at || ''
+          };
+        }), [
+          { key: '유치원명', label: '유치원명' },
+          { key: '운영자', label: '운영자 성명' },
+          { key: '사업자유형', label: '사업자 유형' },
+          { key: '사업자등록번호', label: '사업자등록번호' },
+          { key: '판매자ID', label: '판매자 ID' },
+          { key: '은행', label: '정산 은행' },
+          { key: '이니시스상태', label: '이니시스 등록상태' },
+          { key: '신청일', label: '신청일' }
+        ], '정산정보');
       });
     });
   }
 
   /* ── A-2: 정산내역 탭 ── */
-  var histDateFrom, histDateTo, histStatus, histSearchField, histSearchInput;
-  var histBtnSearch, histBtnExcel, histBtnBatch, histResultCount, histBody, histPagination;
+  var HIST_COL_COUNT = 15;
+  var histFilterBar, histDateFrom, histDateTo, histStatus, histTxType;
+  var histSearchField, histSearchInput, histAmountType, histAmountMin, histAmountMax;
+  var histBtnReset, histBtnSearch, histBtnExcel, histBtnBatch;
+  var histResultCount, histBody, histPagination;
   var histPage = 1;
 
   function cacheHistDom() {
     var tab = document.getElementById('tab-history');
     if (!tab) return;
-    var dates = tab.querySelectorAll('.filter-input');
+
+    histFilterBar = tab.querySelector('.filter-bar');
+
+    var dates = tab.querySelectorAll('.filter-input--date');
     histDateFrom = dates[0];
     histDateTo   = dates[1];
 
     var selects = tab.querySelectorAll('.filter-select');
-    histStatus      = selects[0];
-    histSearchField = selects[1];
-    histSearchInput = tab.querySelectorAll('.filter-input')[2];
-    histBtnSearch   = tab.querySelector('.btn-search');
-    histBtnExcel    = tab.querySelector('.btn-excel');
-    histBtnBatch    = tab.querySelector('.btn-batch-settle');
+    histStatus      = selects[0];  // 정산상태
+    histTxType      = selects[1];  // 거래유형
+    histSearchField = selects[2];  // 검색기준
+    histAmountType  = selects[3];  // 금액유형
+
+    histSearchInput = tab.querySelector('.filter-input--search');
+
+    var amts = tab.querySelectorAll('.filter-input--amount');
+    histAmountMin = amts[0];
+    histAmountMax = amts[1];
+
+    histBtnReset  = tab.querySelector('.btn-reset');
+    histBtnSearch = tab.querySelector('.btn-search');
+    histBtnExcel  = tab.querySelector('.btn-excel');
+    histBtnBatch  = tab.querySelector('.btn-batch-settle');
 
     histResultCount = tab.querySelector('.result-header__count strong');
     histBody        = document.getElementById('stlHistBody');
     histPagination  = tab.querySelector('.pagination');
   }
 
-  function buildHistFilters() {
-    var f = [];
-    if (histDateFrom && histDateFrom.value) f.push({ column: 'scheduled_date', op: 'gte', value: histDateFrom.value });
-    if (histDateTo && histDateTo.value) f.push({ column: 'scheduled_date', op: 'lte', value: histDateTo.value });
-    if (histStatus && histStatus.value !== '전체') f.push({ column: 'status', op: 'eq', value: histStatus.value });
-    // URL 파라미터로 유치원 필터
-    var kgIdParam = api.getParam('kindergarten_id');
-    if (kgIdParam) f.push({ column: 'kindergarten_id', op: 'eq', value: kgIdParam });
-    return f;
-  }
+  /**
+   * search_settlements RPC 파라미터 조립
+   * — 기존 RPC(search_payments, search_refunds, search_settlement_infos)와
+   *   동일한 원래 타입 유지 패턴 사용.
+   * — 값이 있으면 원래 타입(text/Number), 없으면 null 전달.
+   */
+  function buildHistRpcParams(page, perPage) {
+    var params = {
+      p_date_from:        (histDateFrom && histDateFrom.value) ? histDateFrom.value : null,
+      p_date_to:          (histDateTo && histDateTo.value) ? histDateTo.value : null,
+      p_status:           (histStatus && histStatus.value) ? histStatus.value : null,
+      p_transaction_type: (histTxType && histTxType.value) ? histTxType.value : null,
+      p_search_type:      null,
+      p_search_keyword:   null,
+      p_amount_type:      null,
+      p_amount_min:       null,
+      p_amount_max:       null,
+      p_kindergarten_id:  api.getParam('kindergarten_id') || null,
+      p_page:             page || 1,
+      p_per_page:         perPage || PER_PAGE
+    };
 
-  function buildHistSearch() {
-    if (!histSearchInput || !histSearchInput.value.trim()) return null;
-    // settlements 테이블에 operator_name 직접 존재
-    return { column: 'operator_name', value: histSearchInput.value.trim() };
+    // 검색 키워드
+    if (histSearchInput && histSearchInput.value.trim()) {
+      params.p_search_type = histSearchField ? histSearchField.value : '유치원명';
+      params.p_search_keyword = histSearchInput.value.trim();
+    }
+
+    // 금액 필터
+    if (histAmountType && histAmountType.value) {
+      var minVal = histAmountMin ? histAmountMin.value.trim() : '';
+      var maxVal = histAmountMax ? histAmountMax.value.trim() : '';
+      if (minVal || maxVal) {
+        params.p_amount_type = histAmountType.value;
+        if (minVal) params.p_amount_min = Number(minVal);
+        if (maxVal) params.p_amount_max = Number(maxVal);
+      }
+    }
+
+    return params;
   }
 
   function renderHistRow(r, idx, offset) {
     var no = offset + idx + 1;
     var kgName = (r.kindergartens && r.kindergartens.name) || '';
-    var memberName = (r.members && r.members.name) || '';
     var typeBadge = api.autoBadge(r.transaction_type || '', { '돌봄': 'blue', '위약금': 'orange' });
     var statusBadge = api.autoBadge(r.status || '', { '정산예정': 'orange', '정산완료': 'green', '정산보류': 'red' });
     return '<tr>' +
@@ -207,38 +264,52 @@
       '<td>' + (api.formatDate(r.scheduled_date, true) || '—') + '</td>' +
       '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(r.operator_name || '') + '</td>' +
-      '<td>' + api.escapeHtml(memberName) + '</td>' +
-      '<td>' + (r.reservation_id ? '<a href="reservation-detail.html?id=' + r.reservation_id + '" class="data-table__link">' + api.escapeHtml(String(r.reservation_id).substring(0, 8)) + '</a>' : '—') + '</td>' +
       '<td>' + typeBadge + '</td>' +
       '<td style="text-align:right;">' + api.formatMoney(r.payment_amount) + '</td>' +
       '<td>' + (r.commission_rate || 20) + '%</td>' +
       '<td style="text-align:right;">' + api.formatMoney(r.commission_amount) + '</td>' +
       '<td style="text-align:right;">' + api.formatMoney(r.settlement_amount) + '</td>' +
-      '<td>' + api.escapeHtml((r.account_bank || '') + ' ' + (r.account_number || '')) + '</td>' +
+      '<td>' + api.escapeHtml(r.account_bank || '—') + '</td>' +
+      '<td>' + (r.account_number ? api.maskAccount(r.account_number) : '—') + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td>' + (api.formatDate(r.completed_date, true) || '—') + '</td>' +
       '<td><a href="settlement-detail.html?id=' + (r.id || '') + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
 
-  function loadHistList(page) {
+  async function loadHistList(page) {
     histPage = page || 1;
     var offset = (histPage - 1) * PER_PAGE;
-    api.showTableLoading(histBody, 16);
+    api.showTableLoading(histBody, HIST_COL_COUNT);
 
-    api.fetchList('settlements', {
-      select: '*, kindergartens:kindergarten_id(name), members:member_id(name)',
-      filters: buildHistFilters(), search: buildHistSearch(),
-      order: { column: 'scheduled_date', ascending: false },
-      page: histPage, perPage: PER_PAGE
-    }).then(function (res) {
-      var rows = res.data || [], total = res.count || 0;
-      histResultCount.textContent = api.formatNumber(total);
-      if (!rows.length) { api.showTableEmpty(histBody, 16, '검색 결과가 없습니다.'); histPagination.innerHTML = ''; return; }
+    try {
+      var rpcResult = await window.__supabase.rpc('search_settlements', buildHistRpcParams(histPage));
+
+      if (rpcResult.error) {
+        console.error('[settlements] hist RPC error:', rpcResult.error);
+        api.showTableEmpty(histBody, HIST_COL_COUNT, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
+        return;
+      }
+
+      var result = parseRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
+
+      if (histResultCount) histResultCount.textContent = api.formatNumber(total);
+
+      if (!rows.length) {
+        api.showTableEmpty(histBody, HIST_COL_COUNT, '검색 결과가 없습니다.');
+        if (histPagination) histPagination.innerHTML = '';
+        return;
+      }
+
       histBody.innerHTML = rows.map(function (r, i) { return renderHistRow(r, i, offset); }).join('');
       api.renderPagination(histPagination, histPage, total, PER_PAGE, loadHistList);
       bindCheckAll();
-    }).catch(function () { api.showTableEmpty(histBody, 16, '데이터를 불러오지 못했습니다.'); });
+    } catch (err) {
+      console.error('[settlements] hist list error:', err);
+      api.showTableEmpty(histBody, HIST_COL_COUNT, '데이터를 불러오지 못했습니다.');
+    }
   }
 
   function bindCheckAll() {
@@ -254,14 +325,62 @@
   }
 
   function bindHistEvents() {
-    if (histBtnSearch) histBtnSearch.addEventListener('click', function () { loadHistList(1); });
-    if (histSearchInput) histSearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') loadHistList(1); });
+    // 검색 버튼 → 목록 + 요약 함께 갱신
+    if (histBtnSearch) histBtnSearch.addEventListener('click', function () {
+      loadHistList(1);
+      loadSummary();
+    });
+    if (histSearchInput) histSearchInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') { loadHistList(1); loadSummary(); }
+    });
+
+    // 초기화 버튼
+    if (histBtnReset) histBtnReset.addEventListener('click', function () {
+      if (window.__resetFilters) window.__resetFilters(histFilterBar);
+      // 기간 버튼을 '전체'로 복원
+      var tab = document.getElementById('tab-history');
+      if (tab) {
+        tab.querySelectorAll('.filter-period-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-period') === 'all');
+        });
+      }
+    });
+
+    // 엑셀 다운로드 → search_settlements RPC 사용
     if (histBtnExcel) histBtnExcel.addEventListener('click', function () {
-      api.fetchAll('settlements', { select: '*, kindergartens:kindergarten_id(name)', filters: buildHistFilters(), search: buildHistSearch(), order: { column: 'scheduled_date', ascending: false } }).then(function (res) {
-        var rows = res.data || [];
+      var params = buildHistRpcParams(1, 10000);
+      window.__supabase.rpc('search_settlements', params).then(function (rpcResult) {
+        var result = parseRpcResult(rpcResult.data);
+        var rows = result.data || [];
         api.exportExcel(rows.map(function (r) {
-          return { '정산번호': r.id || '', '예정일': r.scheduled_date || '', '유치원명': (r.kindergartens && r.kindergartens.name) || '', '결제금액': r.payment_amount || 0, '수수료': r.commission_amount || 0, '정산금액': r.settlement_amount || 0, '상태': r.status || '' };
-        }), '정산내역');
+          return {
+            scheduled_date: r.scheduled_date || '',
+            kindergarten: (r.kindergartens && r.kindergartens.name) || '',
+            operator: r.operator_name || '',
+            tx_type: r.transaction_type || '',
+            payment: r.payment_amount || 0,
+            rate: (r.commission_rate || 20) + '%',
+            commission: r.commission_amount || 0,
+            settlement: r.settlement_amount || 0,
+            bank: r.account_bank || '',
+            account: r.account_number || '',
+            status: r.status || '',
+            completed: r.completed_date || ''
+          };
+        }), [
+          { key: 'scheduled_date', label: '정산 예정일' },
+          { key: 'kindergarten', label: '유치원명' },
+          { key: 'operator', label: '운영자 성명' },
+          { key: 'tx_type', label: '거래유형' },
+          { key: 'payment', label: '결제금액' },
+          { key: 'rate', label: '수수료율' },
+          { key: 'commission', label: '수수료 금액' },
+          { key: 'settlement', label: '정산금액' },
+          { key: 'bank', label: '정산 은행' },
+          { key: 'account', label: '계좌번호' },
+          { key: 'status', label: '정산상태' },
+          { key: 'completed', label: '완료일' }
+        ], '정산내역');
       });
     });
 
@@ -277,30 +396,104 @@
           return api.updateRecord('settlements', id, { status: '정산완료' });
         })).then(function () {
           loadHistList(histPage);
+          loadSummary();
         });
       });
     }
   }
 
-  // 정산 요약 카드 로드
+  /** 기간 버튼 이벤트 바인딩 */
+  function bindPeriodButtons() {
+    var tab = document.getElementById('tab-history');
+    if (!tab) return;
+    var btns = tab.querySelectorAll('.filter-period-btn');
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        // 모든 기간 버튼 비활성 → 현재만 활성
+        btns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var period = btn.getAttribute('data-period');
+        var now = new Date();
+        var from = '';
+        var to = '';
+
+        if (period === 'all') {
+          from = '';
+          to = '';
+        } else if (period === 'this-month') {
+          from = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+          to = api.getToday();
+        } else if (period === '1month') {
+          var d1 = new Date();
+          d1.setMonth(d1.getMonth() - 1);
+          from = d1.getFullYear() + '-' + String(d1.getMonth() + 1).padStart(2, '0') + '-' + String(d1.getDate()).padStart(2, '0');
+          to = api.getToday();
+        } else if (period === '1week') {
+          var d7 = new Date();
+          d7.setDate(d7.getDate() - 7);
+          from = d7.getFullYear() + '-' + String(d7.getMonth() + 1).padStart(2, '0') + '-' + String(d7.getDate()).padStart(2, '0');
+          to = api.getToday();
+        }
+
+        if (histDateFrom) histDateFrom.value = from;
+        if (histDateTo) histDateTo.value = to;
+        // 버튼 클릭 시 자동 검색하지 않음 (사양)
+      });
+    });
+
+    // 날짜 입력 수동 변경 시 기간 버튼 비활성(커스텀 날짜)
+    [histDateFrom, histDateTo].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
+      });
+    });
+  }
+
+  // 정산 요약 카드 로드 — 현재 필터 기간 파라미터 전달
   function loadSummary() {
-    api.callRpc('get_settlement_summary', {}).then(function (res) {
-      var data = res && res.data ? res.data : res;
+    var summaryParams = {
+      p_date_from: (histDateFrom && histDateFrom.value) ? histDateFrom.value : null,
+      p_date_to:   (histDateTo && histDateTo.value) ? histDateTo.value : null
+    };
+
+    api.callRpc('get_settlement_summary', summaryParams).then(function (res) {
+      var raw = res && res.data ? res.data : res;
+      var data = (typeof raw === 'string') ? JSON.parse(raw) : raw;
       if (!data) return;
+
       var tab = document.getElementById('tab-history');
       if (!tab) return;
-      var cards = tab.querySelectorAll('.stat-card__value');
-      if (cards.length < 10) return;
-      cards[1].innerHTML = api.formatMoney(data.care_payment) + '<span class="stat-card__unit">원</span>';
-      cards[2].innerHTML = api.formatMoney(data.penalty_payment) + '<span class="stat-card__unit">원</span>';
-      cards[3].innerHTML = api.formatMoney(data.total_valid) + '<span class="stat-card__unit">원</span>';
-      cards[4].innerHTML = api.formatMoney(data.platform_fee) + '<span class="stat-card__unit">원</span>';
-      cards[5].innerHTML = api.formatMoney(data.kg_settlement) + '<span class="stat-card__unit">원</span>';
-      cards[6].innerHTML = api.formatNumber(data.pending_count) + '<span class="stat-card__unit">건</span>';
-      cards[7].innerHTML = api.formatMoney(data.pending_amount) + '<span class="stat-card__unit">원</span>';
-      cards[8].innerHTML = api.formatNumber(data.completed_count) + '<span class="stat-card__unit">건</span>';
-      cards[9].innerHTML = api.formatMoney(data.completed_amount) + '<span class="stat-card__unit">원</span>';
-    }).catch(function () { /* summary stays as static HTML */ });
+
+      // 1행: 5개 금액 카드 (.summary-section > .stat-cards 첫 번째 그리드 내 .stat-card__value)
+      var summarySection = tab.querySelector('.summary-section');
+      if (summarySection) {
+        var firstRow = summarySection.querySelector('.stat-cards');
+        if (firstRow) {
+          var cards = firstRow.querySelectorAll('.stat-card__value');
+          if (cards.length >= 5) {
+            cards[0].innerHTML = api.formatMoney(data.care_payment, false) + '<span class="stat-card__unit">원</span>';
+            cards[1].innerHTML = api.formatMoney(data.penalty_payment, false) + '<span class="stat-card__unit">원</span>';
+            cards[2].innerHTML = api.formatMoney(data.total_valid, false) + '<span class="stat-card__unit">원</span>';
+            cards[3].innerHTML = api.formatMoney(data.platform_fee, false) + '<span class="stat-card__unit">원</span>';
+            cards[4].innerHTML = api.formatMoney(data.kg_settlement, false) + '<span class="stat-card__unit">원</span>';
+          }
+        }
+      }
+
+      // 2행: 건수/금액 (span#summXxx)
+      var el;
+      el = document.getElementById('summPendingCount');    if (el) el.textContent = api.formatNumber(data.pending_count);
+      el = document.getElementById('summPendingAmount');   if (el) el.textContent = api.formatMoney(data.pending_amount, false);
+      el = document.getElementById('summCompletedCount');  if (el) el.textContent = api.formatNumber(data.completed_count);
+      el = document.getElementById('summCompletedAmount'); if (el) el.textContent = api.formatMoney(data.completed_amount, false);
+      el = document.getElementById('summHoldCount');       if (el) el.textContent = api.formatNumber(data.hold_count);
+      el = document.getElementById('summHoldAmount');      if (el) el.textContent = api.formatMoney(data.hold_amount, false);
+    }).catch(function (err) {
+      console.error('[settlements] summary error:', err);
+    });
   }
 
   // kindergarten_id 필터 배너 삽입
@@ -348,6 +541,7 @@
     cacheHistDom();
     bindInfoEvents();
     bindHistEvents();
+    bindPeriodButtons();
     loadInfoList(1);
     loadHistList(1);
     loadSummary();
