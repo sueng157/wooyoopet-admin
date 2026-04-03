@@ -22,7 +22,8 @@
   ↓
 [진행중] DB 연결 보완 및 UI 개선
   - 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리 : 수정 완료(PR #59~#66, #70, #72, #74~#77, #79, #81~#93)
-  - 정산관리 ~ 설정 : 작업 예정
+  - 정산관리 : 작업중(정산정보, 정산내역 목록화면 작업완료(PR#95), 상세페이지 작업 중)
+  - 채팅관리 ~ 설정 : 작업 예정
   ↓
 [예정] 호스팅 전환·모바일앱 백엔드·기존 서버 정리
   - Phase 4,5,6 (DB 연결 보완 및 UI 개선 후 진행예정)
@@ -34,7 +35,7 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 진행중 (PR #59~#93) → Phase 4 예정
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 진행중 (PR #59~#95) → Phase 4 예정
 - **저장소**: `https://github.com/sueng157/20260316-Wooyoopet-Backend-wfgwaehjk.git`
 - **브랜치 전략**: `main` (머지용) / `genspark_ai_developer` (작업용)
 - **스펙 문서**: `full_spec_with_tables.md` (루트에 위치, 대메뉴 0~11번 전체 명세)
@@ -339,9 +340,11 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 
 ### 5-6. 정산관리 특이사항
 
-- **탭2 정산내역 레이아웃 순서**: 필터 바 → 상단 요약 영역 → 결과 헤더 → 데이터 테이블 → 페이지네이션 (협의로 확정)
-- **상단 요약 10항목**: 조회 기간, 돌봄 결제금액, 위약금 결제금액, 유효 거래금액, 플랫폼 수수료(20%), 유치원 정산금액, 정산 예정 건수/금액, 정산 완료 건수/금액
+- **탭2 정산내역 레이아웃 순서**: 필터 바(4행: 예정일+기간버튼/필터/검색/금액+초기화·검색) → 상단 요약 영역(카드 래퍼) → 결과 헤더 → 데이터 테이블 → 페이지네이션 (협의로 확정)
+- **상단 요약 2행**: 1행 5col (돌봄 결제금액, 위약금 결제금액, 유효 거래금액, 플랫폼 수수료(20%), 유치원 정산금액), 2행 5col 가운데 3칸 (정산 예정 건수/금액, 정산 완료 건수/금액, 정산 보류 건수/금액) — `get_settlement_summary` RPC로 조회
 - **거래유형 컬럼**: '돌봄'/'위약금' 뱃지로 구분 (위약금 수입 컬럼 삭제, 거래유형으로 대체)
+- **기간 버튼**: 전체/당월/최근 1개월/최근 1주일 — 클릭 시 날짜만 세팅, 수동 변경 시 active 해제
+- **RPC 오버로드 주의**: `search_settlements`는 기존 RPC와 동일한 원래 타입 유지 패턴 사용 (text/numeric/uuid/int). 시그니처 변경 시 반드시 이전 시그니처 DROP 필수 — PostgREST는 같은 이름+다른 타입의 오버로드를 지원하지 않음
 
 ### 5-7. 채팅관리 특이사항
 
@@ -365,6 +368,8 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `search_reservations` | 돌봄예약관리 목록 | `sql/13_search_reservations.sql` | reservations → members, pets, kindergartens, payments |
 | `search_payments` | 결제관리 > 결제내역 탭 | `sql/21_rpc_payment_type_update.sql` | payments → members, pets, kindergartens (payment_type 필터 적용) |
 | `search_refunds` | 결제관리 > 환불/위약금 탭 | `sql/21_rpc_payment_type_update.sql` | refunds → members, kindergartens, reservations → pets, payments(penalty_payment) |
+| `search_settlement_infos` | 정산관리 > 정산정보 탭 | `sql/23_search_settlement_infos.sql` | settlement_infos → kindergartens |
+| `search_settlements` | 정산관리 > 정산내역 탭 | `sql/24_search_settlements.sql` | settlements → kindergartens, settlement_infos(LATERAL) |
 
 **RPC 함수 공통 구조:**
 1. **파라미터 설계**: `p_date_from`, `p_date_to` (기간), `p_status` (상태 필터), `p_search_type` + `p_search_keyword` (검색 기준/키워드), `p_page` + `p_per_page` (페이지네이션). 필요에 따라 추가 필터 파라미터 포함
@@ -479,7 +484,7 @@ js/kindergartens.js    1004줄  (목록·상세, 영업상태, 서브몰, 노쇼
 js/pets.js              516줄  (목록·상세, 삭제, 닉네임조인, 돌봄횟수집계, 태그집계(7항목고정), 크로스링크)
 js/reservations.js      522줄  (목록·상세, 직권취소, 노쇼 — PR #57에서 async/await 리팩터링)
 js/payments.js          725줄  (결제/환불 2탭, 결제 상세, 환불/위약금 상세, 위약금면제, search_payments·search_refunds RPC, FK 충돌 방지 별도 쿼리 분리)
-js/settlements.js       593줄  (정산정보/내역 2탭, 이니시스, 보류/해제, 유치원 상세 연동)
+js/settlements.js       819줄  (정산정보/내역 2탭, search_settlement_infos+search_settlements RPC, 기간버튼, 요약동기화, 일괄정산, 엑셀)
 js/chats.js             475줄  (채팅/신고 2탭, 비활성화, 제재/기각)
 js/reviews.js           510줄  (보호자/유치원 2탭, 숨김/해제 — PR #57에서 날짜보정+에러핸들링)
 js/educations.js        674줄  (퀴즈/체크리스트/서약서/이수현황, 버전관리)
@@ -704,6 +709,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | — | 결제관리 | 환불/위약금 탭: 필터 3행 변경(요청일/필터(처리상태+요청자)/검색+초기화), 테이블 17→14컬럼(위약금 결제번호·보호자 닉네임·연락처 추가, 환불비율·위약금비율·남은시간·예약번호 삭제), `search_refunds` RPC 신규 생성 및 연동, 더미 데이터 제거→RPC 렌더링, 엑셀 다운로드 RPC 전환 |
 | #92 | 결제관리 | 결제 상세 데이터 바인딩: payments.id·pg_transaction_id·approval_number 바인딩, mapPaymentMethod() 결제수단 매핑, 회원·예약·환불 ID 링크, refunds 조인 분리(PGRST201 방지), renderMaskedField 인자 수정, showDetailError() 에러 핸들링, 디버그 로그 추가 |
 | #93 | 결제관리 | 환불/위약금 상세 리팩터링: 블록 순서 재배열(환불 기본정보→위약금 결제 정보→위약금 산정→환불 처리 정보→관련 링크), 기본정보에 예약번호·보호자 닉네임·반려동물·유치원 링크 추가, FK 충돌 방지 위해 payments·penalty_payment 별도 쿼리 분리, mapPaymentMethod() 적용, 더미 데이터 제거→로딩 플레이스홀더, async/await+showRefundDetailError() 에러 핸들링, HANDOVER.md 5-14 FK 조인 가이드 추가 |
+| #95 | 정산관리 | 정산정보 탭: search_settlement_infos RPC 연동(sql/23), 필터(이니시스 등록상태/사업자여부/검색), 엑셀 다운로드, 유치원 필터 배너. 정산내역 탭: search_settlements RPC 신규(sql/24), 5행 필터→4행 컴팩트화, 기간 버튼, 금액 범위 필터, get_settlement_summary 요약(sql/25, 11항목), 일괄 정산완료, 요약 카드 래퍼 디자인 개선(2행 5col 가운데 정렬), 엑셀 다운로드 |
 
 **진행 상황:**
 - ✅ 회원관리 (1번): 수정 완료
@@ -711,7 +717,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 - ✅ 반려동물관리 (3번): 수정 완료
 - ✅ 돌봄예약관리 (4번): 수정 완료
 - ✅ 결제관리 (5번): 수정 완료 (결제내역 탭, 환불/위약금 탭 목록, 결제 상세, 환불/위약금 상세, 결제 리팩터링 Phase A~C — PR #79, #81~#93)
-- ⬜ 정산관리 ~ 설정 (6~11번): 작업 예정
+- 🔄 정산관리 (6번): 작업중 (정산정보·정산내역 목록화면 완료, 상세페이지 작업 중 — PR #95)
+- ⬜ 채팅관리 ~ 설정 (7~11번): 작업 예정
 
 ---
 
