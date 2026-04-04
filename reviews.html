@@ -77,25 +77,43 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
+          <!-- 1행: 작성일 + 기간 퀵버튼 -->
           <div class="filter-row">
-            <span class="filter-label">기간</span>
-            <input type="date" class="filter-input filter-input--date" value="2025-01-01">
+            <span class="filter-label">작성일</span>
+            <input type="date" class="filter-input filter-input--date" id="gDateFrom" value="">
             <span class="filter-separator">~</span>
-            <input type="date" class="filter-input filter-input--date" value="2026-12-31">
+            <input type="date" class="filter-input filter-input--date" id="gDateTo" value="">
+            <button type="button" class="filter-period-btn active" data-period="all">전체</button>
+            <button type="button" class="filter-period-btn" data-period="this-month">당월</button>
+            <button type="button" class="filter-period-btn" data-period="1month">지난 1개월</button>
+            <button type="button" class="filter-period-btn" data-period="1week">지난 1주일</button>
           </div>
+          <!-- 2행: 필터 (드롭다운 2개 횡배치) -->
           <div class="filter-row">
-            <span class="filter-label">만족도</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>최고예요!</option>
-              <option>좋았어요</option>
-              <option>아쉬워요</option>
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="gSatisfaction">
+              <option value="">만족도: 전체</option>
+              <option value="최고예요!">최고예요!</option>
+              <option value="좋았어요">좋았어요</option>
+              <option value="아쉬워요">아쉬워요</option>
+            </select>
+            <select class="filter-select" id="gImageFilter">
+              <option value="">이미지: 전체</option>
+              <option value="있음">있음</option>
+              <option value="없음">없음</option>
             </select>
           </div>
+          <!-- 3행: 검색 (검색대상 드롭다운 + input + 초기화 + 검색) -->
           <div class="filter-row">
             <span class="filter-label">검색</span>
-            <input type="text" class="filter-input filter-input--search" placeholder="보호자 닉네임, 유치원명, 후기 내용">
-            <button class="btn-search">검색</button>
+            <select class="filter-select" id="gSearchField" style="max-width:160px;">
+              <option value="보호자 닉네임">보호자 닉네임</option>
+              <option value="유치원명">유치원명</option>
+              <option value="반려동물 이름">반려동물 이름</option>
+            </select>
+            <input type="text" class="filter-input" id="gSearchInput" placeholder="검색어를 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="gBtnReset">초기화</button>
+            <button class="btn-search" id="gBtnSearch">검색</button>
           </div>
         </div>
 
@@ -116,10 +134,10 @@
             <thead>
               <tr>
                 <th>번호</th>
-                <th>작성일시</th>
+                <th>작성일</th>
                 <th>보호자 닉네임</th>
                 <th>유치원명</th>
-                <th>반려동물명</th>
+                <th>반려동물 이름</th>
                 <th>만족도</th>
                 <th>선택 태그</th>
                 <th>내용 미리보기</th>
@@ -132,7 +150,7 @@
               <!-- 1행 -->
               <tr>
                 <td>1</td>
-                <td>2025-12-15 14:32</td>
+                <td>2025-12-15</td>
                 <td>코코맘</td>
                 <td>밤톨이네</td>
                 <td>코코</td>
@@ -144,13 +162,13 @@
                 </td>
                 <td><span class="review-content">밤톨이네 유치원 정말 최고입니다! 코코가 너무 즐거...</span></td>
                 <td><span class="review-img-count">3장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001234</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 2행 -->
               <tr>
                 <td>2</td>
-                <td>2025-12-14 09:15</td>
+                <td>2025-12-14</td>
                 <td>두부아빠</td>
                 <td>사랑이네</td>
                 <td>두부</td>
@@ -161,13 +179,13 @@
                 </td>
                 <td><span class="review-content">두부가 처음 간 유치원인데 잘 적응한 것 같아서 다...</span></td>
                 <td><span class="review-img-count">1장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001220</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 3행 -->
               <tr>
                 <td>3</td>
-                <td>2025-12-13 17:48</td>
+                <td>2025-12-13</td>
                 <td>몽이엄마</td>
                 <td>행복한강아지</td>
                 <td>몽이</td>
@@ -178,13 +196,13 @@
                 </td>
                 <td><span class="review-content">기대했는데 좀 아쉬웠습니다. 사진이 거의 없었고 요...</span></td>
                 <td><span class="review-img-count review-img-count--zero">0장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001198</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 4행 -->
               <tr>
                 <td>4</td>
-                <td>2025-12-12 11:20</td>
+                <td>2025-12-12</td>
                 <td>초코파파</td>
                 <td>밤톨이네</td>
                 <td>초코</td>
@@ -196,13 +214,13 @@
                 </td>
                 <td><span class="review-content">초코가 유치원 가는 날만 기다립니다. 선생님들이 정...</span></td>
                 <td><span class="review-img-count">5장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001180</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 5행 -->
               <tr>
                 <td>5</td>
-                <td>2025-12-11 15:05</td>
+                <td>2025-12-11</td>
                 <td>뽀삐러버</td>
                 <td>해피도그</td>
                 <td>뽀삐</td>
@@ -212,13 +230,13 @@
                 </td>
                 <td><span class="review-content">전반적으로 만족합니다. 다음에도 이용할 예정이에요...</span></td>
                 <td><span class="review-img-count">2장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001165</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 6행 -->
               <tr>
                 <td>6</td>
-                <td>2025-12-10 08:43</td>
+                <td>2025-12-10</td>
                 <td>보리보리</td>
                 <td>사랑이네</td>
                 <td>보리</td>
@@ -230,13 +248,13 @@
                 </td>
                 <td><span class="review-content">보리가 사랑이네에서 너무 잘 놀고 왔어요. 위생 관...</span></td>
                 <td><span class="review-img-count">4장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001150</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 7행 -->
               <tr>
                 <td>7</td>
-                <td>2025-12-09 13:27</td>
+                <td>2025-12-09</td>
                 <td>루이맘</td>
                 <td>밤톨이네</td>
                 <td>루이</td>
@@ -247,13 +265,13 @@
                 </td>
                 <td><span class="review-content">루이가 많이 긴장한 상태로 돌아왔어요. 상담 때와 ...</span></td>
                 <td><span class="review-img-count review-img-count--zero">0장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001130</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 8행 -->
               <tr>
                 <td>8</td>
-                <td>2025-12-08 16:55</td>
+                <td>2025-12-08</td>
                 <td>해피독맘</td>
                 <td>해피도그</td>
                 <td>해피</td>
@@ -263,7 +281,7 @@
                 </td>
                 <td><span class="review-content">깔끔하고 체계적인 유치원이었습니다. 해피가 잘 지...</span></td>
                 <td><span class="review-img-count">1장</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001112</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-detail.html" class="data-table__link">상세</a></td>
               </tr>
             </tbody>
@@ -292,31 +310,43 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
+          <!-- 1행: 작성일 + 기간 퀵버튼 -->
           <div class="filter-row">
-            <span class="filter-label">기간</span>
-            <input type="date" class="filter-input filter-input--date" value="2025-01-01">
+            <span class="filter-label">작성일</span>
+            <input type="date" class="filter-input filter-input--date" id="kDateFrom" value="">
             <span class="filter-separator">~</span>
-            <input type="date" class="filter-input filter-input--date" value="2026-12-31">
+            <input type="date" class="filter-input filter-input--date" id="kDateTo" value="">
+            <button type="button" class="filter-period-btn active" data-period="all">전체</button>
+            <button type="button" class="filter-period-btn" data-period="this-month">당월</button>
+            <button type="button" class="filter-period-btn" data-period="1month">지난 1개월</button>
+            <button type="button" class="filter-period-btn" data-period="1week">지난 1주일</button>
           </div>
+          <!-- 2행: 필터 (드롭다운 2개 횡배치) -->
           <div class="filter-row">
-            <span class="filter-label">만족도</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>최고예요!</option>
-              <option>좋았어요</option>
-              <option>아쉬워요</option>
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="kSatisfaction">
+              <option value="">만족도: 전체</option>
+              <option value="최고예요!">최고예요!</option>
+              <option value="좋았어요">좋았어요</option>
+              <option value="아쉬워요">아쉬워요</option>
             </select>
-            <span class="filter-label" style="margin-left:16px;">보호자 전용</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>전용</option>
-              <option>공개</option>
+            <select class="filter-select" id="kGuardianOnly">
+              <option value="">보호자 전용: 전체</option>
+              <option value="전용">전용</option>
+              <option value="공개">공개</option>
             </select>
           </div>
+          <!-- 3행: 검색 (검색대상 드롭다운 + input + 초기화 + 검색) -->
           <div class="filter-row">
             <span class="filter-label">검색</span>
-            <input type="text" class="filter-input filter-input--search" placeholder="유치원명, 보호자 닉네임, 반려동물명, 후기 내용">
-            <button class="btn-search">검색</button>
+            <select class="filter-select" id="kSearchField" style="max-width:160px;">
+              <option value="유치원명">유치원명</option>
+              <option value="보호자 닉네임">보호자 닉네임</option>
+              <option value="반려동물 이름">반려동물 이름</option>
+            </select>
+            <input type="text" class="filter-input" id="kSearchInput" placeholder="검색어를 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="kBtnReset">초기화</button>
+            <button class="btn-search" id="kBtnSearch">검색</button>
           </div>
         </div>
 
@@ -337,10 +367,10 @@
             <thead>
               <tr>
                 <th>번호</th>
-                <th>작성일시</th>
+                <th>작성일</th>
                 <th>유치원명</th>
                 <th>보호자 닉네임</th>
-                <th>반려동물명</th>
+                <th>반려동물 이름</th>
                 <th>만족도</th>
                 <th>선택 태그</th>
                 <th>내용 미리보기</th>
@@ -353,7 +383,7 @@
               <!-- 1행 -->
               <tr>
                 <td>1</td>
-                <td>2025-12-15 18:10</td>
+                <td>2025-12-15</td>
                 <td>밤톨이네</td>
                 <td>코코맘</td>
                 <td>코코</td>
@@ -365,13 +395,13 @@
                 </td>
                 <td><span class="review-content">코코가 오늘도 유치원에서 다른 강아지들과 잘 어울...</span></td>
                 <td><span class="badge badge--c-gray">공개</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001234</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 2행 -->
               <tr>
                 <td>2</td>
-                <td>2025-12-14 17:45</td>
+                <td>2025-12-14</td>
                 <td>사랑이네</td>
                 <td>두부아빠</td>
                 <td>두부</td>
@@ -382,13 +412,13 @@
                 </td>
                 <td><span class="review-content">두부가 처음 왔는데 적응을 잘 했습니다. 밥도 잘 ...</span></td>
                 <td><span class="badge badge--c-gray">공개</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001220</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 3행 -->
               <tr>
                 <td>3</td>
-                <td>2025-12-13 16:30</td>
+                <td>2025-12-13</td>
                 <td>행복한강아지</td>
                 <td>몽이엄마</td>
                 <td>몽이</td>
@@ -399,13 +429,13 @@
                 </td>
                 <td><span class="review-content">몽이가 다른 강아지에게 으르렁대는 모습이 자주 보...</span></td>
                 <td><span class="badge badge--c-orange">전용</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001198</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 4행 -->
               <tr>
                 <td>4</td>
-                <td>2025-12-12 17:20</td>
+                <td>2025-12-12</td>
                 <td>밤톨이네</td>
                 <td>초코파파</td>
                 <td>초코</td>
@@ -418,13 +448,13 @@
                 </td>
                 <td><span class="review-content">초코는 정말 사람을 좋아하고 다른 강아지들과도 잘...</span></td>
                 <td><span class="badge badge--c-gray">공개</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001180</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 5행 -->
               <tr>
                 <td>5</td>
-                <td>2025-12-11 18:35</td>
+                <td>2025-12-11</td>
                 <td>해피도그</td>
                 <td>뽀삐러버</td>
                 <td>뽀삐</td>
@@ -435,13 +465,13 @@
                 </td>
                 <td><span class="review-content">뽀삐가 대형견이라 걱정했는데 유치원에서 잘 지냈습...</span></td>
                 <td><span class="badge badge--c-gray">공개</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001165</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 6행 -->
               <tr>
                 <td>6</td>
-                <td>2025-12-10 17:50</td>
+                <td>2025-12-10</td>
                 <td>사랑이네</td>
                 <td>보리보리</td>
                 <td>보리</td>
@@ -453,13 +483,13 @@
                 </td>
                 <td><span class="review-content">보리는 늘 유치원에서 기분 좋게 잘 지냅니다. 다른...</span></td>
                 <td><span class="badge badge--c-orange">전용</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001150</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 7행 -->
               <tr>
                 <td>7</td>
-                <td>2025-12-09 18:15</td>
+                <td>2025-12-09</td>
                 <td>밤톨이네</td>
                 <td>루이맘</td>
                 <td>루이</td>
@@ -470,13 +500,13 @@
                 </td>
                 <td><span class="review-content">루이가 분리불안 증상이 있어서 돌봄 중 계속 짖고 ...</span></td>
                 <td><span class="badge badge--c-orange">전용</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001130</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <!-- 8행 -->
               <tr>
                 <td>8</td>
-                <td>2025-12-08 17:30</td>
+                <td>2025-12-08</td>
                 <td>해피도그</td>
                 <td>해피독맘</td>
                 <td>해피</td>
@@ -486,7 +516,7 @@
                 </td>
                 <td><span class="review-content">해피가 사료도 잘 먹고 유치원에서 무리 없이 잘 지...</span></td>
                 <td><span class="badge badge--c-gray">공개</span></td>
-                <td><a href="reservation-detail.html" class="data-table__link">R-00001112</a></td>
+                <td><a href="reservation-detail.html" class="data-table__link">예약상세</a></td>
                 <td><a href="review-kg-detail.html" class="data-table__link">상세</a></td>
               </tr>
             </tbody>

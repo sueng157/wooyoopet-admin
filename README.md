@@ -159,7 +159,7 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 - **common.js** (141줄): 모달 시스템(열기/닫기/ESC/오버레이), 마스킹 토글, 소개글 더보기/접기, textarea→버튼 활성화
 - **components.js** (224줄): 탭 전환(`data-tab-target`), 전체선택 체크박스, 순서 화살표(▲/▼), 버전 검증(`x.x.x`), 글자수 카운터
 - **api.js** (829줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
-- **페이지전용 JS** (12개): dashboard(244), members(812), kindergartens(1,004), pets(516), reservations(461), payments(497), settlements(593), chats(475), reviews(510), educations(674), contents(496), settings(504)
+- **페이지전용 JS** (12개): dashboard(244), members(812), kindergartens(1,004), pets(516), reservations(461), payments(497), settlements(593), chats(475), reviews(679), educations(674), contents(496), settings(504)
 
 총 **8,364줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
 

@@ -20,9 +20,10 @@
 [완료] JavaScript UI 구현 (4파일 621줄, 인라인 JS 0건, PR #39~#42)
 [완료] 백엔드 구축(Phase 1,2,3 완료)(PR #48~#57)
   ↓
-[진행중] DB 연결 보완 및 UI 개선 (PR #59~#98)
+[진행중] DB 연결 보완 및 UI 개선 (PR #59~#99)
   - 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리, 정산관리, 채팅관리 : 수정 완료
-  - 후기관리 ~ 설정 : 작업 예정
+  - 후기관리 : 목록화면 작업완료, 상세화면 작업예정
+  - 교육관리 ~ 설정 : 작업 예정
   ↓
 [예정] 호스팅 전환·모바일앱 백엔드·기존 서버 정리
   - Phase 4,5,6 (DB 연결 보완 및 UI 개선 후 진행예정)
@@ -390,6 +391,8 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 | `search_settlements` | 정산관리 > 정산내역 탭 | `sql/24_search_settlements.sql` | settlements → kindergartens, settlement_infos(LATERAL) |
 | `search_chat_rooms` | 채팅관리 > 채팅내역 탭 | `sql/29_search_chat_rooms.sql` | chat_rooms → members(guardian), kindergartens, chat_room_reservations → reservations |
 | `search_reports` | 채팅관리 > 신고접수 탭 | `sql/30_search_reports.sql` | reports → members(reporter, reported), admin_accounts(processed_by) |
+| `search_guardian_reviews` | 후기관리 > 보호자 후기 탭 | `sql/32_search_guardian_reviews.sql` | guardian_reviews → members, kindergartens, pets(LEFT JOIN) |
+| `search_kindergarten_reviews` | 후기관리 > 유치원 후기 탭 | `sql/33_search_kindergarten_reviews.sql` | kindergarten_reviews → members, kindergartens, pets(LEFT JOIN) |
 
 **RPC 함수 공통 구조:**
 1. **파라미터 설계**: `p_date_from`, `p_date_to` (기간), `p_status` (상태 필터), `p_search_type` + `p_search_keyword` (검색 기준/키워드), `p_page` + `p_per_page` (페이지네이션). 필요에 따라 추가 필터 파라미터 포함
@@ -506,7 +509,7 @@ js/reservations.js      522줄  (목록·상세, 직권취소, 노쇼 — PR #57
 js/payments.js          725줄  (결제/환불 2탭, 결제 상세, 환불/위약금 상세, 위약금면제, search_payments·search_refunds RPC, FK 충돌 방지 별도 쿼리 분리)
 js/settlements.js       819줄  (정산정보/내역 2탭, search_settlement_infos+search_settlements RPC, 기간버튼, 요약동기화, 일괄정산, 엑셀)
 js/chats.js             974줄  (채팅/신고 2탭, search_chat_rooms·search_reports RPC, 채팅상세 DB 바인딩, 신고상세 DB 바인딩(admin 조인·report_logs), 비활성화, 제재/기각, 처리이력 로드)
-js/reviews.js           510줄  (보호자/유치원 2탭, 숨김/해제 — PR #57에서 날짜보정+에러핸들링)
+js/reviews.js           679줄  (보호자/유치원 2탭, search_guardian_reviews·search_kindergarten_reviews RPC, 기간퀵버튼(전체/당월/1개월/1주일), 숨김/해제)
 js/educations.js        674줄  (퀴즈/체크리스트/서약서/이수현황, 버전관리)
 js/contents.js          496줄  (배너/공지/FAQ/약관 4탭, 푸시발송, 버전발행)
 js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규칙 추가/삭제)
@@ -733,6 +736,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #96 | 정산관리 | 사업자 유형 3분류 변경(개인사업자/법인사업자/비사업자, CHECK 제약, sql/26), 정산정보 상세 항목 재배치(주민등록번호·이메일 → 사업자 정보로 이동), 주민등록번호 원본 저장+JS 마스킹 토글(maskSsn, sql/27), 정산내역 상세 환불번호 컬럼 삭제, 스펙 문서 반영 |
 | #97 | 채팅관리 | 채팅내역 목록: `search_chat_rooms` RPC 전환(sql/29), 보호자 닉네임·유치원명 ILIKE 검색 지원, 초기화 버튼 필터값 리셋만, 엑셀 다운로드 RPC 전환. 채팅내역 상세: 총 메시지 수 삭제, 예약번호 UUID 앞 8자 표시, 컬럼명 보정(checkin_scheduled, payments(amount)), 신고이력 전면 개편(info-grid+mini-table, reports→members 별도 쿼리), DB 바인딩 정상화(로딩 플레이스홀더+에러 핸들링), has_report 트리거(sql/28) |
 | #98 | 채팅관리 | 신고접수 목록: `search_reports` RPC에 `p_sanction_type` 필터 추가(sql/30), 테이블 11→12컬럼(제재 유형), 필터 드롭다운 추가. 신고접수 상세: 총 메시지 수 삭제, 처리내역 블록 재구성(처리상태/제재유형/시작일/종료일/사유/관리자명), 처리이력 6열(제재유형 컬럼 추가), processed_by admin_accounts.name 조인, 라벨 폰트사이즈 통일. DB 마이그레이션(sql/31): reports·report_logs.processed_by text→uuid FK, report_logs.sanction_type 추가, "최고관리자"→admin_accounts.id 마이그레이션. 모달 액션: processed_by uuid 저장, report_logs INSERT 추가 |
+| #99 | 후기관리 | 보호자 후기 탭: 필터바 3행 구조 개편(작성일+퀵버튼(전체/당월/지난1개월/지난1주일), 필터(만족도+이미지), 검색+초기화), 테이블 컬럼명 변경(작성일/반려동물 이름/예약상세), `search_guardian_reviews` RPC 전환(sql/32), 엑셀 다운로드 RPC 전환. 유치원 후기 탭: 동일 구조 필터바(드롭다운 2개: 만족도+보호자 전용, 이미지 기능 없음), 테이블 11컬럼(이미지 컬럼 없음), `search_kindergarten_reviews` RPC 신규(sql/33), 엑셀 다운로드 RPC 전환. JS: buildGuardianRpcParams/buildKgRpcParams, parseRpcResult, renderRow, bindPeriodButtons(양쪽 탭), 초기화 버튼 |
 
 **진행 상황:**
 - ✅ 회원관리 (1번): 수정 완료
@@ -742,7 +746,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 - ✅ 결제관리 (5번): 수정 완료 (결제내역 탭, 환불/위약금 탭 목록, 결제 상세, 환불/위약금 상세, 결제 리팩터링 Phase A~C — PR #79, #81~#93)
 - ✅ 정산관리 (6번): 수정 완료 (PR #95~#96)
 - ✅ 채팅관리 (7번): 수정 완료 (PR #97~#98)
-- ⬜ 후기관리 ~ 설정 (8~11번): 작업 예정
+- 🔧 후기관리 (8번): 목록화면 완료 (PR #99) — 상세화면 작업 예정
+- ⬜ 교육관리 ~ 설정 (9~11번): 작업 예정
 
 ---
 
