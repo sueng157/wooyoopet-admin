@@ -24,8 +24,10 @@
 
   // ── 탭 1: 보호자 후기 ──
   var g = {};
+  var gFilterBar;
   // ── 탭 2: 유치원 후기 ──
   var k = {};
+  var kFilterBar;
   var gPage = 1, kPage = 1;
 
   function cacheListDom() {
@@ -33,52 +35,70 @@
     var tab2 = document.getElementById('tab-kindergarten');
 
     if (tab1) {
-      var dates1 = tab1.querySelectorAll('.filter-input--date');
-      var sels1 = tab1.querySelectorAll('.filter-select');
-      g.dateFrom = dates1[0]; g.dateTo = dates1[1];
-      g.satisfaction = sels1[0];
-      g.searchInput = tab1.querySelector('.filter-input--search');
-      g.btnSearch = tab1.querySelector('.btn-search');
-      g.btnExcel = tab1.querySelector('.btn-excel');
-      g.resultCount = tab1.querySelector('.result-header__count strong');
-      g.body = document.getElementById('guardianListBody');
-      g.pagination = tab1.querySelector('.pagination');
+      gFilterBar        = tab1.querySelector('.filter-bar');
+      g.dateFrom        = document.getElementById('gDateFrom');
+      g.dateTo          = document.getElementById('gDateTo');
+      g.satisfaction    = document.getElementById('gSatisfaction');
+      g.imageFilter     = document.getElementById('gImageFilter');
+      g.searchField     = document.getElementById('gSearchField');
+      g.searchInput     = document.getElementById('gSearchInput');
+      g.btnReset        = document.getElementById('gBtnReset');
+      g.btnSearch       = document.getElementById('gBtnSearch');
+      g.btnExcel        = tab1.querySelector('.btn-excel');
+      g.resultCount     = tab1.querySelector('.result-header__count strong');
+      g.body            = document.getElementById('guardianListBody');
+      g.pagination      = tab1.querySelector('.pagination');
     }
 
     if (tab2) {
-      var dates2 = tab2.querySelectorAll('.filter-input--date');
-      var sels2 = tab2.querySelectorAll('.filter-select');
-      k.dateFrom = dates2[0]; k.dateTo = dates2[1];
-      k.satisfaction = sels2[0];
-      k.guardianOnly = sels2[1];
-      k.searchInput = tab2.querySelector('.filter-input--search');
-      k.btnSearch = tab2.querySelector('.btn-search');
-      k.btnExcel = tab2.querySelector('.btn-excel');
-      k.resultCount = tab2.querySelector('.result-header__count strong');
-      k.body = document.getElementById('kgReviewListBody');
-      k.pagination = tab2.querySelector('.pagination');
+      kFilterBar        = tab2.querySelector('.filter-bar');
+      k.dateFrom        = document.getElementById('kDateFrom');
+      k.dateTo          = document.getElementById('kDateTo');
+      k.satisfaction    = document.getElementById('kSatisfaction');
+      k.guardianOnly    = document.getElementById('kGuardianOnly');
+      k.searchField     = document.getElementById('kSearchField');
+      k.searchInput     = document.getElementById('kSearchInput');
+      k.btnReset        = document.getElementById('kBtnReset');
+      k.btnSearch       = document.getElementById('kBtnSearch');
+      k.btnExcel        = tab2.querySelector('.btn-excel');
+      k.resultCount     = tab2.querySelector('.result-header__count strong');
+      k.body            = document.getElementById('kgReviewListBody');
+      k.pagination      = tab2.querySelector('.pagination');
     }
   }
 
-  // ── 보호자 후기 필터 ──
-  function buildGuardianFilters() {
-    var filters = [];
-    if (g.dateFrom && g.dateFrom.value) filters.push({ column: 'written_at', op: 'gte', value: g.dateFrom.value + 'T00:00:00' });
-    if (g.dateTo && g.dateTo.value) filters.push({ column: 'written_at', op: 'lte', value: g.dateTo.value + 'T23:59:59' });
-    if (g.satisfaction) {
-      var v = g.satisfaction.value;
-      if (v && v !== '전체') filters.push({ column: 'satisfaction', op: 'eq', value: v });
+  // ── 보호자 후기 RPC 파라미터 조립 (search_guardian_reviews) ──
+  function buildGuardianRpcParams(page, perPage) {
+    var params = {
+      p_date_from:      (g.dateFrom && g.dateFrom.value) ? g.dateFrom.value : null,
+      p_date_to:        (g.dateTo && g.dateTo.value) ? g.dateTo.value : null,
+      p_satisfaction:   (g.satisfaction && g.satisfaction.value) ? g.satisfaction.value : null,
+      p_image_filter:   (g.imageFilter && g.imageFilter.value) ? g.imageFilter.value : null,
+      p_search_type:    null,
+      p_search_keyword: null,
+      p_page:           page || 1,
+      p_per_page:       perPage || PER_PAGE
+    };
+
+    if (g.searchInput && g.searchInput.value.trim()) {
+      params.p_search_type = g.searchField ? g.searchField.value : '보호자 닉네임';
+      params.p_search_keyword = g.searchInput.value.trim();
     }
-    return filters;
+
+    return params;
   }
 
-  function buildGuardianSearch() {
-    if (!g.searchInput || !g.searchInput.value.trim()) return [];
-    var q = '%' + g.searchInput.value.trim() + '%';
-    return ['content.ilike.' + q];
+  /** RPC 결과 파싱 (문자열 방어) */
+  function parseGuardianRpcResult(raw) {
+    if (!raw) return { data: [], count: 0 };
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch (e) { return { data: [], count: 0 }; }
+    }
+    return raw;
   }
 
-  function renderGuardianRow(r, idx) {
+  function renderGuardianRow(r, idx, offset) {
+    var no = offset + idx + 1;
     var tags = (r.selected_tags || []);
     var tagHtml = '';
     var maxShow = 2;
@@ -102,8 +122,8 @@
     if (r.pets) petName = r.pets.name || '';
 
     return '<tr>' +
-      '<td>' + idx + '</td>' +
-      '<td>' + api.formatDate(r.written_at) + '</td>' +
+      '<td>' + no + '</td>' +
+      '<td>' + api.formatDate(r.written_at, true) + '</td>' +
       '<td>' + api.escapeHtml(memberNick) + '</td>' +
       '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(petName) + '</td>' +
@@ -111,73 +131,78 @@
       '<td>' + (tagHtml || '-') + '</td>' +
       '<td><span class="review-content">' + api.escapeHtml(preview) + '</span></td>' +
       '<td><span class="' + imgClass + '">' + imgCount + '장</span></td>' +
-      '<td>' + (r.reservation_id ? api.renderDetailLink('reservation-detail.html', r.reservation_id, 'R-' + String(r.reservation_id).substring(0, 8)) : '-') + '</td>' +
+      '<td>' + (r.reservation_id ? '<a href="reservation-detail.html?id=' + encodeURIComponent(r.reservation_id) + '" class="data-table__link">예약상세</a>' : '-') + '</td>' +
       '<td>' + api.renderDetailLink('review-detail.html', r.id) + '</td>' +
       '</tr>';
   }
 
-  async function loadGuardianList() {
+  async function loadGuardianList(page) {
+    gPage = page || 1;
     if (!g.body) return;
+    var offset = (gPage - 1) * PER_PAGE;
     api.showTableLoading(g.body, 11);
 
     try {
-      var result = await api.fetchList('guardian_reviews', {
-        select: '*, members:member_id(nickname), kindergartens:kindergarten_id(name), pets:pet_id(name)',
-        filters: buildGuardianFilters(),
-        orFilters: buildGuardianSearch(),
-        orderBy: 'written_at',
-        page: gPage,
-        perPage: PER_PAGE
-      });
+      var rpcResult = await window.__supabase.rpc('search_guardian_reviews', buildGuardianRpcParams(gPage));
 
-      if (result.error) {
-        console.error('[reviews] guardian list error:', result.error);
-        api.showTableEmpty(g.body, 11, '데이터 로드 실패: ' + (result.error.message || ''));
+      if (rpcResult.error) {
+        console.error('[reviews] guardian RPC error:', rpcResult.error);
+        api.showTableEmpty(g.body, 11, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
         return;
       }
-      if (g.resultCount) g.resultCount.textContent = api.formatNumber(result.count);
-      if (!result.data.length) { api.showTableEmpty(g.body, 11); return; }
 
-      var html = '';
-      var start = (gPage - 1) * PER_PAGE;
-      for (var i = 0; i < result.data.length; i++) {
-        html += renderGuardianRow(result.data[i], start + i + 1);
+      var result = parseGuardianRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
+
+      if (g.resultCount) g.resultCount.textContent = api.formatNumber(total);
+
+      if (!rows.length) {
+        api.showTableEmpty(g.body, 11, '검색 결과가 없습니다.');
+        if (g.pagination) g.pagination.innerHTML = '';
+        return;
       }
-      g.body.innerHTML = html;
 
-      api.renderPagination(g.pagination, gPage, result.count, PER_PAGE, function (p) {
-        gPage = p; loadGuardianList();
-      });
+      g.body.innerHTML = rows.map(function (r, i) { return renderGuardianRow(r, i, offset); }).join('');
+      api.renderPagination(g.pagination, gPage, total, PER_PAGE, loadGuardianList);
     } catch (err) {
       console.error('[reviews] guardian list exception:', err);
       api.showTableEmpty(g.body, 11, '데이터를 불러오지 못했습니다.');
     }
   }
 
-  // ── 유치원 후기 필터 ──
-  function buildKgFilters() {
-    var filters = [];
-    if (k.dateFrom && k.dateFrom.value) filters.push({ column: 'written_at', op: 'gte', value: k.dateFrom.value + 'T00:00:00' });
-    if (k.dateTo && k.dateTo.value) filters.push({ column: 'written_at', op: 'lte', value: k.dateTo.value + 'T23:59:59' });
-    if (k.satisfaction) {
-      var v = k.satisfaction.value;
-      if (v && v !== '전체') filters.push({ column: 'satisfaction', op: 'eq', value: v });
+  // ── 유치원 후기 RPC 파라미터 조립 (search_kindergarten_reviews) ──
+  function buildKgRpcParams(page, perPage) {
+    var params = {
+      p_date_from:      (k.dateFrom && k.dateFrom.value) ? k.dateFrom.value : null,
+      p_date_to:        (k.dateTo && k.dateTo.value) ? k.dateTo.value : null,
+      p_satisfaction:   (k.satisfaction && k.satisfaction.value) ? k.satisfaction.value : null,
+      p_guardian_only:  (k.guardianOnly && k.guardianOnly.value) ? k.guardianOnly.value : null,
+      p_search_type:    null,
+      p_search_keyword: null,
+      p_page:           page || 1,
+      p_per_page:       perPage || PER_PAGE
+    };
+
+    if (k.searchInput && k.searchInput.value.trim()) {
+      params.p_search_type = k.searchField ? k.searchField.value : '유치원명';
+      params.p_search_keyword = k.searchInput.value.trim();
     }
-    if (k.guardianOnly) {
-      var go = k.guardianOnly.value;
-      if (go === '전용') filters.push({ column: 'is_guardian_only', op: 'eq', value: true });
-      if (go === '공개') filters.push({ column: 'is_guardian_only', op: 'eq', value: false });
-    }
-    return filters;
+
+    return params;
   }
 
-  function buildKgSearch() {
-    if (!k.searchInput || !k.searchInput.value.trim()) return [];
-    var q = '%' + k.searchInput.value.trim() + '%';
-    return ['content.ilike.' + q];
+  /** RPC 결과 파싱 (문자열 방어) */
+  function parseKgRpcResult(raw) {
+    if (!raw) return { data: [], count: 0 };
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch (e) { return { data: [], count: 0 }; }
+    }
+    return raw;
   }
 
-  function renderKgRow(r, idx) {
+  function renderKgRow(r, idx, offset) {
+    var no = offset + idx + 1;
     var tags = (r.selected_tags || []);
     var tagHtml = '';
     var maxShow = 2;
@@ -199,8 +224,8 @@
     if (r.pets) petName = r.pets.name || '';
 
     return '<tr>' +
-      '<td>' + idx + '</td>' +
-      '<td>' + api.formatDate(r.written_at) + '</td>' +
+      '<td>' + no + '</td>' +
+      '<td>' + api.formatDate(r.written_at, true) + '</td>' +
       '<td>' + api.escapeHtml(kgName) + '</td>' +
       '<td>' + api.escapeHtml(memberNick) + '</td>' +
       '<td>' + api.escapeHtml(petName) + '</td>' +
@@ -208,96 +233,240 @@
       '<td>' + (tagHtml || '-') + '</td>' +
       '<td><span class="review-content">' + api.escapeHtml(preview) + '</span></td>' +
       '<td>' + api.autoBadge(guardianOnly) + '</td>' +
-      '<td>' + (r.reservation_id ? api.renderDetailLink('reservation-detail.html', r.reservation_id, 'R-' + String(r.reservation_id).substring(0, 8)) : '-') + '</td>' +
+      '<td>' + (r.reservation_id ? '<a href="reservation-detail.html?id=' + encodeURIComponent(r.reservation_id) + '" class="data-table__link">예약상세</a>' : '-') + '</td>' +
       '<td>' + api.renderDetailLink('review-kg-detail.html', r.id) + '</td>' +
       '</tr>';
   }
 
-  async function loadKgList() {
+  async function loadKgList(page) {
+    kPage = page || 1;
     if (!k.body) return;
+    var offset = (kPage - 1) * PER_PAGE;
     api.showTableLoading(k.body, 11);
 
     try {
-      var result = await api.fetchList('kindergarten_reviews', {
-        select: '*, kindergartens:kindergarten_id(name), members:member_id(nickname), pets:pet_id(name)',
-        filters: buildKgFilters(),
-        orFilters: buildKgSearch(),
-        orderBy: 'written_at',
-        page: kPage,
-        perPage: PER_PAGE
-      });
+      var rpcResult = await window.__supabase.rpc('search_kindergarten_reviews', buildKgRpcParams(kPage));
 
-      if (result.error) {
-        console.error('[reviews] kg list error:', result.error);
-        api.showTableEmpty(k.body, 11, '데이터 로드 실패: ' + (result.error.message || ''));
+      if (rpcResult.error) {
+        console.error('[reviews] kg RPC error:', rpcResult.error);
+        api.showTableEmpty(k.body, 11, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
         return;
       }
-      if (k.resultCount) k.resultCount.textContent = api.formatNumber(result.count);
-      if (!result.data.length) { api.showTableEmpty(k.body, 11); return; }
 
-      var html = '';
-      var start = (kPage - 1) * PER_PAGE;
-      for (var i = 0; i < result.data.length; i++) {
-        html += renderKgRow(result.data[i], start + i + 1);
+      var result = parseKgRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
+
+      if (k.resultCount) k.resultCount.textContent = api.formatNumber(total);
+
+      if (!rows.length) {
+        api.showTableEmpty(k.body, 11, '검색 결과가 없습니다.');
+        if (k.pagination) k.pagination.innerHTML = '';
+        return;
       }
-      k.body.innerHTML = html;
 
-      api.renderPagination(k.pagination, kPage, result.count, PER_PAGE, function (p) {
-        kPage = p; loadKgList();
-      });
+      k.body.innerHTML = rows.map(function (r, i) { return renderKgRow(r, i, offset); }).join('');
+      api.renderPagination(k.pagination, kPage, total, PER_PAGE, loadKgList);
     } catch (err) {
       console.error('[reviews] kg list exception:', err);
       api.showTableEmpty(k.body, 11, '데이터를 불러오지 못했습니다.');
     }
   }
 
-  // ── 목록 이벤트 바인딩 ──
-  function bindListEvents() {
-    if (g.btnSearch) g.btnSearch.addEventListener('click', function () { gPage = 1; loadGuardianList(); });
-    if (g.searchInput) g.searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { gPage = 1; loadGuardianList(); } });
-    if (g.btnExcel) g.btnExcel.addEventListener('click', async function () {
-      var all = await api.fetchAll('guardian_reviews', { select: '*, members:member_id(nickname), kindergartens:kindergarten_id(name), pets:pet_id(name)', filters: buildGuardianFilters(), orFilters: buildGuardianSearch(), orderBy: 'written_at' });
-      var rows = (all.data || []).map(function (r) {
-        return { written_at: api.formatDate(r.written_at), nickname: r.members ? r.members.nickname : '', kg: r.kindergartens ? r.kindergartens.name : '', pet: r.pets ? r.pets.name : '', satisfaction: r.satisfaction, tags: (r.selected_tags || []).join(', '), content: r.content || '' };
+  // ── 보호자 후기 기간 퀵버튼 이벤트 바인딩 ──
+  function bindGuardianPeriodButtons() {
+    var tab = document.getElementById('tab-guardian');
+    if (!tab) return;
+    var btns = tab.querySelectorAll('.filter-period-btn');
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var period = btn.getAttribute('data-period');
+        var from = '';
+        var to = '';
+
+        if (period === 'all') {
+          from = '';
+          to = '';
+        } else if (period === 'this-month') {
+          var now = new Date();
+          from = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+          var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          to = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+        } else if (period === '1month') {
+          var d1 = new Date();
+          d1.setMonth(d1.getMonth() - 1);
+          from = d1.getFullYear() + '-' + String(d1.getMonth() + 1).padStart(2, '0') + '-' + String(d1.getDate()).padStart(2, '0');
+          to = api.getToday();
+        } else if (period === '1week') {
+          var d7 = new Date();
+          d7.setDate(d7.getDate() - 7);
+          from = d7.getFullYear() + '-' + String(d7.getMonth() + 1).padStart(2, '0') + '-' + String(d7.getDate()).padStart(2, '0');
+          to = api.getToday();
+        }
+
+        if (g.dateFrom) g.dateFrom.value = from;
+        if (g.dateTo) g.dateTo.value = to;
       });
-      api.exportExcel(rows, [
-        { key: 'written_at', label: '작성일시' }, { key: 'nickname', label: '보호자 닉네임' },
-        { key: 'kg', label: '유치원명' }, { key: 'pet', label: '반려동물명' },
-        { key: 'satisfaction', label: '만족도' }, { key: 'tags', label: '선택 태그' },
-        { key: 'content', label: '내용' }
-      ], '보호자후기');
     });
 
-    if (k.btnSearch) k.btnSearch.addEventListener('click', function () { kPage = 1; loadKgList(); });
-    if (k.searchInput) k.searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { kPage = 1; loadKgList(); } });
-    if (k.btnExcel) k.btnExcel.addEventListener('click', async function () {
-      var all = await api.fetchAll('kindergarten_reviews', { select: '*, kindergartens:kindergarten_id(name), members:member_id(nickname), pets:pet_id(name)', filters: buildKgFilters(), orFilters: buildKgSearch(), orderBy: 'written_at' });
-      var rows = (all.data || []).map(function (r) {
-        return { written_at: api.formatDate(r.written_at), kg: r.kindergartens ? r.kindergartens.name : '', nickname: r.members ? r.members.nickname : '', pet: r.pets ? r.pets.name : '', satisfaction: r.satisfaction, tags: (r.selected_tags || []).join(', '), content: r.content || '', guardian_only: r.is_guardian_only ? '전용' : '공개' };
+    // 날짜 입력 수동 변경 시 기간 버튼 active 해제
+    [g.dateFrom, g.dateTo].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
       });
-      api.exportExcel(rows, [
-        { key: 'written_at', label: '작성일시' }, { key: 'kg', label: '유치원명' },
-        { key: 'nickname', label: '보호자 닉네임' }, { key: 'pet', label: '반려동물명' },
-        { key: 'satisfaction', label: '만족도' }, { key: 'tags', label: '선택 태그' },
-        { key: 'content', label: '내용' }, { key: 'guardian_only', label: '보호자 전용' }
-      ], '유치원후기');
+    });
+  }
+
+  // ── 목록 이벤트 바인딩 ──
+  function bindListEvents() {
+    // 보호자 후기 — 검색
+    if (g.btnSearch) g.btnSearch.addEventListener('click', function () { loadGuardianList(1); });
+    if (g.searchInput) g.searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') loadGuardianList(1); });
+
+    // 보호자 후기 — 초기화 (필터값만 리셋, 데이터테이블 갱신 안함)
+    if (g.btnReset) g.btnReset.addEventListener('click', function () {
+      if (window.__resetFilters) window.__resetFilters(gFilterBar);
+      // 기간 버튼을 '전체'로 복원
+      var tab = document.getElementById('tab-guardian');
+      if (tab) {
+        tab.querySelectorAll('.filter-period-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-period') === 'all');
+        });
+      }
+    });
+
+    // 보호자 후기 — 엑셀 다운로드 (RPC 사용)
+    if (g.btnExcel) g.btnExcel.addEventListener('click', function () {
+      var params = buildGuardianRpcParams(1, 10000);
+      window.__supabase.rpc('search_guardian_reviews', params).then(function (rpcResult) {
+        if (rpcResult.error) { alert('다운로드 실패'); return; }
+        var result = parseGuardianRpcResult(rpcResult.data);
+        var rows = result.data || [];
+        api.exportExcel(rows.map(function (r) {
+          return {
+            written_at: api.formatDate(r.written_at, true),
+            nickname: r.members ? r.members.nickname : '',
+            kg: r.kindergartens ? r.kindergartens.name : '',
+            pet: r.pets ? r.pets.name : '',
+            satisfaction: r.satisfaction,
+            tags: (r.selected_tags || []).join(', '),
+            content: r.content || ''
+          };
+        }), [
+          { key: 'written_at', label: '작성일' }, { key: 'nickname', label: '보호자 닉네임' },
+          { key: 'kg', label: '유치원명' }, { key: 'pet', label: '반려동물 이름' },
+          { key: 'satisfaction', label: '만족도' }, { key: 'tags', label: '선택 태그' },
+          { key: 'content', label: '내용' }
+        ], '보호자후기');
+      });
+    });
+
+    // 유치원 후기 — 검색
+    if (k.btnSearch) k.btnSearch.addEventListener('click', function () { loadKgList(1); });
+    if (k.searchInput) k.searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') loadKgList(1); });
+
+    // 유치원 후기 — 초기화 (필터값만 리셋, 데이터테이블 갱신 안함)
+    if (k.btnReset) k.btnReset.addEventListener('click', function () {
+      if (window.__resetFilters) window.__resetFilters(kFilterBar);
+      // 기간 버튼을 '전체'로 복원
+      var tab = document.getElementById('tab-kindergarten');
+      if (tab) {
+        tab.querySelectorAll('.filter-period-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-period') === 'all');
+        });
+      }
+    });
+
+    // 유치원 후기 — 엑셀 다운로드 (RPC 사용)
+    if (k.btnExcel) k.btnExcel.addEventListener('click', function () {
+      var params = buildKgRpcParams(1, 10000);
+      window.__supabase.rpc('search_kindergarten_reviews', params).then(function (rpcResult) {
+        if (rpcResult.error) { alert('다운로드 실패'); return; }
+        var result = parseKgRpcResult(rpcResult.data);
+        var rows = result.data || [];
+        api.exportExcel(rows.map(function (r) {
+          return {
+            written_at: api.formatDate(r.written_at, true),
+            kg: r.kindergartens ? r.kindergartens.name : '',
+            nickname: r.members ? r.members.nickname : '',
+            pet: r.pets ? r.pets.name : '',
+            satisfaction: r.satisfaction,
+            tags: (r.selected_tags || []).join(', '),
+            content: r.content || '',
+            guardian_only: r.is_guardian_only ? '전용' : '공개'
+          };
+        }), [
+          { key: 'written_at', label: '작성일' }, { key: 'kg', label: '유치원명' },
+          { key: 'nickname', label: '보호자 닉네임' }, { key: 'pet', label: '반려동물 이름' },
+          { key: 'satisfaction', label: '만족도' }, { key: 'tags', label: '선택 태그' },
+          { key: 'content', label: '내용' }, { key: 'guardian_only', label: '보호자 전용' }
+        ], '유치원후기');
+      });
+    });
+  }
+
+  // ── 유치원 후기 기간 퀵버튼 이벤트 바인딩 ──
+  function bindKgPeriodButtons() {
+    var tab = document.getElementById('tab-kindergarten');
+    if (!tab) return;
+    var btns = tab.querySelectorAll('.filter-period-btn');
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var period = btn.getAttribute('data-period');
+        var from = '';
+        var to = '';
+
+        if (period === 'all') {
+          from = '';
+          to = '';
+        } else if (period === 'this-month') {
+          var now = new Date();
+          from = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+          var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          to = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+        } else if (period === '1month') {
+          var d1 = new Date();
+          d1.setMonth(d1.getMonth() - 1);
+          from = d1.getFullYear() + '-' + String(d1.getMonth() + 1).padStart(2, '0') + '-' + String(d1.getDate()).padStart(2, '0');
+          to = api.getToday();
+        } else if (period === '1week') {
+          var d7 = new Date();
+          d7.setDate(d7.getDate() - 7);
+          from = d7.getFullYear() + '-' + String(d7.getMonth() + 1).padStart(2, '0') + '-' + String(d7.getDate()).padStart(2, '0');
+          to = api.getToday();
+        }
+
+        if (k.dateFrom) k.dateFrom.value = from;
+        if (k.dateTo) k.dateTo.value = to;
+      });
+    });
+
+    // 날짜 입력 수동 변경 시 기간 버튼 active 해제
+    [k.dateFrom, k.dateTo].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
+      });
     });
   }
 
   function initList() {
     cacheListDom();
-    // 날짜 필터 기본값을 동적으로 설정 (HTML 하드코딩 대신)
-    var today = api.getToday();
-    if (g.dateTo && (!g.dateTo.value || g.dateTo.value < today)) {
-      g.dateTo.value = today;
-    }
-    if (k.dateTo && (!k.dateTo.value || k.dateTo.value < today)) {
-      k.dateTo.value = today;
-    }
     bindListEvents();
+    bindGuardianPeriodButtons();
+    bindKgPeriodButtons();
     api.hideIfReadOnly(PERM_KEY, ['.btn-action']);
-    loadGuardianList();
-    loadKgList();
+    loadGuardianList(1);
+    loadKgList(1);
   }
 
   // ══════════════════════════════════════════
