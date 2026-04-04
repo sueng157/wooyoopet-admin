@@ -704,6 +704,12 @@
    * @param {string} targetId - 감사로그용 대상 ID
    * @param {string} fieldName - 감사로그용 필드명
    */
+  /** 주민등록번호 마스킹: 앞7자리 유지 + 뒤6자리 ****** (예: 830415-2345678 → 830415-2******) */
+  function maskSsn(ssn) {
+    if (!ssn || ssn.length < 8) return ssn || '';
+    return ssn.substring(0, ssn.length - 6) + '******';
+  }
+
   function renderMaskedField(masked, raw, targetType, targetId, fieldName) {
     return '<span class="masked-field">' +
            '<span class="masked-field__value" data-masked="' + escapeHtml(masked) +
@@ -824,6 +830,7 @@
 
     // HTML 유틸
     escapeHtml: escapeHtml,
+    maskSsn: maskSsn,
     renderMaskedField: renderMaskedField,
     renderDetailLink: renderDetailLink,
     setText: setText,

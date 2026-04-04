@@ -80,7 +80,7 @@
   function renderInfoRow(r, idx, offset) {
     var no = offset + idx + 1;
     var kgName = (r.kindergartens && r.kindergartens.name) || '';
-    var bizBadge = api.autoBadge(r.business_type || '', { '사업자': 'pink', '개인': 'brown' });
+    var bizBadge = api.autoBadge(r.business_type || '', { '개인사업자': 'pink', '법인사업자': 'blue', '비사업자': 'brown' });
     var statusBadge = api.autoBadge(r.inicis_status || '', { '완료': 'green', '요청중': 'blue', '실패': 'red', '미등록': 'gray' });
     return '<tr>' +
       '<td>' + no + '</td>' +
@@ -578,9 +578,7 @@
         api.setHtml(op, [
           ['운영자 성명', api.escapeHtml(r.operator_name || '')],
           ['생년월일', api.formatDate(r.operator_birth_date, true) || '—'],
-          ['주민등록번호', api.renderMaskedField(r.operator_ssn_masked || '', r.operator_ssn_masked || '', 'settlement_infos', r.id, 'ssn')],
           ['핸드폰', api.renderMaskedField(api.maskPhone(r.operator_phone || ''), api.formatPhone(r.operator_phone || ''), 'settlement_infos', r.id, 'phone')],
-          ['이메일', api.escapeHtml(r.operator_email || '')],
           ['회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id) : '—']
         ]);
       }
@@ -588,11 +586,16 @@
       // 영역 2: 사업자 정보
       var biz = document.getElementById('detailStlBiz');
       if (biz) {
+        var ssnValue = (r.business_type === '비사업자' && r.operator_ssn_masked)
+          ? api.renderMaskedField(api.maskSsn(r.operator_ssn_masked), r.operator_ssn_masked, 'settlement_infos', r.id, 'ssn')
+          : '—';
         api.setHtml(biz, [
-          ['사업자 유형', api.autoBadge(r.business_type || '', { '사업자': 'pink', '개인': 'brown' })],
+          ['사업자 유형', api.autoBadge(r.business_type || '', { '개인사업자': 'pink', '법인사업자': 'blue', '비사업자': 'brown' })],
+          ['주민등록번호', ssnValue],
           ['사업자등록번호', api.escapeHtml(r.business_reg_number || '—')],
           ['상호명', api.escapeHtml(r.business_name || '—')],
-          ['업종·업태', api.escapeHtml(r.business_category || '—')]
+          ['업종·업태', api.escapeHtml(r.business_category || '—')],
+          ['이메일', api.escapeHtml(r.operator_email || '—')]
         ]);
       }
 
@@ -755,8 +758,7 @@
           ['결제번호', r.payment_id ? api.renderDetailLink('payment-detail.html', r.payment_id) : '—'],
           ['예약번호', r.reservation_id ? api.renderDetailLink('reservation-detail.html', r.reservation_id) : '—'],
           ['보호자 회원번호', r.member_id ? api.renderDetailLink('member-detail.html', r.member_id) : '—'],
-          ['유치원번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id) : '—'],
-          ['환불번호', r.refund_id ? api.renderDetailLink('refund-detail.html', r.refund_id) : '—']
+          ['유치원번호', r.kindergarten_id ? api.renderDetailLink('kindergarten-detail.html', r.kindergarten_id) : '—']
         ]);
       }
 
