@@ -83,35 +83,7 @@
   margin-bottom: 0;
 }
 
-/* ── 기간 버튼 (filter-period-btn) ── */
-.filter-period-btn {
-  font-family: var(--font-family);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  margin-left: 4px;
-}
-
-.filter-period-btn:first-of-type {
-  margin-left: 12px;
-}
-
-.filter-period-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.filter-period-btn.active {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
-}
+/* ── 기간 퀵버튼 (filter-period-btn) → components.css 로 이동 ── */
 
 /* ── (삭제됨) 2행 compact 스타일 → 1행과 동일한 폰트 크기로 통일 ──
    stat-card--compact 클래스 제거, 기본 stat-card 스타일을 그대로 사용 */

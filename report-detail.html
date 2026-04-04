@@ -185,9 +185,6 @@
 
           <div class="info-grid__label">마지막 메시지 일시</div>
           <div class="info-grid__value">2026-03-17 11:05</div>
-
-          <div class="info-grid__label">총 메시지 수</div>
-          <div class="info-grid__value">23건</div>
         </div>
       </div>
 
@@ -197,13 +194,16 @@
           <h3 class="detail-card__title">처리 내역</h3>
         </div>
         <div class="info-grid" style="margin-bottom:20px;" id="detailRptProc">
-          <div class="info-grid__label">처리 결과</div>
+          <div class="info-grid__label">처리 상태</div>
           <div class="info-grid__value">—</div>
 
           <div class="info-grid__label">제재 유형</div>
           <div class="info-grid__value">—</div>
 
-          <div class="info-grid__label">제재 기간</div>
+          <div class="info-grid__label">제재 시작일</div>
+          <div class="info-grid__value">—</div>
+
+          <div class="info-grid__label">제재 종료일</div>
           <div class="info-grid__value">—</div>
 
           <div class="info-grid__label">처리 사유</div>
@@ -214,24 +214,23 @@
         </div>
 
         <!-- 처리 이력 미니테이블 -->
-        <h4 style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">처리 이력</h4>
+        <div class="detail-card__header" style="margin-top:8px;">
+          <h3 class="detail-card__title">처리 이력</h3>
+        </div>
         <table class="mini-table" id="detailRptLog">
           <thead>
             <tr>
               <th>변경일시</th>
               <th>이전 상태</th>
               <th>변경 상태</th>
+              <th>제재 유형</th>
               <th>처리자</th>
               <th>비고</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>2026-03-17 10:30</td>
-              <td>—</td>
-              <td><span class="badge badge--c-orange">접수</span></td>
-              <td><span class="badge badge--c-gray">시스템</span></td>
-              <td>자동 접수</td>
+              <td colspan="6" style="text-align:center;color:var(--text-weak);padding:24px 0;">로딩 중...</td>
             </tr>
           </tbody>
         </table>
@@ -268,9 +267,9 @@
     <select class="modal__select" id="sanctionType">
       <option value="">선택하세요</option>
       <option value="warning">경고</option>
-      <option value="7d">7일 정지</option>
-      <option value="30d">30일 정지</option>
-      <option value="permanent">영구 정지</option>
+      <option value="7d">7일 이용정지</option>
+      <option value="30d">30일 이용정지</option>
+      <option value="permanent">영구정지</option>
     </select>
     <div class="modal__label">제재 사유 <span style="color:#E05A3A;">*</span></div>
     <textarea class="modal__textarea" id="sanctionReason" placeholder="제재 사유를 입력하세요..." data-enables="sanctionBtn"></textarea>

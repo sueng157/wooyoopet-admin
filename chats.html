@@ -252,35 +252,58 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
-          <!-- 1행: 기간 -->
+          <!-- 1행: 신고일 + 기간 퀵버튼 -->
           <div class="filter-row">
-            <span class="filter-label">기간</span>
-            <input type="date" class="filter-input filter-input--date" value="2026-01-01">
+            <span class="filter-label">신고일</span>
+            <input type="date" class="filter-input filter-input--date" id="rptDateFrom" value="">
             <span class="filter-separator">~</span>
-            <input type="date" class="filter-input filter-input--date" value="2026-03-17">
+            <input type="date" class="filter-input filter-input--date" id="rptDateTo" value="">
+            <button type="button" class="filter-period-btn active" data-period="all">전체</button>
+            <button type="button" class="filter-period-btn" data-period="this-month">당월</button>
+            <button type="button" class="filter-period-btn" data-period="1month">최근 1개월</button>
+            <button type="button" class="filter-period-btn" data-period="1week">최근 1주일</button>
           </div>
-          <!-- 2행: 처리상태 + 신고자유형 -->
+          <!-- 2행: 필터 (드롭다운 3개 횡배치) -->
           <div class="filter-row">
-            <span class="filter-label">처리상태</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>접수</option>
-              <option>처리중</option>
-              <option>처리완료</option>
-              <option>기각</option>
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="rptStatus">
+              <option value="">처리상태: 전체</option>
+              <option value="접수">접수</option>
+              <option value="처리중">처리중</option>
+              <option value="처리완료">처리완료</option>
+              <option value="기각">기각</option>
             </select>
-            <span class="filter-label" style="margin-left:12px;">신고자 유형</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>보호자</option>
-              <option>유치원</option>
+            <select class="filter-select" id="rptReporterType">
+              <option value="">신고자 유형: 전체</option>
+              <option value="보호자">보호자</option>
+              <option value="유치원">유치원</option>
+            </select>
+            <select class="filter-select" id="rptReasonCategory">
+              <option value="">신고사유: 전체</option>
+              <option value="부적절한 언행">부적절한 언행</option>
+              <option value="부적절한 대화 시도">부적절한 대화 시도</option>
+              <option value="돌봄 부주의">돌봄 부주의</option>
+              <option value="스팸/광고">스팸/광고</option>
+              <option value="기타">기타</option>
+            </select>
+            <select class="filter-select" id="rptSanctionType">
+              <option value="">제재 유형: 전체</option>
+              <option value="경고">경고</option>
+              <option value="7일 이용정지">7일 이용정지</option>
+              <option value="30일 이용정지">30일 이용정지</option>
+              <option value="영구정지">영구정지</option>
             </select>
           </div>
-          <!-- 3행: 검색 -->
+          <!-- 3행: 검색 (검색대상 드롭다운 + input + 초기화 + 검색) -->
           <div class="filter-row">
             <span class="filter-label">검색</span>
-            <input type="text" class="filter-input filter-input--search" placeholder="신고자·피신고자 닉네임으로 검색">
-            <button class="btn-search">검색</button>
+            <select class="filter-select" id="rptSearchField" style="max-width:160px;">
+              <option value="reporter">신고자</option>
+              <option value="reported">피신고자</option>
+            </select>
+            <input type="text" class="filter-input" id="rptSearchInput" placeholder="검색어를 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="rptBtnReset">초기화</button>
+            <button class="btn-search" id="rptBtnSearch">검색</button>
           </div>
         </div>
 
@@ -300,124 +323,22 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th>번호</th>
                 <th>신고일시</th>
-                <th>신고자 닉네임</th>
+                <th>신고자</th>
                 <th>신고자 유형</th>
-                <th>피신고자 닉네임</th>
+                <th>피신고자</th>
                 <th>피신고자 유형</th>
                 <th>신고 사유</th>
                 <th>채팅방 번호</th>
                 <th>처리상태</th>
+                <th>제재 유형</th>
                 <th>처리일시</th>
                 <th>상세</th>
               </tr>
             </thead>
             <tbody id="rptListBody">
-              <tr>
-                <td>1</td>
-                <td>2026-03-17 10:30</td>
-                <td>초코아빠</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>해피독스</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>부적절한 언어</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000127</a></td>
-                <td><span class="badge badge--c-orange">접수</span></td>
-                <td>—</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>2026-03-16 14:20</td>
-                <td>콩이맘</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>밤톨이네</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>사기 의심</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000124</a></td>
-                <td><span class="badge badge--c-blue">처리중</span></td>
-                <td>—</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>2026-03-14 09:00</td>
-                <td>퍼피하우스</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>별이맘</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>허위 정보</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000122</a></td>
-                <td><span class="badge badge--c-green">처리완료</span></td>
-                <td>2026-03-15 11:30</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>4</td>
-                <td>2026-03-12 16:45</td>
-                <td>루비엄마</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>해피독스</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>성적 내용</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000125</a></td>
-                <td><span class="badge badge--c-gray">기각</span></td>
-                <td>2026-03-13 10:00</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>5</td>
-                <td>2026-03-10 11:30</td>
-                <td>밤톨이네</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>두부엄마</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>부적절한 언어</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000121</a></td>
-                <td><span class="badge badge--c-orange">접수</span></td>
-                <td>—</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>6</td>
-                <td>2026-03-08 08:15</td>
-                <td>하늘이아빠</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>도그빌리지</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>허위 정보</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000123</a></td>
-                <td><span class="badge badge--c-blue">처리중</span></td>
-                <td>—</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>7</td>
-                <td>2026-03-05 13:00</td>
-                <td>도그빌리지</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>하늘이아빠</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>사기 의심</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000123</a></td>
-                <td><span class="badge badge--c-green">처리완료</span></td>
-                <td>2026-03-07 09:30</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>8</td>
-                <td>2026-03-01 17:20</td>
-                <td>뽀삐맘</td>
-                <td><span class="badge badge--c-brown">보호자</span></td>
-                <td>퍼피하우스</td>
-                <td><span class="badge badge--c-pink">유치원</span></td>
-                <td>기타</td>
-                <td><a href="chat-detail.html" class="data-table__link">CR-00000126</a></td>
-                <td><span class="badge badge--c-gray">기각</span></td>
-                <td>2026-03-02 14:00</td>
-                <td><a href="report-detail.html" class="data-table__link">상세</a></td>
-              </tr>
+              <!-- JS 로드 후 RPC 데이터로 대체됨 -->
             </tbody>
           </table>
         </div>
