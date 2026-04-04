@@ -230,16 +230,16 @@ INSERT INTO refunds (id, payment_id, reservation_id, member_id, kindergarten_id,
 -- ============================================================
 -- id: uuid, kindergarten_id(FK), member_id(FK), operator_name, operator_birth_date(date),
 -- operator_ssn_masked, operator_phone, operator_email,
--- business_type('개인'/'사업자'), business_reg_number, business_name, business_category,
+-- business_type('개인사업자'/'법인사업자'/'비사업자'), business_reg_number, business_name, business_category,
 -- account_bank, account_number, account_holder, inicis_seller_id, submall_code,
 -- inicis_status('미등록'/'요청중'/'완료'/'실패'), inicis_fail_reason,
 -- inicis_requested_at, inicis_completed_at, submitted_at, processed_at,
 -- created_at, updated_at
 
 INSERT INTO settlement_infos (id, kindergarten_id, member_id, operator_name, operator_birth_date, operator_ssn_masked, operator_phone, operator_email, business_type, business_reg_number, business_name, business_category, account_bank, account_number, account_holder, inicis_seller_id, submall_code, inicis_status, inicis_requested_at, inicis_completed_at, created_at) VALUES
-('22222222-0001-4000-a000-000000000001', 'b0b0b0b0-0001-4000-a000-000000000001', 'd0d0d0d0-0006-4000-a000-000000000006', '한지원', '1983-04-15', '830415-2******', '01067890123', 'bamtol@email.com', '사업자', '123-45-67890', '밤톨이네펫케어', '서비스업/반려동물', '국민은행', '123456789012', '한지원', 'wooyoo1', 'SUB001', '완료', '2026-01-15 10:00:00+09', '2026-01-17 14:00:00+09', '2026-01-13 09:00:00+09'),
-('22222222-0002-4000-a000-000000000002', 'b0b0b0b0-0002-4000-a000-000000000002', 'd0d0d0d0-0007-4000-a000-000000000007', '오승현', '1979-09-22', '790922-1******', '01078901234', 'happydog@email.com', '개인', NULL, NULL, NULL, '신한은행', '987654321098', '오승현', 'wooyoo2', 'SUB002', '완료', '2026-01-16 11:00:00+09', '2026-01-18 15:00:00+09', '2026-01-14 10:00:00+09'),
-('22222222-0003-4000-a000-000000000003', 'b0b0b0b0-0003-4000-a000-000000000003', 'd0d0d0d0-0008-4000-a000-000000000008', '윤미래', '1991-06-05', '910605-2******', '01089012345', 'kkomi@email.com', '개인', NULL, NULL, NULL, '하나은행', '567890123456', '윤미래', 'wooyoo3', NULL, '미등록', NULL, NULL, '2026-02-06 14:00:00+09');
+('22222222-0001-4000-a000-000000000001', 'b0b0b0b0-0001-4000-a000-000000000001', 'd0d0d0d0-0006-4000-a000-000000000006', '한지원', '1983-04-15', '830415-2345678', '01067890123', 'bamtol@email.com', '개인사업자', '123-45-67890', '밤톨이네펫케어', '서비스업/반려동물', '국민은행', '123456789012', '한지원', 'wooyoo1', 'SUB001', '완료', '2026-01-15 10:00:00+09', '2026-01-17 14:00:00+09', '2026-01-13 09:00:00+09'),
+('22222222-0002-4000-a000-000000000002', 'b0b0b0b0-0002-4000-a000-000000000002', 'd0d0d0d0-0007-4000-a000-000000000007', '오승현', '1979-09-22', '790922-1987654', '01078901234', 'happydog@email.com', '비사업자', NULL, NULL, NULL, '신한은행', '987654321098', '오승현', 'wooyoo2', 'SUB002', '완료', '2026-01-16 11:00:00+09', '2026-01-18 15:00:00+09', '2026-01-14 10:00:00+09'),
+('22222222-0003-4000-a000-000000000003', 'b0b0b0b0-0003-4000-a000-000000000003', 'd0d0d0d0-0008-4000-a000-000000000008', '윤미래', '1991-06-05', '910605-2876543', '01089012345', 'kkomi@email.com', '비사업자', NULL, NULL, NULL, '하나은행', '567890123456', '윤미래', 'wooyoo3', NULL, '미등록', NULL, NULL, '2026-02-06 14:00:00+09');
 
 -- ============================================================
 -- STEP 9: 정산내역 — settlements

@@ -8,7 +8,7 @@
 --
 -- 파라미터:
 --   p_inicis_status   : 이니시스 등록상태 필터 (미등록/요청중/완료/실패, NULL=전체)
---   p_business_type   : 사업자유형 필터 (사업자/개인, NULL=전체)
+--   p_business_type   : 사업자유형 필터 (개인사업자/법인사업자/비사업자, NULL=전체)
 --   p_search_type     : 검색 기준 (유치원명/운영자 성명/사업자등록번호)
 --   p_search_keyword  : 검색 키워드
 --   p_kindergarten_id : 유치원 필터 (URL 파라미터로 전달, NULL=전체)
