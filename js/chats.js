@@ -173,37 +173,53 @@
   }
 
   /* ── A-2: 신고접수 탭 ── */
-  var rptDateFrom, rptDateTo, rptStatus, rptReporter, rptSearchInput;
-  var rptBtnSearch, rptBtnExcel, rptResultCount, rptListBody, rptPagination;
+  var rptFilterBar, rptDateFrom, rptDateTo, rptStatus, rptReporterType, rptReasonCategory, rptSanctionType;
+  var rptSearchField, rptSearchInput;
+  var rptBtnReset, rptBtnSearch, rptBtnExcel, rptResultCount, rptListBody, rptPagination;
   var rptPage = 1;
 
   function cacheRptDom() {
     var tab = document.getElementById('tab-reports');
     if (!tab) return;
-    var dates = tab.querySelectorAll('.filter-input--date');
-    rptDateFrom = dates[0];
-    rptDateTo   = dates[1];
-
-    var selects = tab.querySelectorAll('.filter-select');
-    rptStatus   = selects[0];
-    rptReporter = selects[1];
-
-    rptSearchInput = tab.querySelector('.filter-input--search');
-    rptBtnSearch   = tab.querySelector('.btn-search');
-    rptBtnExcel    = tab.querySelector('.btn-excel');
+    rptFilterBar     = tab.querySelector('.filter-bar');
+    rptDateFrom      = document.getElementById('rptDateFrom');
+    rptDateTo        = document.getElementById('rptDateTo');
+    rptStatus        = document.getElementById('rptStatus');
+    rptReporterType  = document.getElementById('rptReporterType');
+    rptReasonCategory = document.getElementById('rptReasonCategory');
+    rptSanctionType  = document.getElementById('rptSanctionType');
+    rptSearchField   = document.getElementById('rptSearchField');
+    rptSearchInput   = document.getElementById('rptSearchInput');
+    rptBtnReset      = document.getElementById('rptBtnReset');
+    rptBtnSearch     = document.getElementById('rptBtnSearch');
+    rptBtnExcel      = tab.querySelector('.btn-excel');
 
     rptResultCount = tab.querySelector('.result-header__count strong');
     rptListBody    = document.getElementById('rptListBody');
     rptPagination  = tab.querySelector('.pagination');
   }
 
-  function buildRptFilters() {
-    var f = [];
-    if (rptDateFrom && rptDateFrom.value) f.push({ column: 'reported_at', op: 'gte', value: rptDateFrom.value + 'T00:00:00' });
-    if (rptDateTo && rptDateTo.value) f.push({ column: 'reported_at', op: 'lte', value: rptDateTo.value + 'T23:59:59' });
-    if (rptStatus && rptStatus.value !== '전체') f.push({ column: 'status', op: 'eq', value: rptStatus.value });
-    if (rptReporter && rptReporter.value !== '전체') f.push({ column: 'reporter_type', op: 'eq', value: rptReporter.value });
-    return f;
+  /** RPC 파라미터 조립 (search_reports) */
+  function buildRptRpcParams(page, perPage) {
+    var params = {
+      p_date_from:       (rptDateFrom && rptDateFrom.value) ? rptDateFrom.value : null,
+      p_date_to:         (rptDateTo && rptDateTo.value) ? rptDateTo.value : null,
+      p_status:          (rptStatus && rptStatus.value) ? rptStatus.value : null,
+      p_reporter_type:   (rptReporterType && rptReporterType.value) ? rptReporterType.value : null,
+      p_reason_category: (rptReasonCategory && rptReasonCategory.value) ? rptReasonCategory.value : null,
+      p_sanction_type:   (rptSanctionType && rptSanctionType.value) ? rptSanctionType.value : null,
+      p_search_type:     null,
+      p_search_keyword:  null,
+      p_page:            page || 1,
+      p_per_page:        perPage || PER_PAGE
+    };
+
+    if (rptSearchInput && rptSearchInput.value.trim()) {
+      params.p_search_type = rptSearchField ? rptSearchField.value : 'reporter';
+      params.p_search_keyword = rptSearchInput.value.trim();
+    }
+
+    return params;
   }
 
   function renderRptRow(r, idx, offset) {
@@ -224,39 +240,132 @@
       '<td>' + api.escapeHtml(r.reason_category || '') + '</td>' +
       '<td>' + (r.chat_room_id ? '<a href="chat-detail.html?id=' + r.chat_room_id + '" class="data-table__link">채팅방</a>' : '—') + '</td>' +
       '<td>' + statusBadge + '</td>' +
+      '<td>' + (r.sanction_type ? api.escapeHtml(r.sanction_type) : '—') + '</td>' +
       '<td>' + (api.formatDate(r.processed_at) || '—') + '</td>' +
       '<td><a href="report-detail.html?id=' + (r.id || '') + '" class="data-table__link">상세</a></td>' +
       '</tr>';
   }
 
-  function loadRptList(page) {
+  async function loadRptList(page) {
     rptPage = page || 1;
     var offset = (rptPage - 1) * PER_PAGE;
-    api.showTableLoading(rptListBody, 11);
+    api.showTableLoading(rptListBody, 12);
 
-    api.fetchList('reports', {
-      select: '*, reporter:reporter_id(name, nickname), reported:reported_id(name, nickname)',
-      filters: buildRptFilters(),
-      order: { column: 'reported_at', ascending: false },
-      page: rptPage, perPage: PER_PAGE
-    }).then(function (res) {
-      var rows = res.data || [], total = res.count || 0;
-      rptResultCount.textContent = api.formatNumber(total);
-      if (!rows.length) { api.showTableEmpty(rptListBody, 11, '검색 결과가 없습니다.'); rptPagination.innerHTML = ''; return; }
+    try {
+      var rpcResult = await window.__supabase.rpc('search_reports', buildRptRpcParams(rptPage));
+
+      if (rpcResult.error) {
+        console.error('[chats] reports RPC error:', rpcResult.error);
+        api.showTableEmpty(rptListBody, 12, '데이터 로드 실패: ' + (rpcResult.error.message || JSON.stringify(rpcResult.error)));
+        return;
+      }
+
+      var result = parseChatRpcResult(rpcResult.data);
+      var rows = result.data || [];
+      var total = result.count || 0;
+
+      if (rptResultCount) rptResultCount.textContent = api.formatNumber(total);
+
+      if (!rows.length) {
+        api.showTableEmpty(rptListBody, 12, '검색 결과가 없습니다.');
+        if (rptPagination) rptPagination.innerHTML = '';
+        return;
+      }
+
       rptListBody.innerHTML = rows.map(function (r, i) { return renderRptRow(r, i, offset); }).join('');
       api.renderPagination(rptPagination, rptPage, total, PER_PAGE, loadRptList);
-    }).catch(function () { api.showTableEmpty(rptListBody, 11, '데이터를 불러오지 못했습니다.'); });
+    } catch (err) {
+      console.error('[chats] reports list error:', err);
+      api.showTableEmpty(rptListBody, 12, '데이터를 불러오지 못했습니다.');
+    }
   }
 
   function bindRptEvents() {
     if (rptBtnSearch) rptBtnSearch.addEventListener('click', function () { loadRptList(1); });
     if (rptSearchInput) rptSearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') loadRptList(1); });
+
+    // 초기화 버튼: 필터값만 리셋, 데이터테이블 갱신 안함
+    if (rptBtnReset) rptBtnReset.addEventListener('click', function () {
+      if (window.__resetFilters) window.__resetFilters(rptFilterBar);
+      // 기간 버튼을 '전체'로 복원
+      var tab = document.getElementById('tab-reports');
+      if (tab) {
+        tab.querySelectorAll('.filter-period-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-period') === 'all');
+        });
+      }
+    });
+
+    // 엑셀 다운로드 → search_reports RPC 사용
     if (rptBtnExcel) rptBtnExcel.addEventListener('click', function () {
-      api.fetchAll('reports', { select: '*, reporter:reporter_id(nickname), reported:reported_id(nickname)', filters: buildRptFilters(), order: { column: 'reported_at', ascending: false } }).then(function (res) {
-        var rows = res.data || [];
+      var params = buildRptRpcParams(1, 10000);
+      window.__supabase.rpc('search_reports', params).then(function (rpcResult) {
+        if (rpcResult.error) { alert('다운로드 실패'); return; }
+        var result = parseChatRpcResult(rpcResult.data);
+        var rows = result.data || [];
         api.exportExcel(rows.map(function (r) {
-          return { '신고번호': r.id || '', '신고일시': r.reported_at || '', '신고자': (r.reporter && r.reporter.nickname) || '', '신고자유형': r.reporter_type || '', '피신고자': (r.reported && r.reported.nickname) || '', '사유': r.reason_category || '', '상태': r.status || '' };
+          return {
+            '신고일시': r.reported_at || '',
+            '신고자': (r.reporter && r.reporter.nickname) || '',
+            '신고자 유형': r.reporter_type || '',
+            '피신고자': (r.reported && r.reported.nickname) || '',
+            '피신고자 유형': r.reported_type || '',
+            '신고사유': r.reason_category || '',
+            '처리상태': r.status || '',
+            '제재 유형': r.sanction_type || '',
+            '처리일시': r.processed_at || ''
+          };
         }), '신고접수');
+      });
+    });
+  }
+
+  /** 신고접수 탭 기간 퀵버튼 이벤트 바인딩 */
+  function bindRptPeriodButtons() {
+    var tab = document.getElementById('tab-reports');
+    if (!tab) return;
+    var btns = tab.querySelectorAll('.filter-period-btn');
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        // 모든 기간 버튼 비활성 → 현재만 활성
+        btns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var period = btn.getAttribute('data-period');
+        var now = new Date();
+        var from = '';
+        var to = '';
+
+        if (period === 'all') {
+          from = '';
+          to = '';
+        } else if (period === 'this-month') {
+          from = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+          to = api.getToday();
+        } else if (period === '1month') {
+          var d1 = new Date();
+          d1.setMonth(d1.getMonth() - 1);
+          from = d1.getFullYear() + '-' + String(d1.getMonth() + 1).padStart(2, '0') + '-' + String(d1.getDate()).padStart(2, '0');
+          to = api.getToday();
+        } else if (period === '1week') {
+          var d7 = new Date();
+          d7.setDate(d7.getDate() - 7);
+          from = d7.getFullYear() + '-' + String(d7.getMonth() + 1).padStart(2, '0') + '-' + String(d7.getDate()).padStart(2, '0');
+          to = api.getToday();
+        }
+
+        if (rptDateFrom) rptDateFrom.value = from;
+        if (rptDateTo) rptDateTo.value = to;
+        // 버튼 클릭 시 자동 검색하지 않음 (날짜만 세팅)
+      });
+    });
+
+    // 날짜 입력 수동 변경 시 기간 버튼 active 해제
+    [rptDateFrom, rptDateTo].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        btns.forEach(function (b) { b.classList.remove('active'); });
       });
     });
   }
@@ -266,6 +375,7 @@
     cacheRptDom();
     bindChatEvents();
     bindRptEvents();
+    bindRptPeriodButtons();
     loadChatList(1);
     loadRptList(1);
   }
@@ -578,16 +688,33 @@
     return !!document.getElementById('detailRptBasic');
   }
 
-  function loadReportDetail() {
+  /** 현재 신고 데이터 저장 (모달에서 prev_status 참조용) */
+  var currentReport = null;
+
+  /**
+   * 신고접수 상세 로드
+   * processed_by가 uuid FK → admin_accounts.id 이므로 admin:processed_by(id,name) 조인
+   * reporter_id, reported_id → members FK 조인 (FK 각 1개씩, PGRST201 미발생)
+   */
+  async function loadReportDetail() {
     var id = api.getParam('id');
     if (!id) return;
 
-    api.fetchDetail('reports', id, '*, reporter:reporter_id(name, nickname, phone), reported:reported_id(name, nickname, phone)').then(function (result) {
+    try {
+      var result = await api.fetchDetail('reports', id,
+        '*, reporter:reporter_id(name, nickname, phone), reported:reported_id(name, nickname, phone), admin:processed_by(id, name)');
+
+      if (result.error || !result.data) {
+        console.error('[chats] report detail fetch error:', result.error);
+        return;
+      }
+
       var r = result.data;
-      if (!r || result.error) return;
+      currentReport = r;  // 모달에서 참조
 
       var reporterData = r.reporter || {};
       var reportedData = r.reported || {};
+      var adminData = r.admin || {};
 
       // 영역 1: 신고 기본정보
       var basic = document.getElementById('detailRptBasic');
@@ -626,13 +753,12 @@
         ]);
       }
 
-      // 영역 4: 관련 채팅방
+      // 영역 4: 관련 채팅방 (총 메시지 수 삭제)
       var chatInfo = document.getElementById('detailRptChat');
       if (chatInfo) {
         api.setHtml(chatInfo, [
           ['채팅방 번호', r.chat_room_id ? '<a href="chat-detail.html?id=' + r.chat_room_id + '" class="data-table__link">' + api.escapeHtml(String(r.chat_room_id).substring(0, 8)) + '</a>' : '—'],
-          ['마지막 메시지 일시', '—'],
-          ['총 메시지 수', '—']
+          ['마지막 메시지 일시', '—']
         ]);
       }
 
@@ -640,62 +766,191 @@
       var proc = document.getElementById('detailRptProc');
       if (proc) {
         api.setHtml(proc, [
-          ['처리 결과', r.sanction_result ? api.autoBadge(r.sanction_result) : '—'],
+          ['처리 상태', api.autoBadge(r.status || '', { '접수': 'orange', '처리중': 'blue', '처리완료': 'green', '기각': 'gray' })],
           ['제재 유형', r.sanction_type ? api.escapeHtml(r.sanction_type) : '—'],
-          ['제재 기간', '—'],
+          ['제재 시작일', r.sanction_start ? api.formatDate(r.sanction_start, true) : '—'],
+          ['제재 종료일', r.sanction_end ? api.formatDate(r.sanction_end, true) : '—'],
           ['처리 사유', api.escapeHtml(r.process_reason || '') || '—'],
-          ['처리 관리자', api.escapeHtml(r.processed_by || '') || '—']
+          ['처리 관리자', adminData.name ? api.escapeHtml(adminData.name) : '—']
         ]);
       }
 
-    }).catch(function (err) { console.error('[chats] report detail error:', err); });
+      // 영역 5-2: 처리 이력 테이블 로드
+      loadReportLogs(id);
+
+    } catch (err) {
+      console.error('[chats] report detail error:', err);
+    }
+  }
+
+  /**
+   * 처리 이력 테이블 로드 (report_logs)
+   * processed_by가 uuid FK → admin_accounts.id 이므로 admin:processed_by(name) 조인
+   * 6열: 변경일시 / 이전 상태 / 변경 상태 / 제재 유형 / 처리자 / 비고
+   */
+  function loadReportLogs(reportId) {
+    var tableEl = document.getElementById('detailRptLog');
+    if (!tableEl) return;
+    var tbody = tableEl.querySelector('tbody');
+    if (!tbody) return;
+
+    api.fetchList('report_logs', {
+      select: '*, admin:processed_by(name)',
+      filters: [{ column: 'report_id', op: 'eq', value: reportId }],
+      order: { column: 'created_at', ascending: true },
+      page: 1, perPage: 100
+    }).then(function (res) {
+      var rows = res.data || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-weak);padding:24px 0;">처리 이력이 없습니다.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < rows.length; i++) {
+        var log = rows[i];
+        var prevBadge = log.prev_status ? api.autoBadge(log.prev_status, { '접수': 'orange', '처리중': 'blue', '처리완료': 'green', '기각': 'gray' }) : '—';
+        var newBadge = api.autoBadge(log.new_status || '', { '접수': 'orange', '처리중': 'blue', '처리완료': 'green', '기각': 'gray' });
+        var sanctionText = log.sanction_type ? api.escapeHtml(log.sanction_type) : '—';
+
+        // 처리자: processed_by가 NULL이면 시스템, 있으면 admin.name
+        var processor = '';
+        if (log.processed_by === null) {
+          processor = '<span class="badge badge--c-gray">시스템</span>';
+        } else {
+          var adminInfo = log.admin || {};
+          processor = adminInfo.name ? api.escapeHtml(adminInfo.name) : '—';
+        }
+
+        html += '<tr>' +
+          '<td>' + api.formatDate(log.created_at) + '</td>' +
+          '<td>' + prevBadge + '</td>' +
+          '<td>' + newBadge + '</td>' +
+          '<td>' + sanctionText + '</td>' +
+          '<td>' + processor + '</td>' +
+          '<td>' + api.escapeHtml(log.note || '') + '</td>' +
+          '</tr>';
+      }
+      tbody.innerHTML = html;
+    }).catch(function (err) {
+      console.error('[chats] report logs error:', err);
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-weak);padding:24px 0;">처리 이력을 불러오지 못했습니다.</td></tr>';
+    });
   }
 
   function bindReportDetailModals() {
+    // 처리상태 변경 모달
     var statusConfirm = document.querySelector('#statusChangeModal .modal__btn--confirm-primary');
     if (statusConfirm) {
-      statusConfirm.addEventListener('click', function () {
+      statusConfirm.addEventListener('click', async function () {
         var status = document.getElementById('statusSelect').value;
         if (!status) return;
         var statusMap = { 'processing': '처리중', 'completed': '처리완료' };
         var newStatus = statusMap[status] || status;
         var id = api.getParam('id');
-        api.updateRecord('reports', id, { status: newStatus }).then(function () {
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var adminId = admin ? admin.id : null;
+        var prevStatus = (currentReport && currentReport.status) || '';
+
+        try {
+          await api.updateRecord('reports', id, {
+            status: newStatus,
+            processed_by: adminId,
+            processed_at: new Date().toISOString()
+          });
+          // report_logs INSERT
+          await api.insertRecord('report_logs', {
+            report_id: id,
+            prev_status: prevStatus,
+            new_status: newStatus,
+            processed_by: adminId,
+            sanction_type: null,
+            note: '상태 변경: ' + newStatus
+          });
+          // audit_logs (기존 유지)
           api.insertAuditLog('처리상태변경', 'reports', id, { status: newStatus });
           location.reload();
-        });
+        } catch (err) {
+          console.error('[chats] status change error:', err);
+          alert('처리상태 변경 중 오류가 발생했습니다.');
+        }
       });
     }
 
+    // 제재 적용 모달
     var sanctionBtn = document.getElementById('sanctionBtn');
     if (sanctionBtn) {
-      sanctionBtn.addEventListener('click', function () {
+      sanctionBtn.addEventListener('click', async function () {
         var type = document.getElementById('sanctionType').value;
         var reason = document.getElementById('sanctionReason').value;
         if (!type || !reason) return;
-        var typeMap = { 'warning': '경고', '7d': '7일 정지', '30d': '30일 정지', 'permanent': '영구 정지' };
+        var typeMap = { 'warning': '경고', '7d': '7일 이용정지', '30d': '30일 이용정지', 'permanent': '영구정지' };
         var id = api.getParam('id');
-        api.updateRecord('reports', id, {
-          status: '처리완료',
-          sanction_type: typeMap[type] || type,
-          process_reason: reason
-        }).then(function () {
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var adminId = admin ? admin.id : null;
+        var prevStatus = (currentReport && currentReport.status) || '';
+
+        try {
+          await api.updateRecord('reports', id, {
+            status: '처리완료',
+            sanction_type: typeMap[type] || type,
+            process_reason: reason,
+            processed_by: adminId,
+            processed_at: new Date().toISOString()
+          });
+          // report_logs INSERT (제재 유형 포함)
+          await api.insertRecord('report_logs', {
+            report_id: id,
+            prev_status: prevStatus,
+            new_status: '처리완료',
+            processed_by: adminId,
+            sanction_type: typeMap[type] || type,
+            note: reason
+          });
+          // audit_logs (기존 유지)
           api.insertAuditLog('제재적용', 'reports', id, { type: typeMap[type] || type, reason: reason });
           location.reload();
-        });
+        } catch (err) {
+          console.error('[chats] sanction apply error:', err);
+          alert('제재 적용 중 오류가 발생했습니다.');
+        }
       });
     }
 
+    // 기각 처리 모달
     var dismissBtn = document.getElementById('dismissBtn');
     if (dismissBtn) {
-      dismissBtn.addEventListener('click', function () {
+      dismissBtn.addEventListener('click', async function () {
         var reason = document.getElementById('dismissReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('reports', id, { status: '기각', process_reason: reason }).then(function () {
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var adminId = admin ? admin.id : null;
+        var prevStatus = (currentReport && currentReport.status) || '';
+
+        try {
+          await api.updateRecord('reports', id, {
+            status: '기각',
+            process_reason: reason,
+            processed_by: adminId,
+            processed_at: new Date().toISOString()
+          });
+          // report_logs INSERT
+          await api.insertRecord('report_logs', {
+            report_id: id,
+            prev_status: prevStatus,
+            new_status: '기각',
+            processed_by: adminId,
+            sanction_type: null,
+            note: reason
+          });
+          // audit_logs (기존 유지)
           api.insertAuditLog('기각처리', 'reports', id, { reason: reason });
           location.reload();
-        });
+        } catch (err) {
+          console.error('[chats] dismiss error:', err);
+          alert('기각 처리 중 오류가 발생했습니다.');
+        }
       });
     }
   }

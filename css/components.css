@@ -1350,3 +1350,33 @@
   color: var(--danger);
   font-weight: 600;
 }
+
+/* ── 기간 퀵버튼 (filter-period-btn) ── */
+.filter-period-btn {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+}
+
+.filter-period-btn:first-of-type {
+  margin-left: 12px;
+}
+
+.filter-period-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-period-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
