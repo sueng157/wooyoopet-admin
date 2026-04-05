@@ -115,18 +115,22 @@
   async function loadChecklistList() {
     if (!checklistBody) return;
     api.showTableLoading(checklistBody, 6);
-    var result = await api.fetchList('checklists', { orderBy: 'version_number', ascending: false, perPage: 100 });
+    var result = await api.fetchList('checklists', {
+      select: '*, admin:created_by(name)',
+      orderBy: 'version_number', ascending: false, perPage: 100
+    });
     if (result.error) { api.showTableEmpty(checklistBody, 6, '데이터 로드 실패'); return; }
     if (!result.data.length) { api.showTableEmpty(checklistBody, 6); return; }
 
     var html = '';
     for (var i = 0; i < result.data.length; i++) {
       var c = result.data[i];
+      var adminInfo = c.admin || {};
       html += '<tr>' +
         '<td>v' + c.version_number + '</td>' +
         '<td>' + api.autoBadge(c.apply_status) + '</td>' +
         '<td>' + (c.item_count || 0) + '개</td>' +
-        '<td>' + api.escapeHtml(c.created_by || '') + '</td>' +
+        '<td>' + api.escapeHtml(adminInfo.name || '') + '</td>' +
         '<td>' + api.formatDate(c.created_at) + '</td>' +
         '<td>' + api.renderDetailLink('education-checklist-detail.html', c.id) + '</td>' +
         '</tr>';
@@ -136,19 +140,24 @@
 
   async function loadPledgeList() {
     if (!pledgeBody) return;
-    api.showTableLoading(pledgeBody, 6);
-    var result = await api.fetchList('pledges', { orderBy: 'version_number', ascending: false, perPage: 100 });
-    if (result.error) { api.showTableEmpty(pledgeBody, 6, '데이터 로드 실패'); return; }
-    if (!result.data.length) { api.showTableEmpty(pledgeBody, 6); return; }
+    api.showTableLoading(pledgeBody, 7);
+    var result = await api.fetchList('pledges', {
+      select: '*, admin:created_by(name)',
+      orderBy: 'version_number', ascending: false, perPage: 100
+    });
+    if (result.error) { api.showTableEmpty(pledgeBody, 7, '데이터 로드 실패'); return; }
+    if (!result.data.length) { api.showTableEmpty(pledgeBody, 7); return; }
 
     var html = '';
     for (var i = 0; i < result.data.length; i++) {
       var p = result.data[i];
+      var adminInfo = p.admin || {};
       html += '<tr>' +
         '<td>v' + p.version_number + '</td>' +
         '<td>' + api.autoBadge(p.apply_status) + '</td>' +
         '<td>' + api.escapeHtml(p.title || '') + '</td>' +
         '<td>' + (p.item_count || 0) + '개</td>' +
+        '<td>' + api.escapeHtml(adminInfo.name || '') + '</td>' +
         '<td>' + api.formatDate(p.created_at) + '</td>' +
         '<td>' + api.renderDetailLink('education-pledge-detail.html', p.id) + '</td>' +
         '</tr>';
@@ -720,22 +729,31 @@
     return !!document.getElementById('detailCheckBasic');
   }
 
+  // 체크리스트 상세 — 상태 보관
+  var _checkDetail = null;   // 현재 체크리스트 데이터
+  var _checkItems = [];      // 현재 항목 목록 원본
+  var _isEditMode = false;   // 편집 모드 여부
+
   async function loadChecklistDetail() {
     var id = api.getParam('id');
     if (!id) return;
 
-    var result = await api.fetchDetail('checklists', id);
+    var result = await api.fetchDetail('checklists', id, '*, admin:created_by(name)');
     if (result.error || !result.data) { alert('체크리스트를 불러올 수 없습니다.'); return; }
-    var d = result.data;
+    _checkDetail = result.data;
+    var adminInfo = _checkDetail.admin || {};
 
+    // 버전 정보 렌더링
     var basicEl = document.getElementById('detailCheckBasic');
     if (basicEl) {
-      api.setHtml(basicEl, '<div class="info-grid">' +
-        '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + d.version_number + '</span>' +
-        '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(d.apply_status) + '</span>' +
-        '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (d.item_count || 0) + '개</span>' +
-        '<span class="info-grid__label">작성자</span><span class="info-grid__value">' + api.escapeHtml(d.created_by || '') + '</span>' +
-        '<span class="info-grid__label">작성일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
+      api.setHtml(basicEl,
+        '<div class="detail-card__header"><h2 class="detail-card__title">버전 정보</h2></div>' +
+        '<div class="info-grid">' +
+        '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + _checkDetail.version_number + '</span>' +
+        '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(_checkDetail.apply_status) + '</span>' +
+        '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (_checkDetail.item_count || 0) + '개</span>' +
+        '<span class="info-grid__label">작성자</span><span class="info-grid__value">' + api.escapeHtml(adminInfo.name || '') + '</span>' +
+        '<span class="info-grid__label">작성일시</span><span class="info-grid__value">' + api.formatDate(_checkDetail.created_at) + '</span>' +
         '</div>');
     }
 
@@ -744,35 +762,227 @@
       filters: [{ column: 'checklist_id', op: 'eq', value: id }],
       orderBy: 'display_order', ascending: true, perPage: 100
     });
+    _checkItems = (items.data && items.data.length > 0) ? items.data : [];
 
-    var itemsEl = document.getElementById('detailCheckItems');
-    if (itemsEl && items.data && items.data.length > 0) {
-      var html = '';
-      for (var i = 0; i < items.data.length; i++) {
-        var item = items.data[i];
-        html += '<tr>' +
-          '<td><span class="drag-handle">\u2195</span> ' + item.display_order + '</td>' +
-          '<td>' + api.escapeHtml(item.content) + '</td>' +
-          '<td style="text-align:center;">' +
-            '<div class="edu-toggle"><div class="edu-toggle__track' + (item.is_active ? ' edu-toggle__track--on' : '') + '"><div class="edu-toggle__thumb"></div></div></div>' +
-          '</td>' +
-          '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>' +
-          '</tr>';
-      }
-      itemsEl.innerHTML = html;
+    // 뷰 모드로 항목 렌더링
+    renderCheckItemsView();
+
+    // ── 상태변경 버튼 ──
+    var btnStatusChange = document.getElementById('btnStatusChange');
+    if (btnStatusChange) {
+      btnStatusChange.addEventListener('click', function () {
+        var msgEl = document.getElementById('statusChangeMessage');
+        if (_checkDetail.apply_status === '현재 적용중') {
+          msgEl.innerHTML = '이 체크리스트를 <strong>미적용</strong> 상태로 변경하시겠습니까?';
+        } else {
+          msgEl.innerHTML = '이 체크리스트를 <strong>현재 적용중</strong> 상태로 변경하시겠습니까?<br>' +
+            '<span style="color:var(--warning);font-size:13px;">기존 적용중인 버전은 자동으로 미적용 처리됩니다.</span>';
+        }
+        document.getElementById('statusChangeModal').classList.add('active');
+      });
     }
 
-    // 저장 모달
-    var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async function () {
-        await api.insertAuditLog('체크리스트수정', 'checklists', id, {});
-        alert('저장되었습니다.');
+    // ── 상태변경 확인 ──
+    var btnStatusConfirm = document.getElementById('btnStatusChangeConfirm');
+    if (btnStatusConfirm) {
+      btnStatusConfirm.addEventListener('click', async function () {
+        var sb = window.__supabase;
+        var newStatus = (_checkDetail.apply_status === '현재 적용중') ? '미적용' : '현재 적용중';
+
+        // 현재 적용중으로 변경 시 → 다른 적용중 버전을 미적용으로
+        if (newStatus === '현재 적용중') {
+          await sb.from('checklists')
+            .update({ apply_status: '미적용' })
+            .eq('apply_status', '현재 적용중');
+        }
+
+        var upd = await api.updateRecord('checklists', id, { apply_status: newStatus });
+        if (upd.error) { alert('상태 변경 실패: ' + upd.error.message); return; }
+
+        await api.insertAuditLog('체크리스트상태변경', 'checklists', id, { apply_status: newStatus });
+        document.getElementById('statusChangeModal').classList.remove('active');
+        alert('적용 상태가 변경되었습니다.');
         location.reload();
       });
     }
 
-    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions', '.edu-add-row__btn', '.edu-delete-btn']);
+    // ── 수정 버튼 ──
+    var btnEdit = document.getElementById('btnEdit');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () {
+        enterEditMode();
+      });
+    }
+
+    // ── 편집 취소 버튼 ──
+    var btnEditCancel = document.getElementById('btnEditCancel');
+    if (btnEditCancel) {
+      btnEditCancel.addEventListener('click', function () {
+        exitEditMode();
+      });
+    }
+
+    // ── 편집 저장 버튼 ──
+    var btnEditSave = document.getElementById('btnEditSave');
+    if (btnEditSave) {
+      btnEditSave.addEventListener('click', async function () {
+        await saveChecklistEdit(id);
+      });
+    }
+
+    // ── 삭제 버튼 ──
+    var btnDelete = document.getElementById('btnDelete');
+    if (btnDelete) {
+      btnDelete.addEventListener('click', function () {
+        var msgEl = document.getElementById('deleteMessage');
+        if (_checkDetail.apply_status === '현재 적용중') {
+          msgEl.innerHTML = '<strong style="color:var(--danger);">현재 적용중인 체크리스트는 삭제할 수 없습니다.</strong><br><br>' +
+            '삭제하려면 먼저 상태를 <strong>미적용</strong>으로 변경하세요.';
+          document.getElementById('btnDeleteConfirm').style.display = 'none';
+        } else {
+          msgEl.innerHTML = '이 체크리스트 버전을 삭제하시겠습니까?<br>' +
+            '<span style="color:var(--text-weak);font-size:13px;">삭제된 버전 번호는 재사용되지 않습니다.</span>';
+          document.getElementById('btnDeleteConfirm').style.display = '';
+        }
+        document.getElementById('deleteModal').classList.add('active');
+      });
+    }
+
+    // ── 삭제 확인 ──
+    var btnDeleteConfirm = document.getElementById('btnDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        // 항목 먼저 삭제
+        var sb = window.__supabase;
+        await sb.from('checklist_items').delete().eq('checklist_id', id);
+        var del = await api.deleteRecord('checklists', id);
+        if (del.error) { alert('삭제 실패: ' + del.error.message); return; }
+
+        await api.insertAuditLog('체크리스트삭제', 'checklists', id, {});
+        document.getElementById('deleteModal').classList.remove('active');
+        alert('체크리스트가 삭제되었습니다.');
+        location.href = 'educations.html';
+      });
+    }
+
+    api.hideIfReadOnly(PERM_KEY, ['#viewModeActions', '#editModeActions', '#addRowArea']);
+  }
+
+  // ── 뷰 모드: 항목 렌더링 (읽기 전용) ──
+  function renderCheckItemsView() {
+    var itemsEl = document.getElementById('detailCheckItems');
+    if (!itemsEl) return;
+
+    // 삭제 열 숨기기
+    var delCols = document.querySelectorAll('.edit-only-col');
+    delCols.forEach(function (col) { col.style.display = 'none'; });
+
+    if (_checkItems.length === 0) {
+      itemsEl.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-weak);padding:24px;">항목이 없습니다.</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < _checkItems.length; i++) {
+      var item = _checkItems[i];
+      var activeLabel = item.is_active
+        ? '<span style="color:var(--success);font-weight:500;">사용</span>'
+        : '<span style="color:var(--text-weak);">미사용</span>';
+      html += '<tr>' +
+        '<td>' + item.display_order + '</td>' +
+        '<td>' + api.escapeHtml(item.content) + '</td>' +
+        '<td style="text-align:center;">' + activeLabel + '</td>' +
+        '</tr>';
+    }
+    itemsEl.innerHTML = html;
+  }
+
+  // ── 편집 모드: 항목 렌더링 (수정 가능) ──
+  function renderCheckItemsEdit() {
+    var itemsEl = document.getElementById('detailCheckItems');
+    if (!itemsEl) return;
+
+    // 삭제 열 표시
+    var delCols = document.querySelectorAll('.edit-only-col');
+    delCols.forEach(function (col) { col.style.display = ''; });
+
+    var html = '';
+    var dataSource = _checkItems.length > 0 ? _checkItems : [];
+    for (var i = 0; i < dataSource.length; i++) {
+      var item = dataSource[i];
+      html += '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td><input type="text" class="filter-input" style="width:100%;" value="' + api.escapeHtml(item.content) + '"></td>' +
+        '<td style="text-align:center;">' +
+          '<div class="edu-toggle"><div class="edu-toggle__track' + (item.is_active ? ' edu-toggle__track--on' : '') + '"><div class="edu-toggle__thumb"></div></div></div>' +
+        '</td>' +
+        '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>' +
+        '</tr>';
+    }
+    itemsEl.innerHTML = html;
+  }
+
+  // ── 편집 모드 진입 ──
+  function enterEditMode() {
+    _isEditMode = true;
+    document.getElementById('viewModeActions').style.display = 'none';
+    document.getElementById('editModeActions').style.display = '';
+    document.getElementById('addRowArea').style.display = '';
+    renderCheckItemsEdit();
+  }
+
+  // ── 편집 모드 종료 (취소) ──
+  function exitEditMode() {
+    _isEditMode = false;
+    document.getElementById('viewModeActions').style.display = '';
+    document.getElementById('editModeActions').style.display = 'none';
+    document.getElementById('addRowArea').style.display = 'none';
+    renderCheckItemsView();
+  }
+
+  // ── 편집 저장 ──
+  async function saveChecklistEdit(checklistId) {
+    var table = document.querySelector('.edu-items-table');
+    if (!table) return;
+    var rows = table.querySelectorAll('tbody tr');
+    if (!rows.length) { alert('체크리스트 항목을 1개 이상 유지하세요.'); return; }
+
+    var newItems = [];
+    for (var i = 0; i < rows.length; i++) {
+      var input = rows[i].querySelector('input[type="text"]');
+      var content = input ? input.value.trim() : '';
+      if (!content) { alert((i + 1) + '번 항목 내용을 입력하세요.'); if (input) input.focus(); return; }
+      var toggleTrack = rows[i].querySelector('.edu-toggle__track');
+      var isActive = toggleTrack ? toggleTrack.classList.contains('edu-toggle__track--on') : true;
+      newItems.push({ display_order: i + 1, content: content, is_active: isActive });
+    }
+
+    var sb = window.__supabase;
+
+    // 기존 항목 삭제
+    await sb.from('checklist_items').delete().eq('checklist_id', checklistId);
+
+    // 새 항목 삽입
+    var itemRecords = newItems.map(function (item) {
+      return {
+        checklist_id: checklistId,
+        display_order: item.display_order,
+        content: item.content,
+        is_active: item.is_active
+      };
+    });
+    var insRes = await api.insertRecord('checklist_items', itemRecords);
+    if (insRes.error) {
+      alert('항목 저장 실패: ' + insRes.error.message);
+      return;
+    }
+
+    // item_count 업데이트
+    await api.updateRecord('checklists', checklistId, { item_count: newItems.length });
+
+    await api.insertAuditLog('체크리스트수정', 'checklists', checklistId, { item_count: newItems.length });
+    alert('저장되었습니다.');
+    location.reload();
   }
 
   // ══════════════════════════════════════════
@@ -783,66 +993,312 @@
     return !!document.getElementById('detailPledgeBasic');
   }
 
+  // 서약서 상세 — 상태 보관
+  var _pledgeDetail = null;
+  var _pledgeItems = [];
+  var _isPledgeEditMode = false;
+
   async function loadPledgeDetail() {
     var id = api.getParam('id');
     if (!id) return;
 
-    var result = await api.fetchDetail('pledges', id);
+    var result = await api.fetchDetail('pledges', id, '*, admin:created_by(name)');
     if (result.error || !result.data) { alert('서약서를 불러올 수 없습니다.'); return; }
-    var d = result.data;
+    _pledgeDetail = result.data;
+    var adminInfo = _pledgeDetail.admin || {};
 
+    // 버전 정보 렌더링
     var basicEl = document.getElementById('detailPledgeBasic');
     if (basicEl) {
-      api.setHtml(basicEl, '<div class="info-grid">' +
-        '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + d.version_number + '</span>' +
-        '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(d.apply_status) + '</span>' +
-        '<span class="info-grid__label">제목</span><span class="info-grid__value">' + api.escapeHtml(d.title || '') + '</span>' +
-        '<span class="info-grid__label">본문</span><span class="info-grid__value">' + api.escapeHtml(d.body_content || '') + '</span>' +
-        '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (d.item_count || 0) + '개</span>' +
-        '<span class="info-grid__label">작성자</span><span class="info-grid__value">' + api.escapeHtml(d.created_by || '') + '</span>' +
-        '<span class="info-grid__label">작성일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
+      api.setHtml(basicEl,
+        '<div class="detail-card__header"><h2 class="detail-card__title">버전 정보</h2></div>' +
+        '<div class="info-grid">' +
+        '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + _pledgeDetail.version_number + '</span>' +
+        '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(_pledgeDetail.apply_status) + '</span>' +
+        '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (_pledgeDetail.item_count || 0) + '개</span>' +
+        '<span class="info-grid__label">작성자</span><span class="info-grid__value">' + api.escapeHtml(adminInfo.name || '') + '</span>' +
+        '<span class="info-grid__label">작성일시</span><span class="info-grid__value">' + api.formatDate(_pledgeDetail.created_at) + '</span>' +
         '</div>');
     }
 
-    // 항목
+    // 항목 조회
     var items = await api.fetchList('pledge_items', {
       filters: [{ column: 'pledge_id', op: 'eq', value: id }],
       orderBy: 'display_order', ascending: true, perPage: 100
     });
+    _pledgeItems = (items.data && items.data.length > 0) ? items.data : [];
 
-    var itemsEl = document.getElementById('detailPledgeItems');
-    if (itemsEl && items.data && items.data.length > 0) {
-      var html = '';
-      for (var i = 0; i < items.data.length; i++) {
-        var item = items.data[i];
-        var subs = item.sub_items || [];
-        var subHtml = '<div class="edu-sub-items">';
-        if (Array.isArray(subs)) {
-          for (var s = 0; s < subs.length; s++) {
-            subHtml += '<div class="edu-sub-items__item"><span>' + api.escapeHtml(subs[s]) + '</span></div>';
-          }
+    // 뷰 모드로 렌더링
+    renderPledgeContentView();
+    renderPledgeItemsView();
+
+    // ── 상태변경 버튼 ──
+    var btnStatus = document.getElementById('btnPledgeStatusChange');
+    if (btnStatus) {
+      btnStatus.addEventListener('click', function () {
+        var msgEl = document.getElementById('pledgeStatusChangeMessage');
+        if (_pledgeDetail.apply_status === '현재 적용중') {
+          msgEl.innerHTML = '이 서약서를 <strong>미적용</strong> 상태로 변경하시겠습니까?';
+        } else {
+          msgEl.innerHTML = '이 서약서를 <strong>현재 적용중</strong> 상태로 변경하시겠습니까?<br>' +
+            '<span style="color:var(--warning);font-size:13px;">기존 적용중인 버전은 자동으로 미적용 처리됩니다.</span>';
         }
-        subHtml += '<button class="edu-sub-items__add">+ 하위 항목 추가</button></div>';
-
-        html += '<tr>' +
-          '<td><span class="drag-handle">\u2195</span> ' + item.display_order + '</td>' +
-          '<td>' + api.escapeHtml(item.content) + subHtml + '</td>' +
-          '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>' +
-          '</tr>';
-      }
-      itemsEl.innerHTML = html;
+        document.getElementById('pledgeStatusChangeModal').classList.add('active');
+      });
     }
 
-    var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async function () {
-        await api.insertAuditLog('서약서수정', 'pledges', id, {});
-        alert('저장되었습니다.');
+    // ── 상태변경 확인 ──
+    var btnStatusConfirm = document.getElementById('btnPledgeStatusChangeConfirm');
+    if (btnStatusConfirm) {
+      btnStatusConfirm.addEventListener('click', async function () {
+        var sb = window.__supabase;
+        var newStatus = (_pledgeDetail.apply_status === '현재 적용중') ? '미적용' : '현재 적용중';
+        if (newStatus === '현재 적용중') {
+          await sb.from('pledges')
+            .update({ apply_status: '미적용' })
+            .eq('apply_status', '현재 적용중');
+        }
+        var upd = await api.updateRecord('pledges', id, { apply_status: newStatus });
+        if (upd.error) { alert('상태 변경 실패: ' + upd.error.message); return; }
+        await api.insertAuditLog('서약서상태변경', 'pledges', id, { apply_status: newStatus });
+        document.getElementById('pledgeStatusChangeModal').classList.remove('active');
+        alert('적용 상태가 변경되었습니다.');
         location.reload();
       });
     }
 
-    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions', '.edu-add-row__btn', '.edu-delete-btn']);
+    // ── 수정 버튼 ──
+    var btnEdit = document.getElementById('btnPledgeEdit');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () { enterPledgeEditMode(); });
+    }
+
+    // ── 편집 취소 ──
+    var btnCancel = document.getElementById('btnPledgeEditCancel');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', function () { exitPledgeEditMode(); });
+    }
+
+    // ── 편집 저장 ──
+    var btnSave = document.getElementById('btnPledgeEditSave');
+    if (btnSave) {
+      btnSave.addEventListener('click', async function () { await savePledgeEdit(id); });
+    }
+
+    // ── 삭제 버튼 ──
+    var btnDelete = document.getElementById('btnPledgeDelete');
+    if (btnDelete) {
+      btnDelete.addEventListener('click', function () {
+        var msgEl = document.getElementById('pledgeDeleteMessage');
+        if (_pledgeDetail.apply_status === '현재 적용중') {
+          msgEl.innerHTML = '<strong style="color:var(--danger);">현재 적용중인 서약서는 삭제할 수 없습니다.</strong><br><br>' +
+            '삭제하려면 먼저 상태를 <strong>미적용</strong>으로 변경하세요.';
+          document.getElementById('btnPledgeDeleteConfirm').style.display = 'none';
+        } else {
+          msgEl.innerHTML = '이 서약서 버전을 삭제하시겠습니까?<br>' +
+            '<span style="color:var(--text-weak);font-size:13px;">삭제된 버전 번호는 재사용되지 않습니다.</span>';
+          document.getElementById('btnPledgeDeleteConfirm').style.display = '';
+        }
+        document.getElementById('pledgeDeleteModal').classList.add('active');
+      });
+    }
+
+    // ── 삭제 확인 ──
+    var btnDeleteConfirm = document.getElementById('btnPledgeDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        var sb = window.__supabase;
+        await sb.from('pledge_items').delete().eq('pledge_id', id);
+        var del = await api.deleteRecord('pledges', id);
+        if (del.error) { alert('삭제 실패: ' + del.error.message); return; }
+        await api.insertAuditLog('서약서삭제', 'pledges', id, {});
+        document.getElementById('pledgeDeleteModal').classList.remove('active');
+        alert('서약서가 삭제되었습니다.');
+        location.href = 'educations.html';
+      });
+    }
+
+    api.hideIfReadOnly(PERM_KEY, ['#pledgeViewModeActions', '#pledgeEditModeActions', '#pledgeAddRowArea']);
+  }
+
+  // ── 서약서 내용 뷰 모드 ──
+  function renderPledgeContentView() {
+    var el = document.getElementById('detailPledgeContent');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="info-grid info-grid--wide">' +
+        '<span class="info-grid__label">서약서 제목</span>' +
+        '<span class="info-grid__value" style="font-weight:600;">' + api.escapeHtml(_pledgeDetail.title || '') + '</span>' +
+        '<span class="info-grid__label">서약서 본문</span>' +
+        '<span class="info-grid__value"><div class="edu-pledge-body">' + api.escapeHtml(_pledgeDetail.body_content || '') + '</div></span>' +
+      '</div>';
+  }
+
+  // ── 서약서 내용 편집 모드 ──
+  function renderPledgeContentEdit() {
+    var el = document.getElementById('detailPledgeContent');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="info-grid info-grid--wide">' +
+        '<span class="info-grid__label">서약서 제목</span>' +
+        '<span class="info-grid__value"><input type="text" class="filter-input" id="editPledgeTitle" style="width:100%;max-width:500px;" value="' + api.escapeHtml(_pledgeDetail.title || '') + '"></span>' +
+        '<span class="info-grid__label">서약서 본문</span>' +
+        '<span class="info-grid__value"><textarea class="filter-input" id="editPledgeBody" style="width:100%;min-height:120px;resize:vertical;">' + api.escapeHtml(_pledgeDetail.body_content || '') + '</textarea></span>' +
+      '</div>';
+  }
+
+  // ── 서약 항목 뷰 모드 (3depth 읽기전용) ──
+  function renderPledgeItemsView() {
+    var itemsEl = document.getElementById('detailPledgeItems');
+    if (!itemsEl) return;
+    var delCols = document.querySelectorAll('.pledge-edit-only-col');
+    delCols.forEach(function (col) { col.style.display = 'none'; });
+
+    if (_pledgeItems.length === 0) {
+      itemsEl.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--text-weak);padding:24px;">항목이 없습니다.</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < _pledgeItems.length; i++) {
+      var item = _pledgeItems[i];
+      var subs = item.sub_items || [];
+
+      // 3depth 뷰
+      var contentHtml = '<div class="edu-pledge-item-text">' + api.escapeHtml(item.content) + '</div>';
+      if (item.description) {
+        contentHtml += '<div style="font-size:14px;color:var(--text-secondary);line-height:1.8;margin-top:4px;">' + api.escapeHtml(item.description) + '</div>';
+      }
+      if (Array.isArray(subs) && subs.length > 0) {
+        contentHtml += '<div class="edu-sub-items">';
+        for (var s = 0; s < subs.length; s++) {
+          contentHtml += '<div class="edu-sub-items__item"><span class="edu-sub-items__text">' + api.escapeHtml(subs[s]) + '</span></div>';
+        }
+        contentHtml += '</div>';
+      }
+
+      html += '<tr><td>' + item.display_order + '</td><td>' + contentHtml + '</td></tr>';
+    }
+    itemsEl.innerHTML = html;
+  }
+
+  // ── 서약 항목 편집 모드 (3depth 편집 가능) ──
+  function renderPledgeItemsEdit() {
+    var itemsEl = document.getElementById('detailPledgeItems');
+    if (!itemsEl) return;
+    var delCols = document.querySelectorAll('.pledge-edit-only-col');
+    delCols.forEach(function (col) { col.style.display = ''; });
+
+    var html = '';
+    for (var i = 0; i < _pledgeItems.length; i++) {
+      var item = _pledgeItems[i];
+      var subs = item.sub_items || [];
+
+      var subHtml = '<div class="edu-sub-items">';
+      if (Array.isArray(subs)) {
+        for (var s = 0; s < subs.length; s++) {
+          subHtml += '<div class="edu-sub-items__item">' +
+            '<input type="text" class="filter-input" style="flex:1;" value="' + api.escapeHtml(subs[s]) + '">' +
+            '<button class="edu-sub-items__delete">삭제</button></div>';
+        }
+      }
+      subHtml += '<button class="edu-sub-items__add">+ 하위 항목 추가</button></div>';
+
+      html += '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' +
+          '<input type="text" class="filter-input pledge-content-input" style="width:100%;font-weight:600;" value="' + api.escapeHtml(item.content) + '">' +
+          '<textarea class="filter-input pledge-desc-input" style="width:100%;min-height:60px;resize:vertical;margin-top:6px;">' + api.escapeHtml(item.description || '') + '</textarea>' +
+          subHtml +
+        '</td>' +
+        '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>' +
+        '</tr>';
+    }
+    itemsEl.innerHTML = html;
+  }
+
+  // ── 편집 모드 진입 ──
+  function enterPledgeEditMode() {
+    _isPledgeEditMode = true;
+    document.getElementById('pledgeViewModeActions').style.display = 'none';
+    document.getElementById('pledgeEditModeActions').style.display = '';
+    document.getElementById('pledgeAddRowArea').style.display = '';
+    renderPledgeContentEdit();
+    renderPledgeItemsEdit();
+  }
+
+  // ── 편집 모드 종료 (취소) ──
+  function exitPledgeEditMode() {
+    _isPledgeEditMode = false;
+    document.getElementById('pledgeViewModeActions').style.display = '';
+    document.getElementById('pledgeEditModeActions').style.display = 'none';
+    document.getElementById('pledgeAddRowArea').style.display = 'none';
+    renderPledgeContentView();
+    renderPledgeItemsView();
+  }
+
+  // ── 편집 저장 ──
+  async function savePledgeEdit(pledgeId) {
+    // 제목/본문 수집
+    var titleInput = document.getElementById('editPledgeTitle');
+    var bodyInput = document.getElementById('editPledgeBody');
+    var title = titleInput ? titleInput.value.trim() : '';
+    var body = bodyInput ? bodyInput.value.trim() : '';
+    if (!title) { alert('서약서 제목을 입력하세요.'); if (titleInput) titleInput.focus(); return; }
+
+    // 항목 수집 (3depth)
+    var table = document.querySelector('.edu-items-table');
+    if (!table) return;
+    var rows = table.querySelectorAll('tbody tr');
+    if (!rows.length) { alert('서약 항목을 1개 이상 유지하세요.'); return; }
+
+    var newItems = [];
+    for (var i = 0; i < rows.length; i++) {
+      var contentInput = rows[i].querySelector('.pledge-content-input');
+      var descInput = rows[i].querySelector('.pledge-desc-input');
+      var content = contentInput ? contentInput.value.trim() : '';
+      var description = descInput ? descInput.value.trim() : '';
+      if (!content) { alert((i + 1) + '번 서약 제목을 입력하세요.'); if (contentInput) contentInput.focus(); return; }
+
+      var subItems = [];
+      var subInputs = rows[i].querySelectorAll('.edu-sub-items__item input');
+      subInputs.forEach(function (si) {
+        var val = si.value.trim();
+        if (val) subItems.push(val);
+      });
+
+      newItems.push({ display_order: i + 1, content: content, description: description || null, sub_items: subItems });
+    }
+
+    var sb = window.__supabase;
+
+    // pledges 업데이트
+    await api.updateRecord('pledges', pledgeId, {
+      title: title,
+      body_content: body || null,
+      item_count: newItems.length
+    });
+
+    // 기존 항목 삭제 → 새 항목 삽입
+    await sb.from('pledge_items').delete().eq('pledge_id', pledgeId);
+    var itemRecords = newItems.map(function (item) {
+      return {
+        pledge_id: pledgeId,
+        display_order: item.display_order,
+        content: item.content,
+        description: item.description,
+        sub_items: item.sub_items.length > 0 ? item.sub_items : null
+      };
+    });
+    var insRes = await api.insertRecord('pledge_items', itemRecords);
+    if (insRes.error) {
+      alert('항목 저장 실패: ' + insRes.error.message);
+      return;
+    }
+
+    await api.insertAuditLog('서약서수정', 'pledges', pledgeId, { item_count: newItems.length });
+    alert('저장되었습니다.');
+    location.reload();
   }
 
   // ══════════════════════════════════════════
@@ -1232,14 +1688,18 @@
       var row = document.createElement('tr');
       if (colCount === 4) {
         row.innerHTML =
-          '<td><span class="drag-handle">\u2195</span> ' + nextNum + '</td>' +
+          '<td>' + nextNum + '</td>' +
           '<td><input type="text" class="filter-input" style="width:100%;" placeholder="항목 내용을 입력하세요"></td>' +
           '<td style="text-align:center;"><div class="edu-toggle"><div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div></div></td>' +
           '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>';
       } else {
         row.innerHTML =
-          '<td><span class="drag-handle">\u2195</span> ' + nextNum + '</td>' +
-          '<td><input type="text" class="filter-input" style="width:100%;" placeholder="항목 내용을 입력하세요"><div class="edu-sub-items"><button class="edu-sub-items__add">+ 하위 항목 추가</button></div></td>' +
+          '<td>' + nextNum + '</td>' +
+          '<td>' +
+            '<input type="text" class="filter-input pledge-content-input" style="width:100%;font-weight:600;" placeholder="서약 제목을 입력하세요">' +
+            '<textarea class="filter-input pledge-desc-input" style="width:100%;min-height:60px;resize:vertical;margin-top:6px;" placeholder="서약 내용을 입력하세요"></textarea>' +
+            '<div class="edu-sub-items"><button class="edu-sub-items__add">+ 하위 항목 추가</button></div>' +
+          '</td>' +
           '<td style="text-align:center;"><button class="edu-delete-btn">' + DELETE_SVG + '</button></td>';
       }
       tbody.appendChild(row);
@@ -1283,12 +1743,176 @@
     rows.forEach(function (row, idx) {
       var firstTd = row.querySelector('td:first-child');
       if (!firstTd) return;
-      var handle = firstTd.querySelector('.drag-handle');
-      if (handle) {
-        firstTd.innerHTML = '';
-        firstTd.appendChild(handle);
-        firstTd.appendChild(document.createTextNode(' ' + (idx + 1)));
+      firstTd.textContent = (idx + 1);
+    });
+  }
+
+  // ══════════════════════════════════════════
+  // H. 체크리스트 등록 (education-checklist-create.html)
+  // ══════════════════════════════════════════
+
+  function isChecklistCreatePage() {
+    return window.location.pathname.indexOf('education-checklist-create') !== -1;
+  }
+
+  function bindChecklistCreate() {
+    var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
+    if (!saveBtn) return;
+
+    saveBtn.addEventListener('click', async function () {
+      // 항목 수집
+      var table = document.querySelector('.edu-items-table');
+      if (!table) return;
+      var rows = table.querySelectorAll('tbody tr');
+      if (!rows.length) { alert('체크리스트 항목을 1개 이상 추가하세요.'); return; }
+
+      var items = [];
+      for (var i = 0; i < rows.length; i++) {
+        var input = rows[i].querySelector('input[type="text"]');
+        var content = input ? input.value.trim() : '';
+        if (!content) { alert((i + 1) + '번 항목 내용을 입력하세요.'); if (input) input.focus(); return; }
+        var toggleTrack = rows[i].querySelector('.edu-toggle__track');
+        var isActive = toggleTrack ? toggleTrack.classList.contains('edu-toggle__track--on') : true;
+        items.push({ display_order: i + 1, content: content, is_active: isActive });
       }
+
+      // 다음 버전 번호 조회
+      var sb = window.__supabase;
+      var maxRes = await sb.from('checklists')
+        .select('version_number')
+        .order('version_number', { ascending: false })
+        .limit(1);
+      var nextVersion = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].version_number + 1) : 1;
+
+      // 관리자 ID (uuid) — report_logs.processed_by 패턴 동일
+      var admin = window.__auth ? window.__auth.getAdmin() : null;
+      var adminId = admin ? admin.id : null;
+
+      // checklists INSERT — 미적용 상태로 생성 (기존 적용중 버전 건드리지 않음)
+      var checkRes = await api.insertRecord('checklists', {
+        version_number: nextVersion,
+        apply_status: '미적용',
+        item_count: items.length,
+        created_by: adminId
+      });
+
+      if (checkRes.error || !checkRes.data || !checkRes.data[0]) {
+        alert('체크리스트 생성 실패: ' + (checkRes.error ? checkRes.error.message : '알 수 없는 오류'));
+        return;
+      }
+      var newChecklistId = checkRes.data[0].id;
+
+      // checklist_items INSERT
+      var itemRecords = items.map(function (item) {
+        return {
+          checklist_id: newChecklistId,
+          display_order: item.display_order,
+          content: item.content,
+          is_active: item.is_active
+        };
+      });
+      var itemRes = await api.insertRecord('checklist_items', itemRecords);
+      if (itemRes.error) {
+        alert('항목 저장 실패: ' + itemRes.error.message + '\n체크리스트는 생성되었습니다.');
+      }
+
+      await api.insertAuditLog('체크리스트등록', 'checklists', newChecklistId, {});
+      alert('새 체크리스트 버전이 생성되었습니다.');
+      location.href = 'educations.html';
+    });
+  }
+
+  // ══════════════════════════════════════════
+  // I. 서약서 등록 (education-pledge-create.html)
+  // ══════════════════════════════════════════
+
+  function isPledgeCreatePage() {
+    return window.location.pathname.indexOf('education-pledge-create') !== -1;
+  }
+
+  function bindPledgeCreate() {
+    var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
+    if (!saveBtn) return;
+
+    saveBtn.addEventListener('click', async function () {
+      // 제목 / 본문 수집
+      var titleInput = document.getElementById('pledgeTitle');
+      var bodyInput = document.getElementById('pledgeBody');
+      var title = titleInput ? titleInput.value.trim() : '';
+      var body = bodyInput ? bodyInput.value.trim() : '';
+      if (!title) { alert('서약서 제목을 입력하세요.'); if (titleInput) titleInput.focus(); return; }
+
+      // 항목 수집 (3depth: content + description + sub_items)
+      var table = document.querySelector('.edu-items-table');
+      if (!table) return;
+      var rows = table.querySelectorAll('tbody tr');
+      if (!rows.length) { alert('서약 항목을 1개 이상 추가하세요.'); return; }
+
+      var items = [];
+      for (var i = 0; i < rows.length; i++) {
+        var contentInput = rows[i].querySelector('.pledge-content-input');
+        var descInput = rows[i].querySelector('.pledge-desc-input');
+        var content = contentInput ? contentInput.value.trim() : '';
+        var description = descInput ? descInput.value.trim() : '';
+        if (!content) { alert((i + 1) + '번 서약 제목을 입력하세요.'); if (contentInput) contentInput.focus(); return; }
+
+        // 하위 항목 수집
+        var subItems = [];
+        var subInputs = rows[i].querySelectorAll('.edu-sub-items__item input');
+        subInputs.forEach(function (si) {
+          var val = si.value.trim();
+          if (val) subItems.push(val);
+        });
+
+        items.push({ display_order: i + 1, content: content, description: description || null, sub_items: subItems });
+      }
+
+      // 다음 버전 번호 조회
+      var sb = window.__supabase;
+      var maxRes = await sb.from('pledges')
+        .select('version_number')
+        .order('version_number', { ascending: false })
+        .limit(1);
+      var nextVersion = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].version_number + 1) : 1;
+
+      // 관리자 ID (uuid) — report_logs.processed_by 패턴 동일
+      var admin = window.__auth ? window.__auth.getAdmin() : null;
+      var adminId = admin ? admin.id : null;
+
+      // pledges INSERT — 미적용 상태로 생성 (기존 적용중 버전 건드리지 않음)
+      var pledgeRes = await api.insertRecord('pledges', {
+        version_number: nextVersion,
+        apply_status: '미적용',
+        title: title,
+        body_content: body || null,
+        item_count: items.length,
+        created_by: adminId
+      });
+
+      if (pledgeRes.error || !pledgeRes.data || !pledgeRes.data[0]) {
+        alert('서약서 생성 실패: ' + (pledgeRes.error ? pledgeRes.error.message : '알 수 없는 오류'));
+        return;
+      }
+      var newPledgeId = pledgeRes.data[0].id;
+
+      // pledge_items INSERT (description 포함)
+      var itemRecords = items.map(function (item) {
+        return {
+          pledge_id: newPledgeId,
+          display_order: item.display_order,
+          content: item.content,
+          description: item.description,
+          sub_items: item.sub_items.length > 0 ? item.sub_items : null
+        };
+      });
+      var itemRes = await api.insertRecord('pledge_items', itemRecords);
+      if (itemRes.error) {
+        alert('항목 저장 실패: ' + itemRes.error.message + '\n서약서는 생성되었습니다.');
+      }
+
+      await api.insertAuditLog('서약서등록', 'pledges', newPledgeId, {});
+      alert('새 서약서 버전이 생성되었습니다.');
+      location.href = 'educations.html';
     });
   }
 
@@ -1309,6 +1933,8 @@
         console.error('[educations] 등록 페이지 초기화 실패:', err);
       });
     }
+    else if (isChecklistCreatePage()) bindChecklistCreate();
+    else if (isPledgeCreatePage()) bindPledgeCreate();
   });
 
 })();

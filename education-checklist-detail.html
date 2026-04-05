@@ -65,8 +65,16 @@
       <!-- 상단 액션바 -->
       <div class="detail-top">
         <a href="educations.html" class="btn-back">← 체크리스트 / 활동 서약서 목록으로</a>
-        <div class="detail-actions">
-          <button class="btn-action btn-action--primary" data-modal-open="saveModal">저장</button>
+        <!-- 뷰 모드 버튼 -->
+        <div class="detail-actions" id="viewModeActions">
+          <button class="btn-action btn-action--outline" id="btnStatusChange">상태변경</button>
+          <button class="btn-action btn-action--primary" id="btnEdit">수정</button>
+          <button class="btn-action btn-action--danger" id="btnDelete">삭제</button>
+        </div>
+        <!-- 편집 모드 버튼 (숨김) -->
+        <div class="detail-actions" id="editModeActions" style="display:none;">
+          <button class="btn-action btn-action--outline" id="btnEditCancel">취소</button>
+          <button class="btn-action btn-action--primary" id="btnEditSave">저장</button>
         </div>
       </div>
 
@@ -75,19 +83,7 @@
         <div class="detail-card__header">
           <h2 class="detail-card__title">버전 정보</h2>
         </div>
-        <div class="info-grid">
-          <span class="info-grid__label">버전 번호</span>
-          <span class="info-grid__value">v3</span>
-
-          <span class="info-grid__label">적용 상태</span>
-          <span class="info-grid__value"><span class="badge badge--c-green">현재 적용중</span></span>
-
-          <span class="info-grid__label">작성일시</span>
-          <span class="info-grid__value">2025-12-15 14:00</span>
-
-          <span class="info-grid__label">작성자</span>
-          <span class="info-grid__value">홍길동</span>
-        </div>
+        <!-- JS가 동적으로 렌더링 -->
       </div>
 
       <!-- ========== 체크리스트 항목 ========== -->
@@ -102,87 +98,16 @@
               <th>순서</th>
               <th>항목 내용</th>
               <th style="width:80px;text-align:center;">사용</th>
-              <th>삭제</th>
+              <th class="edit-only-col" style="display:none;">삭제</th>
             </tr>
           </thead>
           <tbody id="detailCheckItems">
-            <tr>
-              <td><span class="drag-handle">↕</span> 1</td>
-              <td>돌봄 공간의 온도와 환기를 확인했나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
-            <tr>
-              <td><span class="drag-handle">↕</span> 2</td>
-              <td>위험한 물건이 방치되어 있지 않나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
-            <tr>
-              <td><span class="drag-handle">↕</span> 3</td>
-              <td>반려동물 사료와 간식을 준비했나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
-            <tr>
-              <td><span class="drag-handle">↕</span> 4</td>
-              <td>깨끗한 물을 준비했나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
-            <tr>
-              <td><span class="drag-handle">↕</span> 5</td>
-              <td>배변패드를 충분히 비치했나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track edu-toggle__track--on"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
-            <tr>
-              <td><span class="drag-handle">↕</span> 6</td>
-              <td>돌봄 일지를 작성할 준비가 되었나요?</td>
-              <td style="text-align:center;">
-                <div class="edu-toggle">
-                  <div class="edu-toggle__track"><div class="edu-toggle__thumb"></div></div>
-                </div>
-              </td>
-              <td style="text-align:center;">
-                <button class="edu-delete-btn"><svg viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2h3a1 1 0 011-1h3a1 1 0 011 1h3a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118z"/></svg></button>
-              </td>
-            </tr>
+            <!-- JS가 동적으로 렌더링 -->
           </tbody>
         </table>
 
-        <!-- 항목 추가 -->
-        <div class="edu-add-row">
+        <!-- 항목 추가 (편집 모드에서만 표시) -->
+        <div class="edu-add-row" id="addRowArea" style="display:none;">
           <button class="edu-add-row__btn">+ 항목 추가</button>
         </div>
 
@@ -192,18 +117,30 @@
   </div><!-- /main -->
 </div><!-- /layout -->
 
-<!-- ========== 저장 경고 모달 ========== -->
-<div class="modal-overlay" id="saveModal">
+<!-- ========== 상태변경 확인 모달 ========== -->
+<div class="modal-overlay" id="statusChangeModal">
   <div class="modal">
-    <div class="modal__title" style="color:var(--warning);">체크리스트 수정 저장</div>
-    <div class="modal__message">
-      체크리스트를 수정하면 <strong>새 버전이 자동 생성</strong>되며,<br>
-      기존 확인 유치원에 <strong class="text-danger">재확인이 필요</strong>합니다.<br><br>
-      수정하시겠습니까?
+    <div class="modal__title" style="color:var(--primary);">적용 상태 변경</div>
+    <div class="modal__message" id="statusChangeMessage">
+      <!-- JS에서 동적 메시지 -->
     </div>
     <div class="modal__actions">
       <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">저장</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnStatusChangeConfirm">변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 삭제 확인 모달 ========== -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--danger);">체크리스트 삭제</div>
+    <div class="modal__message" id="deleteMessage">
+      <!-- JS에서 동적 메시지 -->
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn" style="background:var(--danger);color:#fff;border:none;" id="btnDeleteConfirm">삭제</button>
     </div>
   </div>
 </div>

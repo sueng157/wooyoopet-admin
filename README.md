@@ -158,10 +158,10 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 - **auth.js** (365줄): 로그인/로그아웃, 세션 체크, 사이드바·헤더 프로필, 메뉴 접근 권한 제어
 - **common.js** (141줄): 모달 시스템(열기/닫기/ESC/오버레이), 마스킹 토글, 소개글 더보기/접기, textarea→버튼 활성화
 - **components.js** (224줄): 탭 전환(`data-tab-target`), 전체선택 체크박스, 순서 화살표(▲/▼), 버전 검증(`x.x.x`), 글자수 카운터
-- **api.js** (829줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
-- **페이지전용 JS** (12개): dashboard(244), members(812), kindergartens(1,004), pets(516), reservations(522), payments(725), settlements(819), chats(974), reviews(679), educations(1,314), contents(496), settings(504)
+- **api.js** (842줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
+- **페이지전용 JS** (12개): dashboard(244), members(812), kindergartens(1,004), pets(516), reservations(522), payments(725), settlements(819), chats(974), reviews(679), educations(1,940), contents(496), settings(504)
 
-총 **10,238줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
+총 **10,864줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
 
 ---
 
@@ -207,9 +207,9 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 
 ### 진행중
 7. **DB 연결 보완 및 UI 개선** — 전체 페이지 DB 연결 오류 수정 + UI 개선
-   - ✅ 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리, 정산관리, 채팅관리, 후기관리: 수정 완료 (PR #59~#99)
-   - ✅ 교육관리(교육 주제 탭): DB 연결 + Storage 이미지 관리 완료
-   - ⬜ 교육관리(체크리스트·서약서·이수현황 탭) ~ 설정: 작업 예정
+   - ✅ 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리, 정산관리, 채팅관리, 후기관리: 수정 완료 (PR #59~#101)
+   - ✅ 교육관리(교육 주제 + 체크리스트/서약서 탭): DB 연결 + 버전관리 UI + 3depth 서약서 완료
+   - ⬜ 교육관리(이수현황 탭) ~ 설정: 작업 예정
 
 ### 다음 단계
 8. **Phase 4: 호스팅 전환** — Cloudflare Pages + 커스텀 도메인
