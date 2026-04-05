@@ -46,32 +46,69 @@
   // 탭1: 교육 주제
   async function loadTopicList() {
     if (!topicBody) return;
-    api.showTableLoading(topicBody, 7);
+    api.showTableLoading(topicBody, 6);
+
+    // 필터/검색 조건 수집
+    var filters = [];
+    var visibilityEl = document.getElementById('topicVisibility');
+    if (visibilityEl && visibilityEl.value) {
+      filters.push({ column: 'visibility', op: 'eq', value: visibilityEl.value });
+    }
+
+    var searchOpts = {};
+    var searchInput = document.getElementById('topicSearchInput');
+    if (searchInput && searchInput.value.trim()) {
+      searchOpts = { column: 'title', value: searchInput.value.trim() };
+    }
+
     var result = await api.fetchList('education_topics', {
-      select: '*, education_quizzes(id)',
+      select: '*',
+      filters: filters,
+      search: searchOpts,
       orderBy: 'display_order',
       ascending: true,
       perPage: 100
     });
-    if (result.error) { api.showTableEmpty(topicBody, 7, '데이터 로드 실패'); return; }
+    if (result.error) { api.showTableEmpty(topicBody, 6, '데이터 로드 실패'); return; }
     if (topicCount) topicCount.textContent = api.formatNumber(result.count);
-    if (!result.data.length) { api.showTableEmpty(topicBody, 7); return; }
+    if (!result.data.length) { api.showTableEmpty(topicBody, 6); return; }
 
     var html = '';
-    for (var i = 0; i < result.data.length; i++) {
+    var totalRows = result.data.length;
+    for (var i = 0; i < totalRows; i++) {
       var t = result.data[i];
-      var quizCount = t.education_quizzes ? t.education_quizzes.length : 0;
-      html += '<tr>' +
-        '<td>' + (t.display_order || (i + 1)) + '</td>' +
+      var order = t.display_order || (i + 1);
+      var upDisabled = (i === 0) ? ' disabled' : '';
+      var downDisabled = (i === totalRows - 1) ? ' disabled' : '';
+
+      html += '<tr data-id="' + t.id + '" data-order="' + order + '">' +
+        '<td>' +
+          '<span class="order-arrows">' +
+            '<button class="order-arrows__btn order-up"' + upDisabled + '>&#9650;</button>' +
+            '<span>' + order + '</span>' +
+            '<button class="order-arrows__btn order-down"' + downDisabled + '>&#9660;</button>' +
+          '</span>' +
+        '</td>' +
         '<td>' + api.escapeHtml(t.title) + '</td>' +
         '<td>' + api.autoBadge(t.visibility) + '</td>' +
-        '<td>' + quizCount + '문항</td>' +
-        '<td>' + api.formatDate(t.created_at) + '</td>' +
-        '<td>' + api.formatDate(t.updated_at || t.created_at) + '</td>' +
+        '<td>' + api.formatDate(t.created_at, true) + '</td>' +
+        '<td>' + api.formatDate(t.updated_at || t.created_at, true) + '</td>' +
         '<td>' + api.renderDetailLink('education-detail.html', t.id) + '</td>' +
         '</tr>';
     }
     topicBody.innerHTML = html;
+    updateArrowStates(topicBody);
+  }
+
+  // 교육순서 ↑↓ disabled 상태 재계산
+  function updateArrowStates(tbody) {
+    var rows = tbody.querySelectorAll('tr');
+    rows.forEach(function (row, idx) {
+      var upBtn = row.querySelector('.order-up');
+      var downBtn = row.querySelector('.order-down');
+      if (upBtn) upBtn.disabled = (idx === 0);
+      if (downBtn) downBtn.disabled = (idx === rows.length - 1);
+    });
   }
 
   // 탭2: 체크리스트 + 서약서
@@ -158,6 +195,66 @@
   }
 
   function bindListEvents() {
+    // 교육주제 탭 – 검색 & 초기화 & 교육순서 swap
+    var tab1 = document.getElementById('tab-topics');
+    if (tab1) {
+      var topicBtnSearch = document.getElementById('topicBtnSearch');
+      var topicSearchInput = document.getElementById('topicSearchInput');
+      var topicBtnReset = document.getElementById('topicBtnReset');
+
+      if (topicBtnSearch) topicBtnSearch.addEventListener('click', function () { loadTopicList(); });
+      if (topicSearchInput) topicSearchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') loadTopicList();
+      });
+      if (topicBtnReset) topicBtnReset.addEventListener('click', function () {
+        var vis = document.getElementById('topicVisibility');
+        if (vis) vis.value = '';
+        if (topicSearchInput) topicSearchInput.value = '';
+        loadTopicList();
+      });
+
+      // 교육순서 ↑↓ swap (이벤트 위임)
+      tab1.addEventListener('click', async function (e) {
+        var btn = e.target.closest('.order-up, .order-down');
+        if (!btn || btn.disabled) return;
+
+        var row = btn.closest('tr');
+        var tbody = row.closest('tbody');
+        if (!row || !tbody) return;
+
+        var isUp = btn.classList.contains('order-up');
+        var siblingRow = isUp ? row.previousElementSibling : row.nextElementSibling;
+        if (!siblingRow) return;
+
+        // DOM 위치 교환
+        if (isUp) {
+          tbody.insertBefore(row, siblingRow);
+        } else {
+          tbody.insertBefore(siblingRow, row);
+        }
+
+        // 순서 번호 재계산
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function (r, idx) {
+          var orderSpan = r.querySelector('.order-arrows > span');
+          if (orderSpan) orderSpan.textContent = idx + 1;
+          r.setAttribute('data-order', idx + 1);
+        });
+
+        // ↑↓ disabled 상태 재계산
+        updateArrowStates(tbody);
+
+        // DB 반영: swap된 2개 행의 display_order 업데이트
+        var rowId = row.getAttribute('data-id');
+        var siblingId = siblingRow.getAttribute('data-id');
+        var rowNewOrder = parseInt(row.getAttribute('data-order'), 10);
+        var siblingNewOrder = parseInt(siblingRow.getAttribute('data-order'), 10);
+
+        await api.updateRecord('education_topics', rowId, { display_order: rowNewOrder });
+        await api.updateRecord('education_topics', siblingId, { display_order: siblingNewOrder });
+      });
+    }
+
     // 이수현황 탭 – 검색 & 엑셀
     var tab3 = document.getElementById('tab-status');
     if (tab3) {
@@ -214,6 +311,34 @@
     return !!document.getElementById('detailEduBasic') && !document.getElementById('detailEduStatusBasic');
   }
 
+  /* ── 보기/편집 모드 전환 ── */
+  function toggleViewEdit(isViewMode) {
+    var pairs = [['viewBasic', 'editBasic'], ['viewDesc', 'editDesc'], ['viewQuiz', 'editQuiz']];
+    for (var i = 0; i < pairs.length; i++) {
+      var vEl = document.getElementById(pairs[i][0]);
+      var eEl = document.getElementById(pairs[i][1]);
+      if (vEl) vEl.style.display = isViewMode ? '' : 'none';
+      if (eEl) eEl.style.display = isViewMode ? 'none' : '';
+    }
+  }
+
+  /* ── 모달 열기 유틸 ── */
+  function openModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('active');
+  }
+
+  /* ── 폼 값 세팅 유틸 ── */
+  function setElHtml(elId, value) {
+    var el = document.getElementById(elId);
+    if (el) el.innerHTML = value || '';
+  }
+  function setInputVal(elId, value) {
+    var el = document.getElementById(elId);
+    if (el) el.value = (value != null) ? value : '';
+  }
+
+  /* ── 상세 페이지 메인 로드 ── */
   async function loadTopicDetail() {
     var id = api.getParam('id');
     if (!id) return;
@@ -223,55 +348,331 @@
     var d = r1.data;
 
     // 퀴즈 조회
-    var r2 = await api.fetchList('education_quizzes', { filters: [{ column: 'topic_id', op: 'eq', value: id }], orderBy: 'created_at', ascending: true, perPage: 100 });
+    var r2 = await api.fetchList('education_quizzes', {
+      filters: [{ column: 'topic_id', op: 'eq', value: id }],
+      orderBy: 'created_at', ascending: true, perPage: 100
+    });
     var quizzes = r2.data || [];
+    var quiz = quizzes.length > 0 ? quizzes[0] : null;
 
-    var basicEl = document.getElementById('detailEduBasic');
-    if (basicEl) {
+    // ── ① 기본정보 보기 모드 ──
+    var viewBasic = document.getElementById('viewBasic');
+    if (viewBasic) {
+      viewBasic.innerHTML =
+        '<span class="info-grid__label">교육 고유번호</span><span class="info-grid__value">' + api.escapeHtml(d.id || '-') + '</span>' +
+        '<span class="info-grid__label">교육순서</span><span class="info-grid__value">' + (d.display_order || '-') + '</span>' +
+        '<span class="info-grid__label">교육주제</span><span class="info-grid__value">' + api.escapeHtml(d.title) + '</span>' +
+        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + api.autoBadge(d.visibility) + '</span>' +
+        '<span class="info-grid__label">등록일</span><span class="info-grid__value">' + api.formatDate(d.created_at, true) + '</span>' +
+        '<span class="info-grid__label">수정일</span><span class="info-grid__value">' + api.formatDate(d.updated_at || d.created_at, true) + '</span>';
+    }
+
+    // ── ② 설명 페이지 보기 모드 ──
+    var viewDesc = document.getElementById('viewDesc');
+    if (viewDesc) {
+      var topImgHtml = d.top_image_url
+        ? '<img src="' + api.escapeHtml(d.top_image_url) + '" alt="상단 이미지">'
+        : IMG_PLACEHOLDER;
+
       var details = d.principle_details || [];
       var detailsHtml = '';
-      if (Array.isArray(details)) {
+      if (Array.isArray(details) && details.length > 0) {
         detailsHtml = '<ul class="edu-bullet-list">';
         for (var i = 0; i < details.length; i++) {
           detailsHtml += '<li class="edu-bullet-list__item">' + api.escapeHtml(details[i]) + '</li>';
         }
         detailsHtml += '</ul>';
+      } else {
+        detailsHtml = '<span style="color:var(--text-weak);">-</span>';
       }
 
-      api.setHtml(basicEl, '<div class="info-grid">' +
-        '<span class="info-grid__label">순서</span><span class="info-grid__value">' + (d.display_order || '-') + '</span>' +
-        '<span class="info-grid__label">제목</span><span class="info-grid__value">' + api.escapeHtml(d.title) + '</span>' +
-        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + api.autoBadge(d.visibility) + '</span>' +
-        '<span class="info-grid__label">원칙 제목</span><span class="info-grid__value">' + api.escapeHtml(d.principle_text || '') + '</span>' +
+      viewDesc.innerHTML =
+        '<span class="info-grid__label">상단 이미지</span><span class="info-grid__value"><div class="edu-img-preview">' + topImgHtml + '</div></span>' +
+        '<span class="info-grid__label">원칙 문장</span><span class="info-grid__value" style="font-weight:600;">' + api.escapeHtml(d.principle_text || '-') + '</span>' +
         '<span class="info-grid__label">원칙 설명</span><span class="info-grid__value">' + detailsHtml + '</span>' +
-        '<span class="info-grid__label">올바른 행동 1</span><span class="info-grid__value">' + api.escapeHtml(d.correct_behavior_1 || '') + '</span>' +
-        '<span class="info-grid__label">올바른 행동 2</span><span class="info-grid__value">' + api.escapeHtml(d.correct_behavior_2 || '') + '</span>' +
-        '<span class="info-grid__label">잘못된 행동</span><span class="info-grid__value">' + api.escapeHtml(d.wrong_behavior_1 || '') + '</span>' +
-        '</div>');
+        '<span class="info-grid__label">올바른 행동 ①</span><span class="info-grid__value">' + api.escapeHtml(d.correct_behavior_1 || '-') + '</span>' +
+        '<span class="info-grid__label">올바른 행동 ②</span><span class="info-grid__value">' + api.escapeHtml(d.correct_behavior_2 || '-') + '</span>' +
+        '<span class="info-grid__label">잘못된 행동 ①</span><span class="info-grid__value' + (d.wrong_behavior_1 ? ' text-danger' : '') + '">' + api.escapeHtml(d.wrong_behavior_1 || '-') + '</span>';
     }
 
-    var quizEl = document.getElementById('detailEduQuiz');
-    if (quizEl && quizzes.length > 0) {
-      var qHtml = '';
-      for (var q = 0; q < quizzes.length; q++) {
-        var quiz = quizzes[q];
-        qHtml += '<div class="detail-card" style="margin-bottom:12px;">' +
-          '<div class="info-grid">' +
-          '<span class="info-grid__label">질문</span><span class="info-grid__value">' + api.escapeHtml(quiz.question_text) + '</span>' +
-          '<span class="info-grid__label">선택 A</span><span class="info-grid__value">' + api.escapeHtml(quiz.choice_a) + '</span>' +
-          '<span class="info-grid__label">선택 B</span><span class="info-grid__value">' + api.escapeHtml(quiz.choice_b) + '</span>' +
-          '<span class="info-grid__label">정답</span><span class="info-grid__value">' + api.renderBadge(quiz.correct_answer, 'blue') + '</span>' +
-          '<span class="info-grid__label">정답 설명</span><span class="info-grid__value">' + api.escapeHtml(quiz.correct_explanation || '') + '</span>' +
-          '<span class="info-grid__label">오답 설명</span><span class="info-grid__value">' + api.escapeHtml(quiz.wrong_explanation || '') + '</span>' +
-          '</div></div>';
+    // ── ③ 퀴즈 보기 모드 ──
+    var viewQuiz = document.getElementById('viewQuiz');
+    if (viewQuiz) {
+      if (quiz) {
+        var quizImgHtml = quiz.question_image_url
+          ? '<img src="' + api.escapeHtml(quiz.question_image_url) + '" alt="질문 이미지">'
+          : IMG_PLACEHOLDER;
+        var aIsCorrect = quiz.correct_answer === 'A';
+
+        viewQuiz.innerHTML =
+          '<span class="info-grid__label">질문 텍스트</span><span class="info-grid__value">' + api.escapeHtml(quiz.question_text) + '</span>' +
+          '<span class="info-grid__label">질문 이미지</span><span class="info-grid__value"><div class="edu-img-preview">' + quizImgHtml + '</div></span>' +
+          '<span class="info-grid__label">선택지 A</span><span class="info-grid__value"><div class="edu-choice-row"><span class="edu-answer-toggle' + (aIsCorrect ? ' active' : '') + '">정답</span><span class="edu-choice-row__text">' + api.escapeHtml(quiz.choice_a) + '</span></div></span>' +
+          '<span class="info-grid__label">선택지 B</span><span class="info-grid__value"><div class="edu-choice-row"><span class="edu-answer-toggle' + (!aIsCorrect ? ' active' : '') + '">정답</span><span class="edu-choice-row__text">' + api.escapeHtml(quiz.choice_b) + '</span></div></span>' +
+          '<span class="info-grid__label">선택지 A 해설</span><span class="info-grid__value"><div class="edu-explanation edu-explanation--' + (aIsCorrect ? 'correct' : 'wrong') + '">' + api.escapeHtml(quiz.choice_a_explanation || '-') + '</div></span>' +
+          '<span class="info-grid__label">선택지 B 해설</span><span class="info-grid__value"><div class="edu-explanation edu-explanation--' + (!aIsCorrect ? 'correct' : 'wrong') + '">' + api.escapeHtml(quiz.choice_b_explanation || '-') + '</div></span>';
+      } else {
+        viewQuiz.innerHTML = '<p style="color:var(--text-weak);padding:12px 0;">등록된 퀴즈가 없습니다.</p>';
       }
-      api.setHtml(quizEl, qHtml);
     }
 
-    // 모달 바인딩: 공개/비공개 토글
-    var toggleBtn = document.querySelector('#toggleModal .modal__btn--confirm-primary, #toggleModal .modal__btn--delete');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', async function () {
+    // ── 비공개 전환 버튼 텍스트 동적 세팅 ──
+    var btnToggle = document.getElementById('btnToggleVisibility');
+    if (btnToggle) {
+      btnToggle.textContent = d.visibility === '공개' ? '비공개 전환' : '공개 전환';
+    }
+
+    // ── 버튼 이벤트 바인딩 ──
+    bindDetailActions(id, d, quiz);
+
+    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions']);
+  }
+
+  /* ── 상세 페이지 액션 바인딩 ── */
+  function bindDetailActions(id, topicData, quizData) {
+    var d = topicData;
+    var quiz = quizData;
+
+    // 편집 모드에서 사용할 이미지 URL 변수
+    var editTopImgUrl = d.top_image_url || null;
+    var editQuizImgUrl = (quiz && quiz.question_image_url) || null;
+    // 원본 URL (취소 시 복원 및 고아 파일 정리용)
+    var origTopImgUrl = editTopImgUrl;
+    var origQuizImgUrl = editQuizImgUrl;
+    var detailEditSaved = false; // 저장 완료 플래그
+    var isInEditMode = false;    // 편집 모드 플래그
+
+    // 편집 모드에서 페이지 이탈 시 고아 이미지 정리
+    function cleanupDetailOrphanImages() {
+      if (detailEditSaved || !isInEditMode) return;
+      if (editTopImgUrl && editTopImgUrl !== origTopImgUrl) {
+        try { deleteImageFromStorage(editTopImgUrl); } catch (e) { /* ignore */ }
+      }
+      if (editQuizImgUrl && editQuizImgUrl !== origQuizImgUrl) {
+        try { deleteImageFromStorage(editQuizImgUrl); } catch (e) { /* ignore */ }
+      }
+    }
+    window.addEventListener('beforeunload', cleanupDetailOrphanImages);
+    window.addEventListener('pagehide', cleanupDetailOrphanImages);
+
+    // ── [수정] 버튼 → 편집 모드 진입 ──
+    var btnEdit = document.getElementById('btnEditMode');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () {
+        isInEditMode = true;
+        document.getElementById('detailViewActions').style.display = 'none';
+        document.getElementById('detailEditActions').style.display = '';
+        toggleViewEdit(false);
+
+        // 기본정보 폼 채우기
+        setElHtml('editId', api.escapeHtml(d.id || '-'));
+        setInputVal('editOrder', d.display_order);
+        setInputVal('editTitle', d.title);
+        setElHtml('editVisibility', api.autoBadge(d.visibility));
+        setElHtml('editCreatedAt', api.formatDate(d.created_at, true));
+        setElHtml('editUpdatedAt', api.formatDate(d.updated_at || d.created_at, true));
+
+        // 설명 페이지 폼 채우기
+        setInputVal('editPrinciple', d.principle_text || '');
+        setInputVal('editCorrect1', d.correct_behavior_1 || '');
+        setInputVal('editCorrect2', d.correct_behavior_2 || '');
+        setInputVal('editWrong1', d.wrong_behavior_1 || '');
+
+        // 원칙 설명 목록
+        var listEl = document.getElementById('editPrincipleList');
+        if (listEl) {
+          listEl.innerHTML = '';
+          var details = d.principle_details || [];
+          if (Array.isArray(details)) {
+            for (var i = 0; i < details.length; i++) {
+              var li = document.createElement('li');
+              li.className = 'edu-bullet-list__item';
+              li.innerHTML = '<input type="text" class="filter-input" style="width:100%;" value="' + api.escapeHtml(details[i]) + '">';
+              listEl.appendChild(li);
+            }
+          }
+        }
+
+        // 상단 이미지 프리뷰 및 버튼 상태
+        var topPreview = document.getElementById('editTopImgPreview');
+        if (topPreview) {
+          topPreview.innerHTML = editTopImgUrl
+            ? '<img src="' + api.escapeHtml(editTopImgUrl) + '" alt="미리보기">'
+            : IMG_PLACEHOLDER;
+        }
+        var topActions = document.getElementById('editTopImgActions');
+        if (topActions) {
+          topActions.innerHTML = editTopImgUrl
+            ? '<button class="edu-img-actions__btn" id="editTopImgBtn">이미지 교체</button><button class="edu-img-actions__btn edu-img-actions__btn--delete" id="editTopImgBtnDel">삭제</button>'
+            : '<button class="edu-img-actions__btn" id="editTopImgBtn">이미지 업로드</button>';
+        }
+
+        // 퀴즈 필드 채우기
+        if (quiz) {
+          setInputVal('editQuizQuestion', quiz.question_text || '');
+          setInputVal('editChoiceA', quiz.choice_a || '');
+          setInputVal('editChoiceB', quiz.choice_b || '');
+          setInputVal('editExplainA', quiz.choice_a_explanation || '');
+          setInputVal('editExplainB', quiz.choice_b_explanation || '');
+          var aBtn = document.getElementById('editAnswerA');
+          var bBtn = document.getElementById('editAnswerB');
+          if (aBtn) aBtn.classList.toggle('active', quiz.correct_answer === 'A');
+          if (bBtn) bBtn.classList.toggle('active', quiz.correct_answer === 'B');
+        }
+
+        // 퀴즈 이미지 프리뷰 및 버튼 상태
+        var quizPreview = document.getElementById('editQuizImgPreview');
+        if (quizPreview) {
+          quizPreview.innerHTML = editQuizImgUrl
+            ? '<img src="' + api.escapeHtml(editQuizImgUrl) + '" alt="미리보기">'
+            : IMG_PLACEHOLDER;
+        }
+        var quizActions = document.getElementById('editQuizImgActions');
+        if (quizActions) {
+          quizActions.innerHTML = editQuizImgUrl
+            ? '<button class="edu-img-actions__btn" id="editQuizImgBtn">이미지 교체</button><button class="edu-img-actions__btn edu-img-actions__btn--delete" id="editQuizImgBtnDel">삭제</button>'
+            : '<button class="edu-img-actions__btn" id="editQuizImgBtn">이미지 업로드</button>';
+        }
+
+        // 이미지 업로드 바인딩
+        bindImageUpload({
+          uploadBtnId: 'editTopImgBtn',
+          fileInputId: 'editTopImgFile',
+          previewId: 'editTopImgPreview',
+          actionsId: 'editTopImgActions',
+          folder: 'topImg',
+          getCurrentUrl: function () { return editTopImgUrl; },
+          setUrl: function (url) { editTopImgUrl = url; }
+        });
+        bindImageUpload({
+          uploadBtnId: 'editQuizImgBtn',
+          fileInputId: 'editQuizImgFile',
+          previewId: 'editQuizImgPreview',
+          actionsId: 'editQuizImgActions',
+          folder: 'quizImg',
+          getCurrentUrl: function () { return editQuizImgUrl; },
+          setUrl: function (url) { editQuizImgUrl = url; }
+        });
+      });
+    }
+
+    // ── [취소] 버튼 → 보기 모드 복원 + 고아 파일 정리 ──
+    var btnCancel = document.getElementById('btnEditCancel');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', async function () {
+        // 편집 중 업로드된 새 이미지가 원본과 다르면 Storage에서 삭제
+        if (editTopImgUrl && editTopImgUrl !== origTopImgUrl) {
+          try { await deleteImageFromStorage(editTopImgUrl); } catch (e) { /* ignore */ }
+        }
+        if (editQuizImgUrl && editQuizImgUrl !== origQuizImgUrl) {
+          try { await deleteImageFromStorage(editQuizImgUrl); } catch (e) { /* ignore */ }
+        }
+        // URL 변수 원본으로 복원
+        editTopImgUrl = origTopImgUrl;
+        editQuizImgUrl = origQuizImgUrl;
+        isInEditMode = false;
+
+        document.getElementById('detailViewActions').style.display = '';
+        document.getElementById('detailEditActions').style.display = 'none';
+        toggleViewEdit(true);
+      });
+    }
+
+    // ── [저장] 버튼 → 저장 모달 열기 ──
+    var btnSave = document.getElementById('btnEditSave');
+    if (btnSave) {
+      btnSave.addEventListener('click', function () {
+        openModal('saveModal');
+      });
+    }
+
+    // ── 저장 모달 확인 ──
+    var btnSaveConfirm = document.getElementById('btnSaveConfirm');
+    if (btnSaveConfirm) {
+      btnSaveConfirm.addEventListener('click', async function () {
+        var titleEl = document.getElementById('editTitle');
+        if (!titleEl || !titleEl.value.trim()) {
+          alert('교육주제를 입력하세요.');
+          if (titleEl) titleEl.focus();
+          return;
+        }
+
+        // 원칙 설명 수집
+        var principleDetails = [];
+        document.querySelectorAll('#editPrincipleList .edu-bullet-list__item input').forEach(function (inp) {
+          var val = inp.value.trim();
+          if (val) principleDetails.push(val);
+        });
+
+        // 원본과 다른 이전 이미지 Storage 정리 (새 이미지로 교체된 경우 원본 삭제)
+        if (origTopImgUrl && editTopImgUrl !== origTopImgUrl) {
+          try { await deleteImageFromStorage(origTopImgUrl); } catch (e) { /* ignore */ }
+        }
+        if (origQuizImgUrl && editQuizImgUrl !== origQuizImgUrl) {
+          try { await deleteImageFromStorage(origQuizImgUrl); } catch (e) { /* ignore */ }
+        }
+
+        var topicUpdate = {
+          title: titleEl.value.trim(),
+          top_image_url: editTopImgUrl || null,
+          principle_text: (document.getElementById('editPrinciple') || {}).value ? document.getElementById('editPrinciple').value.trim() || null : null,
+          principle_details: principleDetails.length > 0 ? principleDetails : null,
+          correct_behavior_1: (document.getElementById('editCorrect1') || {}).value ? document.getElementById('editCorrect1').value.trim() || null : null,
+          correct_behavior_2: (document.getElementById('editCorrect2') || {}).value ? document.getElementById('editCorrect2').value.trim() || null : null,
+          wrong_behavior_1: (document.getElementById('editWrong1') || {}).value ? document.getElementById('editWrong1').value.trim() || null : null
+        };
+
+        var res1 = await api.updateRecord('education_topics', id, topicUpdate);
+        if (res1.error) {
+          alert('저장 실패: ' + res1.error.message);
+          return;
+        }
+
+        // 퀴즈 업데이트
+        if (quiz) {
+          var answerA = document.getElementById('editAnswerA');
+          var correctAnswer = (answerA && answerA.classList.contains('active')) ? 'A' : 'B';
+
+          var quizUpdate = {
+            question_text: document.getElementById('editQuizQuestion') ? document.getElementById('editQuizQuestion').value.trim() || null : null,
+            question_image_url: editQuizImgUrl || null,
+            choice_a: document.getElementById('editChoiceA') ? document.getElementById('editChoiceA').value.trim() || null : null,
+            choice_b: document.getElementById('editChoiceB') ? document.getElementById('editChoiceB').value.trim() || null : null,
+            correct_answer: correctAnswer,
+            choice_a_explanation: document.getElementById('editExplainA') ? document.getElementById('editExplainA').value.trim() || null : null,
+            choice_b_explanation: document.getElementById('editExplainB') ? document.getElementById('editExplainB').value.trim() || null : null
+          };
+          await api.updateRecord('education_quizzes', quiz.id, quizUpdate);
+        }
+
+        await api.insertAuditLog('교육주제수정', 'education_topics', id, {});
+        detailEditSaved = true; // beforeunload 정리 방지
+        alert('저장되었습니다.');
+        location.reload();
+      });
+    }
+
+    // ── [비공개 전환] 버튼 → 토글 모달 ──
+    var btnToggleVis = document.getElementById('btnToggleVisibility');
+    if (btnToggleVis) {
+      btnToggleVis.addEventListener('click', function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        var msgEl = document.getElementById('toggleModalMessage');
+        var confirmEl = document.getElementById('btnToggleConfirm');
+        if (msgEl) {
+          msgEl.innerHTML = newVis === '비공개'
+            ? '이 교육 주제를 비공개로 전환하면 앱에서 더 이상 노출되지 않습니다.<br>비공개로 전환하시겠습니까?'
+            : '이 교육 주제를 공개로 전환하면 앱에서 노출됩니다.<br>공개로 전환하시겠습니까?';
+        }
+        if (confirmEl) confirmEl.textContent = newVis + ' 전환';
+        openModal('toggleModal');
+      });
+    }
+
+    // ── 토글 모달 확인 ──
+    var btnToggleConfirm = document.getElementById('btnToggleConfirm');
+    if (btnToggleConfirm) {
+      btnToggleConfirm.addEventListener('click', async function () {
         var newVis = d.visibility === '공개' ? '비공개' : '공개';
         await api.updateRecord('education_topics', id, { visibility: newVis });
         await api.insertAuditLog('공개상태변경', 'education_topics', id, { from: d.visibility, to: newVis });
@@ -280,18 +681,35 @@
       });
     }
 
-    // 삭제 모달
-    var deleteBtn = document.querySelector('#deleteModal .modal__btn--delete');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', async function () {
+    // ── [삭제] 버튼 → 삭제 모달 ──
+    var btnDeleteOpen = document.getElementById('btnDeleteOpen');
+    if (btnDeleteOpen) {
+      btnDeleteOpen.addEventListener('click', function () {
+        openModal('deleteModal');
+      });
+    }
+
+    // ── 삭제 모달 확인 ──
+    var btnDeleteConfirm = document.getElementById('btnDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        // 연관 퀴즈 먼저 삭제
+        if (quiz) {
+          await api.deleteRecord('education_quizzes', quiz.id);
+        }
+        // Storage 이미지 정리
+        if (d.top_image_url) {
+          try { await deleteImageFromStorage(d.top_image_url); } catch (e) { /* ignore */ }
+        }
+        if (quiz && quiz.question_image_url) {
+          try { await deleteImageFromStorage(quiz.question_image_url); } catch (e) { /* ignore */ }
+        }
         await api.deleteRecord('education_topics', id);
         await api.insertAuditLog('교육주제삭제', 'education_topics', id, {});
         alert('삭제되었습니다.');
         location.href = 'educations.html';
       });
     }
-
-    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions']);
   }
 
   // ══════════════════════════════════════════
@@ -538,11 +956,227 @@
     return !!document.getElementById('detailEduCreate');
   }
 
-  function bindTopicCreate() {
+  /* ── Supabase Storage 이미지 업로드 유틸 ── */
+  var BUCKET = 'education-images';
+
+  async function uploadImage(file, folder) {
+    var sb = window.__supabase;
+    var ext = file.name.split('.').pop().toLowerCase();
+    var fileName = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    var res = await sb.storage.from(BUCKET).upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (res.error) throw res.error;
+    var pub = sb.storage.from(BUCKET).getPublicUrl(fileName);
+    return pub.data.publicUrl;
+  }
+
+  async function deleteImageFromStorage(url) {
+    if (!url) return;
+    var sb = window.__supabase;
+    var m = url.match(new RegExp(BUCKET + '/(.+)$'));
+    if (!m) return;
+    await sb.storage.from(BUCKET).remove([m[1]]);
+  }
+
+  var IMG_PLACEHOLDER =
+    '<div class="edu-img-preview__placeholder">' +
+    '<svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+    '320 \u00d7 180px</div>';
+
+  /**
+   * 이미지 업로드 바인딩 (범용)
+   * @param {object} opts - { uploadBtnId, fileInputId, previewId, actionsId, folder, getCurrentUrl, setUrl }
+   */
+  function bindImageUpload(opts) {
+    var fileInput = document.getElementById(opts.fileInputId);
+    var preview = document.getElementById(opts.previewId);
+    var actions = document.getElementById(opts.actionsId);
+    if (!fileInput || !preview || !actions) return;
+
+    function renderUploadBtn() {
+      actions.innerHTML = '<button class="edu-img-actions__btn" id="' + opts.uploadBtnId + '">이미지 업로드</button>';
+      document.getElementById(opts.uploadBtnId).addEventListener('click', function () { fileInput.click(); });
+    }
+
+    function renderReplaceDeleteBtns() {
+      actions.innerHTML =
+        '<button class="edu-img-actions__btn" id="' + opts.uploadBtnId + '">이미지 교체</button>' +
+        '<button class="edu-img-actions__btn edu-img-actions__btn--delete" id="' + opts.uploadBtnId + 'Del">삭제</button>';
+      document.getElementById(opts.uploadBtnId).addEventListener('click', function () { fileInput.click(); });
+      document.getElementById(opts.uploadBtnId + 'Del').addEventListener('click', async function () {
+        try { await deleteImageFromStorage(opts.getCurrentUrl()); } catch (e) { /* ignore */ }
+        opts.setUrl(null);
+        preview.innerHTML = IMG_PLACEHOLDER;
+        renderUploadBtn();
+      });
+    }
+
+    // 초기 바인딩
+    var initBtn = document.getElementById(opts.uploadBtnId);
+    if (initBtn) initBtn.addEventListener('click', function () { fileInput.click(); });
+
+    fileInput.addEventListener('change', async function () {
+      var file = fileInput.files[0];
+      if (!file) return;
+      try {
+        // 교체 시 기존 이미지 삭제
+        var prevUrl = opts.getCurrentUrl();
+        if (prevUrl) {
+          await deleteImageFromStorage(prevUrl);
+        }
+        var url = await uploadImage(file, opts.folder);
+        opts.setUrl(url);
+        preview.innerHTML = '<img src="' + url + '" alt="미리보기">';
+        renderReplaceDeleteBtns();
+      } catch (err) {
+        alert('이미지 업로드 실패: ' + (err.message || err));
+      }
+      fileInput.value = '';
+    });
+  }
+
+  /* ── 등록 페이지 메인 바인딩 ── */
+  var topImageUrl = null;
+  var quizImageUrl = null;
+  var createSaved = false; // 등록 완료 플래그 (beforeunload 정리 방지)
+
+  async function bindTopicCreate() {
+    // 페이지 이탈 시 미저장 이미지 Storage 정리 (최선 노력 방식)
+    function cleanupOrphanImages() {
+      if (createSaved) return;
+      if (topImageUrl) { try { deleteImageFromStorage(topImageUrl); } catch (e) { /* ignore */ } }
+      if (quizImageUrl) { try { deleteImageFromStorage(quizImageUrl); } catch (e) { /* ignore */ } }
+    }
+    window.addEventListener('beforeunload', cleanupOrphanImages);
+    window.addEventListener('pagehide', cleanupOrphanImages);
+
+    // 교육순서 디폴트값: MAX(display_order) + 1
+    var orderInput = document.getElementById('createOrder');
+    if (orderInput) {
+      try {
+        var sb = window.__supabase;
+        var maxRes = await sb.from('education_topics')
+          .select('display_order')
+          .order('display_order', { ascending: false })
+          .limit(1);
+        var maxOrder = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].display_order || 0) : 0;
+        orderInput.value = maxOrder + 1;
+      } catch (e) {
+        orderInput.value = 1;
+      }
+    }
+
+    // 이미지 업로드 바인딩
+    bindImageUpload({
+      uploadBtnId: 'topImgUploadBtn',
+      fileInputId: 'topImgFileInput',
+      previewId: 'topImgPreview',
+      actionsId: 'topImgActions',
+      folder: 'topImg',
+      getCurrentUrl: function () { return topImageUrl; },
+      setUrl: function (url) { topImageUrl = url; }
+    });
+    bindImageUpload({
+      uploadBtnId: 'quizImgUploadBtn',
+      fileInputId: 'quizImgFileInput',
+      previewId: 'quizImgPreview',
+      actionsId: 'quizImgActions',
+      folder: 'quizImg',
+      getCurrentUrl: function () { return quizImageUrl; },
+      setUrl: function (url) { quizImageUrl = url; }
+    });
+
+    // 등록 모달 확인 버튼
     var saveBtn = document.querySelector('#registerModal .modal__btn--confirm-primary');
     if (saveBtn) {
       saveBtn.addEventListener('click', async function () {
-        alert('등록 기능은 상세 페이지에서 직접 입력 후 저장합니다.');
+        // 1단계: 필수 입력값 검증
+        var title = document.getElementById('createTitle');
+        var principle = document.getElementById('createPrinciple');
+        var quizQuestion = document.getElementById('createQuizQuestion');
+        var choiceA = document.getElementById('createChoiceA');
+        var choiceB = document.getElementById('createChoiceB');
+        var answerABtn = document.getElementById('createAnswerA');
+        var answerBBtn = document.getElementById('createAnswerB');
+
+        var checks = [
+          { el: title, msg: '교육주제를 입력하세요.' },
+          { el: principle, msg: '원칙 문장을 입력하세요.' },
+          { el: quizQuestion, msg: '퀴즈 질문을 입력하세요.' },
+          { el: choiceA, msg: '선택지 A를 입력하세요.' },
+          { el: choiceB, msg: '선택지 B를 입력하세요.' }
+        ];
+        for (var i = 0; i < checks.length; i++) {
+          if (!checks[i].el || !checks[i].el.value.trim()) {
+            alert(checks[i].msg);
+            if (checks[i].el) checks[i].el.focus();
+            return;
+          }
+        }
+
+        // 정답 선택 검증
+        var correctAnswer = null;
+        if (answerABtn && answerABtn.classList.contains('active')) correctAnswer = 'A';
+        else if (answerBBtn && answerBBtn.classList.contains('active')) correctAnswer = 'B';
+        if (!correctAnswer) {
+          alert('정답을 선택하세요 (선택지 A 또는 B의 [정답] 버튼을 클릭하세요).');
+          return;
+        }
+
+        // 원칙 설명 수집 (JSON 배열)
+        var principleDetails = [];
+        document.querySelectorAll('.edu-bullet-list .edu-bullet-list__item input').forEach(function (inp) {
+          var val = inp.value.trim();
+          if (val) principleDetails.push(val);
+        });
+
+        // 2단계: education_topics insert
+        var correct1El = document.getElementById('createCorrect1');
+        var correct2El = document.getElementById('createCorrect2');
+        var wrong1El = document.getElementById('createWrong1');
+
+        var topicData = {
+          display_order: parseInt(orderInput.value, 10),
+          title: title.value.trim(),
+          visibility: '비공개',
+          top_image_url: topImageUrl || null,
+          principle_text: principle.value.trim(),
+          principle_details: principleDetails.length > 0 ? principleDetails : null,
+          correct_behavior_1: correct1El ? correct1El.value.trim() || null : null,
+          correct_behavior_2: correct2El ? correct2El.value.trim() || null : null,
+          wrong_behavior_1: wrong1El ? wrong1El.value.trim() || null : null
+        };
+
+        var topicRes = await api.insertRecord('education_topics', topicData);
+        if (topicRes.error || !topicRes.data || !topicRes.data[0]) {
+          alert('교육 주제 등록 실패: ' + (topicRes.error ? topicRes.error.message : '알 수 없는 오류'));
+          return;
+        }
+        var newTopicId = topicRes.data[0].id;
+
+        // 3단계: education_quizzes insert
+        var explainAEl = document.getElementById('createExplainA');
+        var explainBEl = document.getElementById('createExplainB');
+
+        var quizData = {
+          topic_id: newTopicId,
+          question_text: quizQuestion.value.trim(),
+          question_image_url: quizImageUrl || null,
+          choice_a: choiceA.value.trim(),
+          choice_b: choiceB.value.trim(),
+          correct_answer: correctAnswer,
+          choice_a_explanation: explainAEl ? explainAEl.value.trim() || null : null,
+          choice_b_explanation: explainBEl ? explainBEl.value.trim() || null : null
+        };
+
+        var quizRes = await api.insertRecord('education_quizzes', quizData);
+        if (quizRes.error) {
+          alert('퀴즈 등록 실패: ' + quizRes.error.message + '\n교육 주제는 등록되었습니다.');
+        }
+
+        // 4단계: 감사 로그 + 이동
+        await api.insertAuditLog('교육주제등록', 'education_topics', newTopicId, {});
+        createSaved = true; // beforeunload 정리 방지
+        alert('교육 주제가 등록되었습니다.');
         location.href = 'educations.html';
       });
     }
@@ -553,10 +1187,12 @@
   // ══════════════════════════════════════════
 
   function bindUIInteractions() {
-    // 1. 퀴즈 정답 토글
+    // 1. 퀴즈 정답 토글 (보기 모드 #viewQuiz 내부에서는 동작하지 않음)
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.edu-answer-toggle');
       if (!btn) return;
+      // 보기 모드 영역 내부의 토글은 클릭 무시
+      if (btn.closest('#viewQuiz')) return;
       var card = btn.closest('.detail-card') || btn.closest('.info-grid');
       if (!card) return;
       card.querySelectorAll('.edu-answer-toggle').forEach(function (toggle) { toggle.classList.remove('active'); });
@@ -668,7 +1304,11 @@
     else if (isChecklistDetailPage()) loadChecklistDetail();
     else if (isPledgeDetailPage()) loadPledgeDetail();
     else if (isStatusDetailPage()) loadStatusDetail();
-    else if (isTopicCreatePage()) bindTopicCreate();
+    else if (isTopicCreatePage()) {
+      bindTopicCreate().catch(function (err) {
+        console.error('[educations] 등록 페이지 초기화 실패:', err);
+      });
+    }
   });
 
 })();

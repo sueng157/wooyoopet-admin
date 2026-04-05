@@ -1061,6 +1061,12 @@
 |  | 총 미이수 인원 | 아직 완료하지 않은 유치원 수 |
 |  | 이수율 | 완료 인원 / 전체 유치원 × 100% |
 상세 기능: 설명 페이지 내용 수정(이미지 교체, 원칙·행동 텍스트 수정, 원칙 설명 항목 추가·삭제), 퀴즈 내용 수정(이미지 교체, 질문·선택지·해설 텍스트 수정), 공개·비공개 전환, 교육 주제 삭제(이미 이수한 유치원이 있으면 삭제 불가, 비공개로만 전환 가능 경고 표시).
+
+> **구현 노트 (교육 주제 관리):**
+> - **이미지 Storage**: `education-images` Supabase Storage 버킷 사용. 상단 이미지(`top-images/` 폴더)와 퀴즈 이미지(`quiz-images/` 폴더)로 분리 저장
+> - **고아 파일 정리**: 이미지 교체 시 이전 파일 자동 삭제, 등록 페이지 이탈 시 미저장 이미지 삭제, 편집 취소 시 새 이미지 삭제 및 원본 복원
+> - **보기 모드 보호**: 상세 화면의 보기 모드(`#viewQuiz`)에서 퀴즈 정답 토글 버튼이 클릭되지 않도록 이벤트 위임 핸들러에서 차단
+> - **교육 순서 자동 설정**: 신규 등록 시 현재 최대 `display_order` + 1로 자동 설정
 ---
 ### 탭 2: 체크리스트 / 활동 서약서
 체크리스트와 활동 서약서는 각각 버전별로 관리됩니다. 내용을 수정하면 새 버전이 자동 생성되며, 이전 버전은 열람만 가능하고 수정할 수 없습니다 (잠금 처리). 유치원이 확인·동의한 버전과 현재 최신 버전을 비교하여 재확인·재동의 필요 여부를 판단합니다.
@@ -1419,6 +1425,14 @@
 - `search_reservations` — 돌봄예약관리 (reservations → members, pets, kindergartens, payments)
 - `search_payments` — 결제관리 > 결제내역 (payments → members, pets, kindergartens)
 - `search_refunds` — 결제관리 > 환불/위약금 (refunds → members, kindergartens, reservations → pets)
+- `search_settlement_infos` — 정산관리 > 정산정보 (settlement_infos → kindergartens)
+- `search_settlements` — 정산관리 > 정산내역 (settlements → kindergartens, settlement_infos)
+- `search_chat_rooms` — 채팅관리 > 채팅내역 (chat_rooms → members, kindergartens, chat_room_reservations)
+- `search_reports` — 채팅관리 > 신고접수 (reports → members, admin_accounts)
+- `search_guardian_reviews` — 후기관리 > 보호자 후기 (guardian_reviews → members, kindergartens, pets)
+- `search_kindergarten_reviews` — 후기관리 > 유치원 후기 (kindergarten_reviews → members, kindergartens, pets)
+
+참고: 교육관리 교육 주제 탭은 단일 테이블 조회(education_topics + education_quizzes)이므로 RPC 없이 Supabase 자동 API(PostgREST)로 처리합니다.
 
 신규 메뉴 개발 시 위 함수들의 구조를 참고하여 동일한 패턴(파라미터 설계, SECURITY DEFINER + is_admin() 권한 체크, json_build_object 반환, ILIKE 검색 매핑, 페이지네이션)으로 RPC 함수를 생성합니다. 상세 가이드는 HANDOVER.md의 5-12 섹션을 참조하세요.
 ---

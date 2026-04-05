@@ -7,6 +7,13 @@
 /* ── 탭2 섹션 카드 → detail-card 사용 (components.css) ── */
 /* ── 순서 변경 화살표 → order-arrows 사용 (components.css) ── */
 
+/* ── 순서 화살표 비활성화 상태 ── */
+.order-arrows__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ── 이미지 업로드 프리뷰 영역 ── */
 .edu-img-preview {
   width: 320px;

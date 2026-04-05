@@ -79,14 +79,14 @@
           <span class="info-grid__label">교육 고유번호</span>
           <span class="info-grid__value" style="color:var(--text-weak);">등록 시 자동 부여</span>
 
-          <span class="info-grid__label">교육 주제명</span>
+          <span class="info-grid__label">교육순서</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;max-width:400px;" placeholder="교육 주제명을 입력하세요">
+            <input type="number" id="createOrder" class="filter-input" style="width:80px;background:var(--surface-base);color:var(--text-weak);" readonly>
           </span>
 
-          <span class="info-grid__label">교육 순서</span>
+          <span class="info-grid__label">교육주제</span>
           <span class="info-grid__value">
-            <input type="number" class="filter-input" style="width:80px;" placeholder="순서" min="1">
+            <input type="text" id="createTitle" class="filter-input" style="width:100%;max-width:400px;" placeholder="교육 주제명을 입력하세요">
           </span>
 
           <span class="info-grid__label">공개 상태</span>
@@ -102,20 +102,21 @@
         <div class="info-grid info-grid--wide">
           <span class="info-grid__label">상단 이미지</span>
           <span class="info-grid__value">
-            <div class="edu-img-preview">
+            <input type="file" id="topImgFileInput" accept="image/*" style="display:none;">
+            <div class="edu-img-preview" id="topImgPreview">
               <div class="edu-img-preview__placeholder">
                 <svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                 320 × 180px
               </div>
             </div>
-            <div class="edu-img-actions">
-              <button class="edu-img-actions__btn">이미지 업로드</button>
+            <div class="edu-img-actions" id="topImgActions">
+              <button class="edu-img-actions__btn" id="topImgUploadBtn">이미지 업로드</button>
             </div>
           </span>
 
           <span class="info-grid__label">원칙 문장</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;" placeholder="핵심 원칙을 한 문장으로 입력하세요">
+            <input type="text" id="createPrinciple" class="filter-input" style="width:100%;" placeholder="핵심 원칙을 한 문장으로 입력하세요">
           </span>
 
           <span class="info-grid__label">원칙 설명</span>
@@ -128,17 +129,17 @@
 
           <span class="info-grid__label">올바른 행동 ①</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
+            <input type="text" id="createCorrect1" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
           </span>
 
           <span class="info-grid__label">올바른 행동 ②</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
+            <input type="text" id="createCorrect2" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
           </span>
 
           <span class="info-grid__label">잘못된 행동 ①</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;" placeholder="잘못된 행동을 입력하세요">
+            <input type="text" id="createWrong1" class="filter-input" style="width:100%;" placeholder="잘못된 행동을 입력하세요">
           </span>
         </div>
       </div>
@@ -151,46 +152,47 @@
         <div class="info-grid info-grid--wide">
           <span class="info-grid__label">질문 텍스트</span>
           <span class="info-grid__value">
-            <input type="text" class="filter-input" style="width:100%;" placeholder="퀴즈 질문을 입력하세요">
+            <input type="text" id="createQuizQuestion" class="filter-input" style="width:100%;" placeholder="퀴즈 질문을 입력하세요">
           </span>
 
           <span class="info-grid__label">질문 이미지</span>
           <span class="info-grid__value">
-            <div class="edu-img-preview">
+            <input type="file" id="quizImgFileInput" accept="image/*" style="display:none;">
+            <div class="edu-img-preview" id="quizImgPreview">
               <div class="edu-img-preview__placeholder">
                 <svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                 320 × 180px
               </div>
             </div>
-            <div class="edu-img-actions">
-              <button class="edu-img-actions__btn">이미지 업로드</button>
+            <div class="edu-img-actions" id="quizImgActions">
+              <button class="edu-img-actions__btn" id="quizImgUploadBtn">이미지 업로드</button>
             </div>
           </span>
 
           <span class="info-grid__label">선택지 A</span>
           <span class="info-grid__value">
             <div class="edu-choice-row">
-              <button class="edu-answer-toggle">정답</button>
-              <input type="text" class="filter-input" style="flex:1;" placeholder="선택지 A 내용을 입력하세요">
+              <button class="edu-answer-toggle" id="createAnswerA">정답</button>
+              <input type="text" id="createChoiceA" class="filter-input" style="flex:1;" placeholder="선택지 A 내용을 입력하세요">
             </div>
           </span>
 
           <span class="info-grid__label">선택지 B</span>
           <span class="info-grid__value">
             <div class="edu-choice-row">
-              <button class="edu-answer-toggle">정답</button>
-              <input type="text" class="filter-input" style="flex:1;" placeholder="선택지 B 내용을 입력하세요">
+              <button class="edu-answer-toggle" id="createAnswerB">정답</button>
+              <input type="text" id="createChoiceB" class="filter-input" style="flex:1;" placeholder="선택지 B 내용을 입력하세요">
             </div>
           </span>
 
           <span class="info-grid__label">선택지 A 해설</span>
           <span class="info-grid__value">
-            <textarea class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 A를 선택했을 때 표시될 해설을 입력하세요"></textarea>
+            <textarea id="createExplainA" class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 A를 선택했을 때 표시될 해설을 입력하세요"></textarea>
           </span>
 
           <span class="info-grid__label">선택지 B 해설</span>
           <span class="info-grid__value">
-            <textarea class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 B를 선택했을 때 표시될 해설을 입력하세요"></textarea>
+            <textarea id="createExplainB" class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 B를 선택했을 때 표시될 해설을 입력하세요"></textarea>
           </span>
         </div>
       </div>

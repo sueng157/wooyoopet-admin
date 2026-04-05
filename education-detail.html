@@ -65,9 +65,16 @@
       <!-- 상단 액션바 -->
       <div class="detail-top">
         <a href="educations.html" class="btn-back">← 교육 주제 관리 목록으로</a>
-        <div class="detail-actions">
-          <button class="btn-action btn-action--outline-warning" data-modal-open="toggleModal">비공개 전환</button>
-          <button class="btn-action btn-action--danger" data-modal-open="deleteModal">삭제</button>
+        <!-- 보기 모드 버튼 -->
+        <div class="detail-actions" id="detailViewActions">
+          <button class="btn-action btn-action--outline-warning" id="btnToggleVisibility">비공개 전환</button>
+          <button class="btn-action btn-action--outline-primary" id="btnEditMode">수정</button>
+          <button class="btn-action btn-action--danger" id="btnDeleteOpen">삭제</button>
+        </div>
+        <!-- 편집 모드 버튼 (초기 숨김) -->
+        <div class="detail-actions" id="detailEditActions" style="display:none;">
+          <button class="btn-action btn-action--outline-primary" id="btnEditCancel">취소</button>
+          <button class="btn-action btn-action--primary" id="btnEditSave">저장</button>
         </div>
       </div>
 
@@ -75,71 +82,83 @@
       <div class="detail-card" id="detailEduBasic">
         <div class="detail-card__header">
           <h2 class="detail-card__title">교육 기본정보</h2>
-          <button class="btn-action btn-action--outline-primary">수정</button>
         </div>
-        <div class="info-grid">
+        <!-- 보기 모드: JS가 렌더링 -->
+        <div class="info-grid" id="viewBasic"></div>
+        <!-- 편집 모드 (초기 숨김) -->
+        <div class="info-grid" id="editBasic" style="display:none;">
           <span class="info-grid__label">교육 고유번호</span>
-          <span class="info-grid__value">EDU-00000001</span>
+          <span class="info-grid__value" id="editId" style="color:var(--text-weak);"></span>
 
-          <span class="info-grid__label">교육 주제명</span>
-          <span class="info-grid__value">첫 만남의 예절</span>
+          <span class="info-grid__label">교육순서</span>
+          <span class="info-grid__value">
+            <input type="number" id="editOrder" class="filter-input" style="width:80px;background:var(--surface-base);color:var(--text-weak);" readonly>
+          </span>
 
-          <span class="info-grid__label">교육 순서</span>
-          <span class="info-grid__value">1</span>
+          <span class="info-grid__label">교육주제</span>
+          <span class="info-grid__value">
+            <input type="text" id="editTitle" class="filter-input" style="width:100%;max-width:400px;" placeholder="교육 주제명을 입력하세요">
+          </span>
 
           <span class="info-grid__label">공개 상태</span>
-          <span class="info-grid__value"><span class="badge badge--c-green">공개</span></span>
+          <span class="info-grid__value" id="editVisibility"></span>
 
           <span class="info-grid__label">등록일</span>
-          <span class="info-grid__value">2025-12-01</span>
+          <span class="info-grid__value" id="editCreatedAt" style="color:var(--text-weak);"></span>
 
           <span class="info-grid__label">수정일</span>
-          <span class="info-grid__value">2025-12-15</span>
+          <span class="info-grid__value" id="editUpdatedAt" style="color:var(--text-weak);"></span>
         </div>
       </div>
 
       <!-- ========== 영역 ② 설명 페이지 ========== -->
-      <div class="detail-card">
+      <div class="detail-card" id="detailEduDesc">
         <div class="detail-card__header">
           <h2 class="detail-card__title">설명 페이지</h2>
-          <button class="btn-action btn-action--outline-primary">수정</button>
         </div>
-        <div class="info-grid info-grid--wide">
+        <!-- 보기 모드: JS가 렌더링 -->
+        <div class="info-grid info-grid--wide" id="viewDesc"></div>
+        <!-- 편집 모드 (초기 숨김) -->
+        <div class="info-grid info-grid--wide" id="editDesc" style="display:none;">
           <span class="info-grid__label">상단 이미지</span>
           <span class="info-grid__value">
-            <div class="edu-img-preview">
+            <input type="file" id="editTopImgFile" accept="image/*" style="display:none;">
+            <div class="edu-img-preview" id="editTopImgPreview">
               <div class="edu-img-preview__placeholder">
                 <svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                 320 × 180px
               </div>
             </div>
-            <div class="edu-img-actions">
-              <button class="edu-img-actions__btn">이미지 교체</button>
-              <button class="edu-img-actions__btn edu-img-actions__btn--delete">삭제</button>
+            <div class="edu-img-actions" id="editTopImgActions">
+              <button class="edu-img-actions__btn" id="editTopImgBtn">이미지 업로드</button>
             </div>
           </span>
 
           <span class="info-grid__label">원칙 문장</span>
-          <span class="info-grid__value" style="font-weight:600;">처음 만나는 반려동물에게 안전한 인사를 건네세요</span>
+          <span class="info-grid__value">
+            <input type="text" id="editPrinciple" class="filter-input" style="width:100%;" placeholder="핵심 원칙을 한 문장으로 입력하세요">
+          </span>
 
           <span class="info-grid__label">원칙 설명</span>
           <span class="info-grid__value">
-            <ul class="edu-bullet-list">
-              <li class="edu-bullet-list__item">반려동물의 성격과 상태를 먼저 파악해야 안전한 돌봄이 가능합니다</li>
-              <li class="edu-bullet-list__item">보호자의 인수인계 내용을 꼼꼼히 확인하는 것이 중요합니다</li>
-              <li class="edu-bullet-list__item">급격한 환경 변화는 반려동물에게 스트레스를 줄 수 있습니다</li>
-            </ul>
+            <ul class="edu-bullet-list" id="editPrincipleList"></ul>
             <button class="edu-bullet-list__add">+ 항목 추가</button>
           </span>
 
           <span class="info-grid__label">올바른 행동 ①</span>
-          <span class="info-grid__value">보호자에게 반려동물의 특이사항을 꼼꼼히 질문합니다</span>
+          <span class="info-grid__value">
+            <input type="text" id="editCorrect1" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
+          </span>
 
           <span class="info-grid__label">올바른 행동 ②</span>
-          <span class="info-grid__value">반려동물이 새 환경에 적응할 시간을 충분히 줍니다</span>
+          <span class="info-grid__value">
+            <input type="text" id="editCorrect2" class="filter-input" style="width:100%;" placeholder="올바른 행동을 입력하세요">
+          </span>
 
           <span class="info-grid__label">잘못된 행동 ①</span>
-          <span class="info-grid__value text-danger">인수인계 없이 바로 다른 반려동물과 합사시킵니다</span>
+          <span class="info-grid__value">
+            <input type="text" id="editWrong1" class="filter-input" style="width:100%;" placeholder="잘못된 행동을 입력하세요">
+          </span>
         </div>
       </div>
 
@@ -147,74 +166,55 @@
       <div class="detail-card" id="detailEduQuiz">
         <div class="detail-card__header">
           <h2 class="detail-card__title">퀴즈</h2>
-          <button class="btn-action btn-action--outline-primary">수정</button>
         </div>
-        <div class="info-grid info-grid--wide">
+        <!-- 보기 모드: JS가 렌더링 -->
+        <div class="info-grid info-grid--wide" id="viewQuiz"></div>
+        <!-- 편집 모드 (초기 숨김) -->
+        <div class="info-grid info-grid--wide" id="editQuiz" style="display:none;">
           <span class="info-grid__label">질문 텍스트</span>
-          <span class="info-grid__value">처음 만나는 반려동물에게 가장 먼저 해야 할 행동은 무엇인가요?</span>
+          <span class="info-grid__value">
+            <input type="text" id="editQuizQuestion" class="filter-input" style="width:100%;" placeholder="퀴즈 질문을 입력하세요">
+          </span>
 
           <span class="info-grid__label">질문 이미지</span>
           <span class="info-grid__value">
-            <div class="edu-img-preview">
+            <input type="file" id="editQuizImgFile" accept="image/*" style="display:none;">
+            <div class="edu-img-preview" id="editQuizImgPreview">
               <div class="edu-img-preview__placeholder">
                 <svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                 320 × 180px
               </div>
             </div>
-            <div class="edu-img-actions">
-              <button class="edu-img-actions__btn">이미지 교체</button>
-              <button class="edu-img-actions__btn edu-img-actions__btn--delete">삭제</button>
+            <div class="edu-img-actions" id="editQuizImgActions">
+              <button class="edu-img-actions__btn" id="editQuizImgBtn">이미지 업로드</button>
             </div>
           </span>
 
           <span class="info-grid__label">선택지 A</span>
           <span class="info-grid__value">
             <div class="edu-choice-row">
-              <button class="edu-answer-toggle active">정답</button>
-              <span class="edu-choice-row__text">보호자에게 특이사항을 확인한다</span>
+              <button class="edu-answer-toggle" id="editAnswerA">정답</button>
+              <input type="text" id="editChoiceA" class="filter-input" style="flex:1;" placeholder="선택지 A 내용을 입력하세요">
             </div>
           </span>
 
           <span class="info-grid__label">선택지 B</span>
           <span class="info-grid__value">
             <div class="edu-choice-row">
-              <button class="edu-answer-toggle">정답</button>
-              <span class="edu-choice-row__text">바로 다른 강아지들과 함께 놀게 한다</span>
+              <button class="edu-answer-toggle" id="editAnswerB">정답</button>
+              <input type="text" id="editChoiceB" class="filter-input" style="flex:1;" placeholder="선택지 B 내용을 입력하세요">
             </div>
           </span>
 
           <span class="info-grid__label">선택지 A 해설</span>
           <span class="info-grid__value">
-            <div class="edu-explanation edu-explanation--correct">맞았어요! 보호자에게 반려동물의 특이사항을 먼저 확인하는 것이 안전한 돌봄의 첫 단계입니다. 건강 상태, 알레르기, 성격 등을 파악하면 더 안전하고 편안한 돌봄이 가능합니다.</div>
+            <textarea id="editExplainA" class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 A를 선택했을 때 표시될 해설을 입력하세요"></textarea>
           </span>
 
           <span class="info-grid__label">선택지 B 해설</span>
           <span class="info-grid__value">
-            <div class="edu-explanation edu-explanation--wrong">아쉬워요. 처음 만나는 반려동물을 바로 합사시키면 스트레스와 사고 위험이 있습니다. 먼저 보호자에게 특이사항을 확인하고, 반려동물이 새 환경에 적응할 시간을 주세요.</div>
+            <textarea id="editExplainB" class="filter-input" style="width:100%;min-height:80px;resize:vertical;" placeholder="선택지 B를 선택했을 때 표시될 해설을 입력하세요"></textarea>
           </span>
-        </div>
-      </div>
-
-      <!-- ========== 영역 ④ 이수 현황 요약 ========== -->
-      <div class="detail-card">
-        <div class="detail-card__header">
-          <h2 class="detail-card__title">이수 현황 요약</h2>
-        </div>
-        <div class="stat-cards--3col">
-          <div class="stat-card stat-card--highlight">
-            <div class="stat-card__label">이수 완료 인원</div>
-            <div class="stat-card__value">245</div>
-            <div class="stat-card__unit">건</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card__label">미이수 인원</div>
-            <div class="stat-card__value">75</div>
-            <div class="stat-card__unit">건</div>
-          </div>
-          <div class="stat-card stat-card--highlight">
-            <div class="stat-card__label">이수율</div>
-            <div class="stat-card__value">76.6%</div>
-          </div>
         </div>
       </div>
 
@@ -225,14 +225,11 @@
 <!-- ========== 비공개 전환 모달 ========== -->
 <div class="modal-overlay" id="toggleModal">
   <div class="modal">
-    <div class="modal__title" style="color:var(--warning);">공개 상태 전환</div>
-    <div class="modal__message">
-      이 교육 주제를 비공개로 전환하면 앱에서 더 이상 노출되지 않습니다.<br>
-      비공개로 전환하시겠습니까?
-    </div>
+    <div class="modal__title" style="color:var(--warning);" id="toggleModalTitle">공개 상태 전환</div>
+    <div class="modal__message" id="toggleModalMessage"></div>
     <div class="modal__actions">
       <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn" style="background:var(--warning);color:#fff;border:none;">비공개 전환</button>
+      <button class="modal__btn" id="btnToggleConfirm" style="background:var(--warning);color:#fff;border:none;">전환</button>
     </div>
   </div>
 </div>
@@ -243,12 +240,25 @@
     <div class="modal__title">교육 주제 삭제</div>
     <div class="modal__message">
       이 교육 주제를 삭제하시겠습니까?<br>
-      <strong class="text-danger">이미 이수한 유치원이 245건 있어 삭제할 수 없습니다.</strong><br>
-      비공개로 전환하여 노출을 중단하는 것을 권장합니다.
+      삭제 후에는 복원할 수 없습니다.
     </div>
     <div class="modal__actions">
       <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn modal__btn--delete" disabled>삭제 불가</button>
+      <button class="modal__btn modal__btn--delete" id="btnDeleteConfirm">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 저장 확인 모달 ========== -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--primary);">교육 주제 수정</div>
+    <div class="modal__message">
+      변경 사항을 저장하시겠습니까?
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnSaveConfirm">저장</button>
     </div>
   </div>
 </div>

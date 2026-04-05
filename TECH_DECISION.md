@@ -44,6 +44,8 @@
 | **인증(로그인)** | PHP 세션 | **Supabase Auth** | 관리자 + 앱 사용자 통합 |
 | **파일 저장** | 서버 로컬 | **Supabase Storage** | 무료 플랜: 1GB |
 | **채팅** | 카페24 서버 | **Supabase Realtime** | 카페24 서버 대체 |
+
+> **Supabase Storage 사용 현황**: 교육관리 이미지 → `education-images` 버킷 (상단 이미지 `top-images/`, 퀴즈 이미지 `quiz-images/`). 콘텐츠관리 배너·공지 이미지 → 별도 버킷 예정. Storage RLS 정책은 관리자(is_admin) 전용으로 설정.
 | **관리자 페이지 호스팅** | 스마일서브 | **Cloudflare Pages** | 완전 무료 |
 | **도메인** | 스마일서브 (연 ₩18,000) | **Cloudflare Registrar** | 원가 판매 (연 ~₩14,000) |
 | **DNS/보안** | 스마일서브 | **Cloudflare** | DDoS 보호 무료 포함 |

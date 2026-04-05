@@ -78,18 +78,24 @@
 
         <!-- 필터 바 -->
         <div class="filter-bar">
+          <!-- 1행: 필터 -->
           <div class="filter-row">
-            <span class="filter-label">공개 상태</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>공개</option>
-              <option>비공개</option>
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="topicVisibility">
+              <option value="">공개상태: 전체</option>
+              <option value="공개">공개</option>
+              <option value="비공개">비공개</option>
             </select>
           </div>
+          <!-- 2행: 검색 -->
           <div class="filter-row">
             <span class="filter-label">검색</span>
-            <input type="text" class="filter-input filter-input--search" placeholder="교육 주제명">
-            <button class="btn-search">검색</button>
+            <select class="filter-select" id="topicSearchField" style="max-width:160px;">
+              <option value="교육주제">교육주제</option>
+            </select>
+            <input type="text" class="filter-input" id="topicSearchInput" placeholder="교육주제명을 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="topicBtnReset">초기화</button>
+            <button class="btn-search" id="topicBtnSearch">검색</button>
           </div>
         </div>
 
@@ -104,10 +110,8 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>번호</th>
-                <th>교육 순서</th>
-                <th>교육 주제명</th>
-                <th>이수 완료 인원</th>
+                <th>교육순서</th>
+                <th>교육주제</th>
                 <th>공개 상태</th>
                 <th>등록일</th>
                 <th>수정일</th>
@@ -116,128 +120,112 @@
             </thead>
             <tbody id="topicListBody">
               <tr>
-                <td>1</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn" disabled>&#9650;</button>
                     <span>1</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>첫 만남의 예절</td>
-                <td>245건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-01</td>
                 <td>2025-12-15</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>2</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>2</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>안전한 돌봄 환경</td>
-                <td>238건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-01</td>
                 <td>2025-12-10</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>3</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>3</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>건강한 식사 관리</td>
-                <td>230건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-02</td>
                 <td>2025-12-12</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>4</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>4</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>위생과 청결</td>
-                <td>225건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-02</td>
                 <td>2025-12-08</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>5</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>5</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>응급 상황 대처</td>
-                <td>220건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-03</td>
                 <td>2025-12-14</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>6</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>6</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>보호자 커뮤니케이션</td>
-                <td>215건</td>
                 <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-12-03</td>
                 <td>2025-12-11</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>7</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>7</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn">&#9660;</button>
                   </span>
                 </td>
                 <td>반려동물 행동 이해</td>
-                <td>210건</td>
                 <td><span class="badge badge--c-gray">비공개</span></td>
                 <td>2025-12-04</td>
                 <td>2025-12-09</td>
                 <td><a href="education-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>8</td>
                 <td>
                   <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
+                    <button class="order-arrows__btn">&#9650;</button>
                     <span>8</span>
-                    <button class="order-arrows__btn">▼</button>
+                    <button class="order-arrows__btn" disabled>&#9660;</button>
                   </span>
                 </td>
                 <td>돌봄 일지 작성법</td>
-                <td>0건</td>
                 <td><span class="badge badge--c-gray">비공개</span></td>
                 <td>2025-12-15</td>
                 <td>2025-12-15</td>
