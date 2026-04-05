@@ -400,7 +400,7 @@
   background: rgba(51, 157, 238, 0.04);
 }
 
-/* ── 잠금 상태 (이전 버전 열람 전용) ── */
+/* ── 잠금 상태 (미적용 버전 열람 전용) ── */
 .edu-locked-notice {
   display: flex;
   align-items: center;
