@@ -1151,15 +1151,16 @@
 | 영역 | 항목명 | 설명 |
 | --- | --- | --- |
 | 유치원 기본정보 | 유치원명 |  |
-|  | 유치원번호 | 클릭 시 유치원관리 상세로 이동 |
 |  | 운영자 성명 |  |
-|  | 운영자 연락처 |  |
-|  | 회원번호 | 클릭 시 회원관리 상세로 이동 |
+|  | 운영자 연락처 | 마스킹 처리 + 전체보기 토글 |
+|  | 유치원 고유번호 | 클릭 시 유치원관리 상세로 이동 |
 | 이수 전체 요약 | 전체 교육 주제 수 |  |
 |  | 이수 완료 수 |  |
 |  | 진행률 |  |
 |  | 이수 상태 | 미시작, 진행중, 이수완료 |
 |  | 전체 이수 완료일 |  |
+|  | 체크리스트 확인 | 확인완료 / 미확인 (배지) |
+|  | 활동서약서 동의 | 동의 / 미동의 (배지) |
 | 교육별 이수 상세 | 교육 순서 |  |
 |  | 교육 주제명 |  |
 |  | 이수 여부 | 완료 / 미완료 |
@@ -1173,7 +1174,7 @@
 |  | 동의한 서약서 버전 | 동의 시점의 서약서 버전 번호 |
 |  | 최신 버전 일치 여부 | 현재 적용중 버전과 동의 버전 비교 (일치 / 불일치 — 불일치 시 "재동의 필요" 표시) |
 |  | 서약서 내용 미리보기 | 동의한 서약서 전문 보기 링크 |
-상세 기능: 관리자 강제 이수 처리(특수한 사유가 있을 경우, 사유 입력 필수), 이수 초기화(재교육이 필요한 경우, 사유 입력 필수), 체크리스트 확인 초기화(재확인이 필요한 경우, 사유 입력 필수).
+상세 기능: 관리자 강제 이수 처리(특수한 사유가 있을 경우, 사유 입력 필수), 이수 초기화(재교육이 필요한 경우, 사유 입력 필수).
 ---
 ## 10. 콘텐츠관리
 콘텐츠관리는 네 개의 탭으로 구성됩니다. "배너", "공지사항", "FAQ", "약관"입니다.
@@ -1431,8 +1432,9 @@
 - `search_reports` — 채팅관리 > 신고접수 (reports → members, admin_accounts)
 - `search_guardian_reviews` — 후기관리 > 보호자 후기 (guardian_reviews → members, kindergartens, pets)
 - `search_kindergarten_reviews` — 후기관리 > 유치원 후기 (kindergarten_reviews → members, kindergartens, pets)
+- `search_education_completions` — 교육관리 > 이수현황 (education_completions → kindergartens → members, 동적 total_topics·progress_rate·completion_status)
 
-참고: 교육관리 교육 주제 탭은 단일 테이블 조회(education_topics + education_quizzes)이므로 RPC 없이 Supabase 자동 API(PostgREST)로 처리합니다.
+참고: 교육관리 교육 주제 탭은 단일 테이블 조회(education_topics + education_quizzes)이므로 RPC 없이 Supabase 자동 API(PostgREST)로 처리합니다. 이수현황 탭은 `search_education_completions` RPC로 조회합니다.
 
 신규 메뉴 개발 시 위 함수들의 구조를 참고하여 동일한 패턴(파라미터 설계, SECURITY DEFINER + is_admin() 권한 체크, json_build_object 반환, ILIKE 검색 매핑, 페이지네이션)으로 RPC 함수를 생성합니다. 상세 가이드는 HANDOVER.md의 5-12 섹션을 참조하세요.
 ---
