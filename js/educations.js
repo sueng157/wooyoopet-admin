@@ -1387,13 +1387,15 @@
     var id = api.getParam('id');
     if (!id) return;
 
-    // ① education_completions + kindergartens(members) 조인
+    // ① education_completions + kindergartens(members) + checklists + pledges 조인
     var result = await api.fetchDetail('education_completions', id,
-      '*, kindergartens:kindergarten_id(id, name, member_id, members:member_id(id, name, phone))');
+      '*, kindergartens:kindergarten_id(id, name, member_id, members:member_id(id, name, phone)), checklists:checklist_version_id(id, version_number), pledges:pledge_version_id(id, version_number)');
     if (result.error || !result.data) { alert('이수현황을 불러올 수 없습니다.'); return; }
     var d = result.data;
     var kg = d.kindergartens || {};
     var member = kg.members || {};
+    var checklistJoin = d.checklists || {};
+    var pledgeJoin = d.pledges || {};
 
     // ② 공개 교육 주제 목록 조회 (동적 total_topics 계산용)
     var topicsResult = await api.fetchList('education_topics', {
@@ -1471,6 +1473,10 @@
           '<span class="info-grid__value">' + api.autoBadge(completionStatus) + '</span>' +
           '<span class="info-grid__label">전체 이수 완료일</span>' +
           '<span class="info-grid__value">' + api.formatDate(d.all_completed_at) + '</span>' +
+          '<span class="info-grid__label">체크리스트 확인</span>' +
+          '<span class="info-grid__value">' + (d.checklist_confirmed ? api.renderBadge('확인완료', 'green') : api.renderBadge('미확인', 'gray')) + '</span>' +
+          '<span class="info-grid__label">활동서약서 동의</span>' +
+          '<span class="info-grid__value">' + (d.pledge_agreed ? api.renderBadge('동의', 'green') : api.renderBadge('미동의', 'gray')) + '</span>' +
         '</div>';
     }
 
@@ -1517,8 +1523,8 @@
     var checkEl = document.getElementById('detailEduStatusChecklist');
     if (checkEl) {
       var checkConfirmed = d.checklist_confirmed;
-      var checkVersionId = d.checklist_version_id || null;
-      var checkVersionNum = d.checklist_version_number || null;
+      var checkVersionId = checklistJoin.id || null;
+      var checkVersionNum = checklistJoin.version_number || null;
       var checkVersionHtml = '-';
       if (checkVersionId && checkVersionNum) {
         checkVersionHtml = '<a href="education-checklist-detail.html?id=' + checkVersionId + '" class="data-table__link">v' + checkVersionNum + '</a>';
@@ -1543,8 +1549,8 @@
     var pledgeEl = document.getElementById('detailEduStatusPledge');
     if (pledgeEl) {
       var pledgeAgreed = d.pledge_agreed;
-      var pledgeVersionId = d.pledge_version_id || null;
-      var pledgeVersionNum = d.pledge_version_number || null;
+      var pledgeVersionId = pledgeJoin.id || null;
+      var pledgeVersionNum = pledgeJoin.version_number || null;
       var pledgeVersionHtml = '-';
       if (pledgeVersionId && pledgeVersionNum) {
         pledgeVersionHtml = '<a href="education-pledge-detail.html?id=' + pledgeVersionId + '" class="data-table__link">v' + pledgeVersionNum + '</a>';
