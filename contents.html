@@ -75,31 +75,71 @@
       <!-- ============================================================ -->
       <div class="tab-content active" id="tab-banner">
 
+        <!-- 필터 바 (reviews.html 보호자 후기 탭 3행 구조 참조) -->
         <div class="filter-bar">
+          <!-- 1행: 기간 + 기간유형 드롭다운 + date range + 퀵버튼 -->
           <div class="filter-row">
-            <span class="filter-label">노출 상태</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>노출중</option>
-              <option>예정</option>
-              <option>종료</option>
-              <option>비공개</option>
+            <span class="filter-label">기간</span>
+            <select class="filter-select" id="bDateType">
+              <option value="created_at" selected>등록일</option>
+              <option value="start_date">노출 시작일</option>
+              <option value="end_date">노출 종료일</option>
             </select>
-
-            <span class="filter-label">표시 위치</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>홈 상단</option>
-              <option>홈 중간</option>
+            <input type="date" class="filter-input filter-input--date" id="bDateFrom" value="">
+            <span class="filter-separator">~</span>
+            <input type="date" class="filter-input filter-input--date" id="bDateTo" value="">
+            <button type="button" class="filter-period-btn active" data-period="all">전체</button>
+            <button type="button" class="filter-period-btn" data-period="this-month">당월</button>
+            <button type="button" class="filter-period-btn" data-period="1month">지난 1개월</button>
+            <button type="button" class="filter-period-btn" data-period="1week">지난 1주일</button>
+          </div>
+          <!-- 2행: 필터 (드롭다운 3개 횡배치) -->
+          <div class="filter-row">
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="bPosition">
+              <option value="">표시 위치: 전체</option>
+              <option value="홈 상단">홈 상단</option>
+              <option value="홈 중간">홈 중간</option>
             </select>
+            <select class="filter-select" id="bExposure">
+              <option value="">노출상태: 전체</option>
+              <option value="예정">예정</option>
+              <option value="노출중">노출중</option>
+              <option value="종료">종료</option>
+            </select>
+            <select class="filter-select" id="bPublic">
+              <option value="">공개상태: 전체</option>
+              <option value="공개">공개</option>
+              <option value="비공개">비공개</option>
+            </select>
+          </div>
+          <!-- 3행: 검색 -->
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <select class="filter-select" id="bSearchField" style="max-width:160px;">
+              <option value="배너 제목">배너 제목</option>
+            </select>
+            <input type="text" class="filter-input" id="bSearchInput" placeholder="검색어를 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="bBtnReset">초기화</button>
+            <button class="btn-search" id="bBtnSearch">검색</button>
           </div>
         </div>
 
+        <!-- 결과 헤더 (공지사항 탭 result-header__actions 구조 참조) -->
         <div class="result-header">
           <span class="result-header__count">검색 결과 <strong>5</strong>건</span>
-          <a href="content-banner-create.html" class="btn-add-new">+ 새 배너 등록</a>
+          <div class="result-header__actions">
+            <button class="btn-excel">
+              <svg class="btn-excel__icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 12l-4-4h2.5V3h3v5H12L8 12zm-6 2h12v1.5H2V14z"/>
+              </svg>
+              내역 다운로드
+            </button>
+            <a href="content-banner-create.html" class="btn-add-new">+ 새 배너 등록</a>
+          </div>
         </div>
 
+        <!-- 데이터테이블 (12컬럼) -->
         <div class="data-table-wrap data-table-wrap--scroll">
           <table class="data-table">
             <thead>
@@ -109,106 +149,82 @@
                 <th>이미지</th>
                 <th>연결 링크</th>
                 <th>표시 위치</th>
-                <th>순서</th>
+                <th>노출순서</th>
                 <th>노출 시작일</th>
                 <th>노출 종료일</th>
-                <th>노출 상태</th>
+                <th>노출상태</th>
+                <th>공개상태</th>
                 <th>등록일</th>
                 <th>상세</th>
               </tr>
             </thead>
             <tbody id="bannerListBody">
               <tr>
-                <td>5</td>
+                <td>1</td>
                 <td>봄맞이 이벤트 배너</td>
                 <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
                 <td class="cnt-link-cell">https://event.wooyoopet.com</td>
                 <td>홈 상단</td>
-                <td>
-                  <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
-                    <span>1</span>
-                    <button class="order-arrows__btn">▼</button>
-                  </span>
-                </td>
+                <td>1</td>
                 <td>2026-03-01</td>
                 <td>2026-03-31</td>
                 <td><span class="badge badge--c-green">노출중</span></td>
+                <td><span class="badge badge--c-green">공개</span></td>
                 <td>2026-02-28</td>
                 <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
-                <td>4</td>
+                <td>2</td>
                 <td>여름 할인 캠페인</td>
                 <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
-                <td class="cnt-link-cell">앱://이벤트</td>
+                <td class="cnt-link-cell">app://이벤트</td>
                 <td>홈 상단</td>
-                <td>
-                  <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
-                    <span>2</span>
-                    <button class="order-arrows__btn">▼</button>
-                  </span>
-                </td>
+                <td>2</td>
                 <td>2026-06-01</td>
                 <td>2026-06-30</td>
                 <td><span class="badge badge--c-blue">예정</span></td>
+                <td><span class="badge badge--c-green">공개</span></td>
                 <td>2026-03-15</td>
                 <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
                 <td>3</td>
-                <td>신규 오픈 안내</td>
-                <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
-                <td class="cnt-link-cell">https://wooyoopet.com/open</td>
-                <td>홈 중간</td>
-                <td>
-                  <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
-                    <span>1</span>
-                    <button class="order-arrows__btn">▼</button>
-                  </span>
-                </td>
-                <td>2026-01-01</td>
-                <td>2026-02-28</td>
-                <td><span class="badge badge--c-gray">종료</span></td>
-                <td>2025-12-20</td>
-                <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>2</td>
                 <td>겨울 프로모션</td>
                 <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
                 <td class="cnt-link-cell">https://wooyoopet.com/winter</td>
                 <td>홈 상단</td>
-                <td>
-                  <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
-                    <span>3</span>
-                    <button class="order-arrows__btn">▼</button>
-                  </span>
-                </td>
+                <td>3</td>
                 <td>2025-12-01</td>
                 <td>2025-12-31</td>
                 <td><span class="badge badge--c-gray">종료</span></td>
+                <td><span class="badge badge--c-green">공개</span></td>
                 <td>2025-11-25</td>
                 <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>
               </tr>
               <tr>
+                <td>4</td>
+                <td>신규 오픈 안내</td>
+                <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
+                <td class="cnt-link-cell">https://wooyoopet.com/open</td>
+                <td>홈 중간</td>
                 <td>1</td>
+                <td>2026-01-01</td>
+                <td>2026-02-28</td>
+                <td><span class="badge badge--c-gray">—</span></td>
+                <td><span class="badge badge--c-gray">비공개</span></td>
+                <td>2025-12-20</td>
+                <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>
+              </tr>
+              <tr>
+                <td>5</td>
                 <td>테스트 배너</td>
                 <td><div class="cnt-thumb"><div class="cnt-thumb__placeholder">360×100</div></div></td>
                 <td class="cnt-link-cell">—</td>
                 <td>홈 중간</td>
-                <td>
-                  <span class="order-arrows">
-                    <button class="order-arrows__btn">▲</button>
-                    <span>2</span>
-                    <button class="order-arrows__btn">▼</button>
-                  </span>
-                </td>
+                <td>2</td>
                 <td>2025-11-01</td>
                 <td>2025-11-30</td>
+                <td><span class="badge badge--c-gray">—</span></td>
                 <td><span class="badge badge--c-gray">비공개</span></td>
                 <td>2025-10-28</td>
                 <td><a href="content-banner-detail.html" class="data-table__link">상세</a></td>

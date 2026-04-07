@@ -65,8 +65,10 @@
   font-size: 14px;
 }
 
-/* ── 이미지 프리뷰 (배너 상세/등록) ── */
-.cnt-image-preview {
+/* ── 이미지 업로드 프리뷰 (educations.css 동일 패턴) ── */
+.edu-img-preview {
+  width: 320px;
+  height: 180px;
   border-radius: var(--radius-sm);
   background: var(--surface-base);
   display: flex;
@@ -76,37 +78,67 @@
   flex-shrink: 0;
 }
 
-.cnt-image-preview--banner {
-  width: 100%;
-  max-width: 360px;
-  height: 100px;
-}
-
-.cnt-image-preview img {
+.edu-img-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.cnt-image-preview__placeholder {
+.edu-img-preview__placeholder {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 13px;
-  font-weight: 600;
+  gap: 8px;
   color: var(--text-weak);
-  background: var(--surface-base);
-  border: 2px dashed rgba(0,0,0,0.08);
-  border-radius: var(--radius-sm);
+  font-size: 12px;
 }
 
-/* ── 이미지 액션 (교체/삭제 버튼 그룹) ── */
-.cnt-image-actions {
+.edu-img-preview__placeholder svg {
+  width: 32px;
+  height: 32px;
+  fill: var(--text-weak);
+  opacity: 0.5;
+}
+
+.edu-img-actions {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+
+.edu-img-actions__btn {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  background: none;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.edu-img-actions__btn:hover {
+  background: rgba(51, 157, 238, 0.06);
+}
+
+.edu-img-actions__btn--delete {
+  color: var(--text-weak);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.edu-img-actions__btn--delete:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(224, 90, 58, 0.04);
+}
+
+/* Banner image preview size override */
+#bannerImgPreview.edu-img-preview,
+#editBannerImgPreview.edu-img-preview {
+  width: 360px;
+  height: 100px;
 }
 
 /* ── 폼 인풋/셀렉트/라디오/체크박스/텍스트에리어는 components.css 의 form-* 사용 ── */
