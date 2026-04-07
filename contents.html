@@ -381,30 +381,34 @@
       <div class="tab-content" id="tab-faq">
 
         <div class="filter-bar">
+          <!-- 1행: 필터 (드롭다운 3개 횡배치) -->
           <div class="filter-row">
-            <span class="filter-label">카테고리</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>결제</option>
-              <option>돌봄</option>
-              <option>환불</option>
-              <option>회원</option>
-              <option>유치원</option>
+            <span class="filter-label">필터</span>
+            <select class="filter-select" id="fCategory">
+              <option value="">카테고리: 전체</option>
+              <option value="공통">공통</option>
             </select>
-
-            <span class="filter-label">대상</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>보호자</option>
-              <option>유치원</option>
+            <select class="filter-select" id="fTarget">
+              <option value="">대상: 전체</option>
+              <option value="전체(공통)">전체(공통)</option>
+              <option value="보호자">보호자</option>
+              <option value="유치원">유치원</option>
             </select>
-
-            <span class="filter-label">공개 상태</span>
-            <select class="filter-select">
-              <option>전체</option>
-              <option>공개</option>
-              <option>비공개</option>
+            <select class="filter-select" id="fPublic">
+              <option value="">공개상태: 전체</option>
+              <option value="공개">공개</option>
+              <option value="비공개">비공개</option>
             </select>
+          </div>
+          <!-- 2행: 검색 -->
+          <div class="filter-row">
+            <span class="filter-label">검색</span>
+            <select class="filter-select" id="fSearchField" style="max-width:160px;">
+              <option value="question">질문</option>
+            </select>
+            <input type="text" class="filter-input" id="fSearchInput" placeholder="검색어를 입력하세요" style="max-width:320px;">
+            <button class="btn-reset" id="fBtnReset">초기화</button>
+            <button class="btn-search" id="fBtnSearch">검색</button>
           </div>
         </div>
 

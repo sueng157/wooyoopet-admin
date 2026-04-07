@@ -34,6 +34,10 @@
   var n = {};
   var nFilterBar;
 
+  // FAQ 탭 전용 DOM 캐시
+  var f = {};
+  var fFilterBar;
+
   function cacheListDom() {
     bannerBody = document.getElementById('bannerListBody');
     noticeBody = document.getElementById('noticeListBody');
@@ -79,6 +83,20 @@
       n.btnReset      = document.getElementById('nBtnReset');
       n.btnSearch     = document.getElementById('nBtnSearch');
       n.btnExcel      = nTab.querySelector('.btn-excel');
+    }
+
+    // FAQ 탭 전용 DOM 캐시
+    var fTab = document.getElementById('tab-faq');
+    if (fTab) {
+      fFilterBar      = fTab.querySelector('.filter-bar');
+      f.category      = document.getElementById('fCategory');
+      f.target        = document.getElementById('fTarget');
+      f.public        = document.getElementById('fPublic');
+      f.searchField   = document.getElementById('fSearchField');
+      f.searchInput   = document.getElementById('fSearchInput');
+      f.btnReset      = document.getElementById('fBtnReset');
+      f.btnSearch     = document.getElementById('fBtnSearch');
+      f.btnExcel      = fTab.querySelector('.btn-excel');
     }
   }
 
@@ -250,31 +268,48 @@
   // ── FAQ ──
   async function loadFaqList() {
     if (!faqBody) return;
-    api.showTableLoading(faqBody, 8);
+    api.showTableLoading(faqBody, 9);
     var tab = document.getElementById('tab-faq');
-    var filters = buildTabFilters(tab, 'created_at');
+
+    // 필터 조건 조립 (FAQ 전용)
+    var filters = [];
+    if (f.category && f.category.value) {
+      filters.push({ column: 'category', op: 'eq', value: f.category.value });
+    }
+    if (f.target && f.target.value) {
+      filters.push({ column: 'target', op: 'eq', value: f.target.value });
+    }
+    if (f.public && f.public.value) {
+      filters.push({ column: 'visibility', op: 'eq', value: f.public.value });
+    }
+    var searchOpts = {};
+    if (f.searchInput && f.searchInput.value.trim()) {
+      searchOpts = { column: 'question', value: f.searchInput.value.trim() };
+    }
 
     var result = await api.fetchList('faqs', {
       filters: filters,
-      orderBy: 'category', ascending: true, page: fPage, perPage: PER_PAGE
+      search: searchOpts,
+      orderBy: 'created_at', page: fPage, perPage: PER_PAGE
     });
-    if (result.error) { api.showTableEmpty(faqBody, 8, '데이터 로드 실패'); return; }
+    if (result.error) { api.showTableEmpty(faqBody, 9, '데이터 로드 실패'); return; }
     if (faqCount) faqCount.textContent = api.formatNumber(result.count);
-    if (!result.data.length) { api.showTableEmpty(faqBody, 8); return; }
+    if (!result.data.length) { api.showTableEmpty(faqBody, 9); return; }
 
     var html = '';
+    var start = (fPage - 1) * PER_PAGE;
     for (var i = 0; i < result.data.length; i++) {
-      var f = result.data[i];
-      var start = (fPage - 1) * PER_PAGE;
+      var row = result.data[i];
       html += '<tr>' +
         '<td>' + (start + i + 1) + '</td>' +
-        '<td>' + api.escapeHtml(f.category || '') + '</td>' +
-        '<td>' + api.escapeHtml(f.question || '') + '</td>' +
-        '<td>' + api.autoBadge(f.target || '') + '</td>' +
-        '<td>' + (f.display_order || '-') + '</td>' +
-        '<td>' + api.autoBadge(f.visibility === '공개' ? '공개' : '비공개') + '</td>' +
-        '<td>' + api.formatDate(f.created_at) + '</td>' +
-        '<td>' + api.renderDetailLink('content-faq-detail.html', f.id) + '</td>' +
+        '<td>' + api.escapeHtml(row.category || '') + '</td>' +
+        '<td>' + api.escapeHtml(row.question || '') + '</td>' +
+        '<td>' + api.autoBadge(row.target || '') + '</td>' +
+        '<td>' + (row.display_order || '-') + '</td>' +
+        '<td>' + api.autoBadge(row.visibility || '') + '</td>' +
+        '<td>' + api.formatDate(row.created_at) + '</td>' +
+        '<td>' + api.formatDate(row.updated_at) + '</td>' +
+        '<td>' + api.renderDetailLink('content-faq-detail.html', row.id) + '</td>' +
         '</tr>';
     }
     faqBody.innerHTML = html;
@@ -390,8 +425,26 @@
       },
       'tab-faq': {
         table: 'faqs', orderBy: 'created_at', dateCol: 'created_at',
-        map: function (f) { return { category: f.category || '', question: f.question || '', visibility: f.visibility || '', order: f.display_order || 0, created: api.formatDate(f.created_at) }; },
-        headers: [{ key: 'category', label: '카테고리' }, { key: 'question', label: '질문' }, { key: 'visibility', label: '공개' }, { key: 'order', label: '순서' }, { key: 'created', label: '등록일' }],
+        map: function (row) {
+          return {
+            category: row.category || '',
+            question: row.question || '',
+            target: row.target || '',
+            order: row.display_order || 0,
+            visibility: row.visibility || '',
+            created: api.formatDate(row.created_at),
+            updated: api.formatDate(row.updated_at)
+          };
+        },
+        headers: [
+          { key: 'category', label: '카테고리' },
+          { key: 'question', label: '질문' },
+          { key: 'target', label: '대상' },
+          { key: 'order', label: '순서' },
+          { key: 'visibility', label: '공개상태' },
+          { key: 'created', label: '등록일' },
+          { key: 'updated', label: '수정일' }
+        ],
         filename: 'FAQ'
       }
     };
@@ -415,6 +468,11 @@
       if (n.dateTo && n.dateTo.value) filters.push({ column: dateCol, op: 'lte', value: n.dateTo.value + 'T23:59:59' });
       if (n.target && n.target.value) filters.push({ column: 'target', op: 'eq', value: n.target.value });
       if (n.public && n.public.value) filters.push({ column: 'visibility', op: 'eq', value: n.public.value });
+    } else if (tabName === 'tab-faq') {
+      filters = [];
+      if (f.category && f.category.value) filters.push({ column: 'category', op: 'eq', value: f.category.value });
+      if (f.target && f.target.value) filters.push({ column: 'target', op: 'eq', value: f.target.value });
+      if (f.public && f.public.value) filters.push({ column: 'visibility', op: 'eq', value: f.public.value });
     } else {
       filters = buildTabFilters(tab, c.dateCol);
     }
@@ -426,6 +484,8 @@
     } else if (tabName === 'tab-notice' && n.searchInput && n.searchInput.value.trim()) {
       var searchCol = (n.searchField && n.searchField.value) ? n.searchField.value : 'title';
       fetchOpts.search = { column: searchCol, value: n.searchInput.value.trim() };
+    } else if (tabName === 'tab-faq' && f.searchInput && f.searchInput.value.trim()) {
+      fetchOpts.search = { column: 'question', value: f.searchInput.value.trim() };
     }
     var all = await api.fetchAll(c.table, fetchOpts);
     var rows = (all.data || []).map(c.map);
@@ -573,10 +633,25 @@
       });
     }
 
-    // ── 나머지 탭(FAQ/약관) — 기존 로직 유지 ──
-    var tabs = ['tab-faq', 'tab-terms'];
-    var loaders = [loadFaqList, loadTermsList];
-    var pageResets = [function () { fPage = 1; }, function () { tPage = 1; }];
+    // ── FAQ 탭 전용 이벤트 ──
+    var faqTab = document.getElementById('tab-faq');
+    if (faqTab) {
+      if (f.btnSearch) f.btnSearch.addEventListener('click', function () { fPage = 1; loadFaqList(); });
+      if (f.searchInput) f.searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { fPage = 1; loadFaqList(); }
+      });
+      if (f.btnReset) f.btnReset.addEventListener('click', function () {
+        if (window.__resetFilters) window.__resetFilters(fFilterBar);
+      });
+      if (f.btnExcel) f.btnExcel.addEventListener('click', function () {
+        excelForTab('tab-faq');
+      });
+    }
+
+    // ── 나머지 탭(약관) — 기존 로직 유지 ──
+    var tabs = ['tab-terms'];
+    var loaders = [loadTermsList];
+    var pageResets = [function () { tPage = 1; }];
 
     for (var i = 0; i < tabs.length; i++) {
       var tab = document.getElementById(tabs[i]);
