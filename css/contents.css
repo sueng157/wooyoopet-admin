@@ -221,8 +221,15 @@
 }
 
 /* ── Quill 에디터 컨테이너 높이 ── */
-#noticeEditorContainer .ql-editor {
+#noticeEditorContainer .ql-editor,
+#faqEditorContainer .ql-editor,
+#faqDetailEditorContainer .ql-editor {
   min-height: 200px;
+}
+
+/* ── FAQ 답변 보기 모드 렌더링 ── */
+.faq-content-render li {
+  padding-left: 0;
 }
 
 /* ── 목록 table scroll wrapper → components.css 에 정의됨 ── */

@@ -1,6 +1,6 @@
 # 우유펫(WOOYOOPET) DB 함수 목록
 
-> 최종 업데이트: 2026-04-04
+> 최종 업데이트: 2026-04-07
 
 ---
 
@@ -30,7 +30,14 @@
 | `search_guardian_reviews` | 보호자 후기 통합 검색 (작성일 기간, 만족도, 이미지, 검색어 필터 + 페이지네이션) | `json` | `guardian_reviews(id, written_at, satisfaction, selected_tags, content, image_urls, is_hidden, reservation_id)`, `members(nickname)`, `kindergartens(name)`, `pets(name)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** JOIN 구조: guardian_reviews(gr) → members(m), kindergartens(kg), LEFT JOIN pets(p). 파라미터: `p_date_from`, `p_date_to`, `p_satisfaction`, `p_image_filter`, `p_search_type`, `p_search_keyword`, `p_page`, `p_per_page`. 검색 매핑: 보호자 닉네임→m.nickname, 유치원명→kg.name, 반려동물 이름→p.name. 이미지 필터: `jsonb_array_length(image_urls)`. 반환: `{data: [...], count: N}` |
 | `search_kindergarten_reviews` | 유치원 후기 통합 검색 (작성일 기간, 만족도, 보호자 전용, 검색어 필터 + 페이지네이션) | `json` | `kindergarten_reviews(id, written_at, satisfaction, selected_tags, content, is_guardian_only, is_hidden, reservation_id)`, `members(nickname)`, `kindergartens(name)`, `pets(name)` | **SECURITY DEFINER + `is_admin()` 권한 체크 포함.** JOIN 구조: kindergarten_reviews(kr) → members(m), kindergartens(kg), LEFT JOIN pets(p). 파라미터: `p_date_from`, `p_date_to`, `p_satisfaction`, `p_guardian_only`, `p_search_type`, `p_search_keyword`, `p_page`, `p_per_page`. 검색 매핑: 유치원명→kg.name, 보호자 닉네임→m.nickname, 반려동물 이름→p.name. 보호자 전용 필터: `is_guardian_only` boolean. 이미지 기능 없음. 반환: `{data: [...], count: N}` |
 
-## 4. 시스템 자동화
+## 4. FAQ 관리
+
+| 함수명 | 용도 | 반환타입 | 참조 테이블 및 컬럼 | 비고 |
+|--------|------|----------|---------------------|------|
+| `reorder_faq_display_order` | FAQ 노출순서 이동 시 같은 카테고리 내 재정렬 + 자기 자신 업데이트 (단일 트랜잭션) | `json` | `faqs(id, category, display_order, question, answer, target)` | **SECURITY DEFINER.** 파라미터: `p_faq_id(uuid)`, `p_category(text)`, `p_old_order(int)`, `p_new_order(int)`, `p_update_data(jsonb)`. 앞으로 이동 시 new~old-1 구간 +1, 뒤로 이동 시 old+1~new 구간 -1. reorder + update가 단일 트랜잭션으로 실행되어 중간 실패 시 전체 롤백 보장 |
+| `delete_faq_and_reorder` | FAQ 삭제 + 같은 카테고리 내 뒷순서 당기기 (단일 트랜잭션) | `json` | `faqs(id, category, display_order)` | **SECURITY DEFINER.** 파라미터: `p_faq_id(uuid)`, `p_category(text)`, `p_order(int)`. DELETE 먼저 실행 후 display_order > p_order 인 항목들 -1. 단일 트랜잭션으로 정합성 보장 |
+
+## 5. 시스템 자동화
 
 | 함수명 | 용도 | 반환타입 | 참조 테이블 및 컬럼 | 비고 |
 |--------|------|----------|---------------------|------|
@@ -100,3 +107,4 @@
 | 2026-04-04 | `search_guardian_reviews` 함수 추가 — 보호자 후기 통합 검색 RPC (작성일/만족도/이미지/검색어 필터 + 페이지네이션). LEFT JOIN pets (pet_id nullable) | `sql/32_search_guardian_reviews.sql` |
 | 2026-04-04 | `search_kindergarten_reviews` 함수 추가 — 유치원 후기 통합 검색 RPC (작성일/만족도/보호자전용/검색어 필터 + 페이지네이션). 이미지 기능 없음. LEFT JOIN pets | `sql/33_search_kindergarten_reviews.sql` |
 | 2026-04-07 | 콘텐츠관리 배너 탭 DB 연결 (PR #104) — 배너는 단일 테이블(banners) 조회이므로 **RPC 미사용** (Supabase 자동 API로 처리). `banner-images` Storage 버킷 추가 (관리자 전용 RLS). 노출상태는 JS에서 is_public+start_date+end_date 기반 동적 계산 | — |
+| 2026-04-07 | `reorder_faq_display_order`, `delete_faq_and_reorder` 함수 추가 — FAQ 노출순서 재정렬 RPC 2개. plpgsql 단일 트랜잭션으로 reorder + update/delete 원자성 보장 | `sql/40_faq_reorder_functions.sql` |

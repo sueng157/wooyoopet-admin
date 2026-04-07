@@ -1422,7 +1422,7 @@
   // ══════════════════════════════════════════
 
   function isFaqDetailPage() {
-    return !!document.getElementById('detailFaqBasic');
+    return !!document.getElementById('detailFaqBasic') && !!document.getElementById('viewFaqBasic');
   }
 
   async function loadFaqDetail() {
@@ -1431,20 +1431,281 @@
     var result = await api.fetchDetail('faqs', id);
     if (result.error || !result.data) { alert('FAQ를 불러올 수 없습니다.'); return; }
     var d = result.data;
+    var origData = JSON.parse(JSON.stringify(d));
+    var faqQuill = null;
 
-    var el = document.getElementById('detailFaqBasic');
-    if (el) {
-      api.setHtml(el, '<div class="info-grid">' +
-        '<span class="info-grid__label">카테고리</span><span class="info-grid__value">' + api.escapeHtml(d.category || '') + '</span>' +
-        '<span class="info-grid__label">질문</span><span class="info-grid__value">' + api.escapeHtml(d.question || '') + '</span>' +
-        '<span class="info-grid__label">답변</span><span class="info-grid__value"><div style="white-space:pre-wrap;">' + api.escapeHtml(d.answer || '') + '</div></span>' +
-        '<span class="info-grid__label">대상</span><span class="info-grid__value">' + api.escapeHtml(d.target || '') + '</span>' +
-        '<span class="info-grid__label">노출 순서</span><span class="info-grid__value">' + (d.display_order || '-') + '</span>' +
-        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + api.autoBadge(d.visibility) + '</span>' +
-        '<span class="info-grid__label">등록일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
-        '</div>');
+    // ── 보기 모드 렌더링 ──
+    function renderViewMode() {
+      var viewEl = document.getElementById('viewFaqBasic');
+      if (viewEl) {
+        viewEl.innerHTML =
+          '<span class="info-grid__label">FAQ 고유번호</span><span class="info-grid__value">' + api.escapeHtml(d.id || '-') + '</span>' +
+          '<span class="info-grid__label">카테고리</span><span class="info-grid__value">' + api.escapeHtml(d.category || '') + '</span>' +
+          '<span class="info-grid__label">질문</span><span class="info-grid__value">' + api.escapeHtml(d.question || '') + '</span>' +
+          '<span class="info-grid__label">답변</span><span class="info-grid__value cnt-full-width"><div class="faq-content-render ql-editor" style="line-height:1.6;padding:0;">' + (d.answer || '') + '</div></span>' +
+          '<span class="info-grid__label">대상</span><span class="info-grid__value">' + api.autoBadge(d.target || '') + '</span>' +
+          '<span class="info-grid__label">노출 순서</span><span class="info-grid__value">' + (d.display_order || '-') + '</span>' +
+          '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>' +
+          '<span class="info-grid__label">등록일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
+          '<span class="info-grid__label">수정일시</span><span class="info-grid__value">' + api.formatDate(d.updated_at) + '</span>';
+      }
+
+      // 공개/비공개 전환 버튼 텍스트 동적 세팅
+      var btnToggle = document.getElementById('btnToggleVisibility');
+      if (btnToggle) {
+        btnToggle.textContent = d.visibility === '공개' ? '비공개 전환' : '공개 전환';
+      }
     }
-    bindContentModals('faqs', id, d);
+
+    renderViewMode();
+
+    // ── 보기 ↔ 편집 전환 ──
+    function toggleMode(isView) {
+      document.getElementById('detailViewActions').style.display = isView ? '' : 'none';
+      document.getElementById('detailEditActions').style.display = isView ? 'none' : '';
+      document.getElementById('viewFaqBasic').style.display = isView ? '' : 'none';
+      document.getElementById('editFaqBasic').style.display = isView ? 'none' : '';
+    }
+
+    // ── [수정] 버튼 → 편집 모드 진입 ──
+    var btnEdit = document.getElementById('btnEditMode');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () {
+        toggleMode(false);
+
+        var editEl = document.getElementById('editFaqBasic');
+        if (editEl) {
+          editEl.innerHTML =
+            '<span class="info-grid__label">FAQ 고유번호</span><span class="info-grid__value" style="color:var(--text-weak);">' + api.escapeHtml(d.id || '') + '</span>' +
+            '<span class="info-grid__label">카테고리</span><span class="info-grid__value">' +
+              '<select class="form-select" id="editFaqCategory">' +
+                '<option value="공통"' + (d.category === '공통' ? ' selected' : '') + '>공통</option>' +
+              '</select></span>' +
+            '<span class="info-grid__label">질문</span><span class="info-grid__value"><input type="text" class="form-input" id="editFaqQuestion" value="' + api.escapeHtml(d.question || '') + '"></span>' +
+            '<span class="info-grid__label">답변</span><span class="info-grid__value cnt-full-width"><div id="faqDetailEditorContainer" style="height:300px;"></div></span>' +
+            '<span class="info-grid__label">대상</span><span class="info-grid__value">' +
+              '<select class="form-select" id="editFaqTarget">' +
+                '<option value="전체(공통)"' + (d.target === '전체(공통)' ? ' selected' : '') + '>전체(공통)</option>' +
+                '<option value="보호자"' + (d.target === '보호자' ? ' selected' : '') + '>보호자</option>' +
+                '<option value="유치원"' + (d.target === '유치원' ? ' selected' : '') + '>유치원</option>' +
+              '</select></span>' +
+            '<span class="info-grid__label">노출 순서</span><span class="info-grid__value">' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<input type="number" class="form-input form-input--short" id="editFaqOrder" value="' + (d.display_order || 1) + '" min="1">' +
+                '<button class="btn-action btn-action--outline-gray" id="btnOrderUp" style="padding:2px 8px;font-size:12px;">&#9650;</button>' +
+                '<button class="btn-action btn-action--outline-gray" id="btnOrderDown" style="padding:2px 8px;font-size:12px;">&#9660;</button>' +
+              '</div></span>' +
+            '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>' +
+            '<span class="info-grid__label">등록일시</span><span class="info-grid__value" style="color:var(--text-weak);">' + api.formatDate(d.created_at) + '</span>' +
+            '<span class="info-grid__label">수정일시</span><span class="info-grid__value" style="color:var(--text-weak);">' + api.formatDate(d.updated_at) + '</span>';
+        }
+
+        // Quill 에디터 생성
+        var editorContainer = document.getElementById('faqDetailEditorContainer');
+        if (editorContainer) {
+          editorContainer.innerHTML = '';
+          faqQuill = new Quill(editorContainer, {
+            theme: 'snow',
+            modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ color: [] }, { background: [] }], ['link', 'image'], ['clean']] }
+          });
+          faqQuill.root.innerHTML = d.answer || '';
+        }
+
+        // ▲▼ 버튼 바인딩
+        var orderInput = document.getElementById('editFaqOrder');
+        var btnUp = document.getElementById('btnOrderUp');
+        var btnDown = document.getElementById('btnOrderDown');
+        if (btnUp && orderInput) {
+          btnUp.addEventListener('click', function () {
+            var cur = parseInt(orderInput.value, 10) || 1;
+            orderInput.value = cur + 1;
+          });
+        }
+        if (btnDown && orderInput) {
+          btnDown.addEventListener('click', function () {
+            var cur = parseInt(orderInput.value, 10) || 1;
+            if (cur > 1) orderInput.value = cur - 1;
+          });
+        }
+      });
+    }
+
+    // ── [취소] 버튼 → 보기 모드 복원 ──
+    var btnCancel = document.getElementById('btnEditCancel');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', function () {
+        // Quill 파괴
+        if (faqQuill) {
+          var container = document.getElementById('faqDetailEditorContainer');
+          if (container) container.innerHTML = '';
+          faqQuill = null;
+        }
+
+        // 원본 데이터 복원
+        d = JSON.parse(JSON.stringify(origData));
+        renderViewMode();
+        toggleMode(true);
+      });
+    }
+
+    // ── [저장] 버튼 → 모달 열기 ──
+    var btnSave = document.getElementById('btnEditSave');
+    if (btnSave) {
+      btnSave.addEventListener('click', function () {
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 저장 모달 확인 ──
+    var btnSaveConfirm = document.getElementById('btnSaveConfirm');
+    if (btnSaveConfirm) {
+      btnSaveConfirm.addEventListener('click', async function () {
+        var questionEl = document.getElementById('editFaqQuestion');
+        if (!questionEl || !questionEl.value.trim()) {
+          alert('질문을 입력하세요.');
+          if (questionEl) questionEl.focus();
+          return;
+        }
+
+        // 답변 필수 검증
+        var answerHtml = faqQuill ? faqQuill.root.innerHTML : '';
+        var answerText = faqQuill ? faqQuill.getText().trim() : '';
+        if (!answerText) {
+          alert('답변을 입력하세요.');
+          return;
+        }
+
+        var categoryEl = document.getElementById('editFaqCategory');
+        var targetEl = document.getElementById('editFaqTarget');
+        var orderEl = document.getElementById('editFaqOrder');
+
+        var newOrder = orderEl ? parseInt(orderEl.value, 10) : d.display_order;
+        var oldOrder = d.display_order;
+        if (newOrder < 1) newOrder = 1;
+
+        var updateData = {
+          category: categoryEl ? categoryEl.value : d.category,
+          question: questionEl.value.trim(),
+          answer: answerHtml,
+          target: targetEl ? targetEl.value : d.target,
+          display_order: newOrder
+        };
+
+        var sb = window.__supabase;
+
+        // 순서 변경이 있으면 RPC로 트랜잭션 처리, 없으면 일반 update
+        if (newOrder !== oldOrder) {
+          var rpcRes = await sb.rpc('reorder_faq_display_order', {
+            p_faq_id: id,
+            p_category: d.category,
+            p_old_order: oldOrder,
+            p_new_order: newOrder,
+            p_update_data: updateData
+          });
+          if (rpcRes.error) {
+            alert('저장 실패: ' + (rpcRes.error.message || '알 수 없는 오류'));
+            return;
+          }
+        } else {
+          var res = await api.updateRecord('faqs', id, updateData);
+          if (res.error) {
+            alert('저장 실패: ' + (res.error.message || '알 수 없는 오류'));
+            return;
+          }
+        }
+
+        await api.insertAuditLog('FAQ수정', 'faqs', id, {});
+
+        // 모달 닫기
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.remove('active');
+
+        // Quill 파괴 후 새 데이터로 보기 모드 복원
+        if (faqQuill) {
+          var container = document.getElementById('faqDetailEditorContainer');
+          if (container) container.innerHTML = '';
+          faqQuill = null;
+        }
+
+        // 갱신된 데이터 재로드
+        var refreshed = await api.fetchDetail('faqs', id);
+        if (refreshed.data) {
+          d = refreshed.data;
+          origData = JSON.parse(JSON.stringify(d));
+        }
+        renderViewMode();
+        toggleMode(true);
+        alert('저장되었습니다.');
+      });
+    }
+
+    // ── [공개/비공개 전환] 버튼 ──
+    var btnToggleVis = document.getElementById('btnToggleVisibility');
+    if (btnToggleVis) {
+      btnToggleVis.addEventListener('click', function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        var msgEl = document.getElementById('toggleModalMessage');
+        var titleEl = document.getElementById('toggleModalTitle');
+        var confirmEl = document.getElementById('btnToggleConfirm');
+        if (titleEl) titleEl.textContent = newVis + ' 전환';
+        if (msgEl) {
+          msgEl.innerHTML = newVis === '비공개'
+            ? '이 FAQ를 비공개로 전환하면 앱에서 더 이상 표시되지 않습니다.<br>비공개로 전환하시겠습니까?'
+            : '이 FAQ를 공개로 전환하면 앱에서 표시됩니다.<br>공개로 전환하시겠습니까?';
+        }
+        if (confirmEl) confirmEl.textContent = newVis + ' 전환';
+        var modal = document.getElementById('toggleModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 토글 모달 확인 ──
+    var btnToggleConfirm = document.getElementById('btnToggleConfirm');
+    if (btnToggleConfirm) {
+      btnToggleConfirm.addEventListener('click', async function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        await api.updateRecord('faqs', id, { visibility: newVis });
+        await api.insertAuditLog('공개상태변경', 'faqs', id, { from: d.visibility, to: newVis });
+        var modal = document.getElementById('toggleModal');
+        if (modal) modal.classList.remove('active');
+        d.visibility = newVis;
+        origData.visibility = newVis;
+        renderViewMode();
+        alert(newVis + '로 변경되었습니다.');
+      });
+    }
+
+    // ── [삭제] 버튼 → 삭제 모달 ──
+    var btnDeleteOpen = document.getElementById('btnDeleteOpen');
+    if (btnDeleteOpen) {
+      btnDeleteOpen.addEventListener('click', function () {
+        var modal = document.getElementById('deleteModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 삭제 모달 확인 (delete 먼저 → reorder) ──
+    var btnDeleteConfirm = document.getElementById('btnDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        var sb = window.__supabase;
+        var rpcRes = await sb.rpc('delete_faq_and_reorder', {
+          p_faq_id: id,
+          p_category: d.category,
+          p_order: d.display_order
+        });
+        if (rpcRes.error) {
+          alert('삭제 실패: ' + (rpcRes.error.message || '알 수 없는 오류'));
+          return;
+        }
+        await api.insertAuditLog('FAQ삭제', 'faqs', id, {});
+        alert('삭제되었습니다.');
+        location.href = 'contents.html#tab-faq';
+      });
+    }
+
+    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions']);
   }
 
   // ══════════════════════════════════════════
@@ -1821,6 +2082,88 @@
     }
   }
 
+  // ── FAQ 등록 (content-faq-create.html) ──
+
+  var faqCreateQuill = null;
+  var faqCreateSaved = false;
+
+  async function initFaqCreate() {
+    // Quill 에디터 초기화
+    var editorContainer = document.getElementById('faqEditorContainer');
+    if (editorContainer) {
+      faqCreateQuill = new Quill(editorContainer, {
+        theme: 'snow',
+        placeholder: '답변을 입력하세요',
+        modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ color: [] }, { background: [] }], ['link', 'image'], ['clean']] }
+      });
+    }
+
+    // 노출순서 자동계산: 같은 카테고리 내 max(display_order) + 1
+    var categorySelect = document.getElementById('faqCategory');
+    var orderInput = document.getElementById('faqDisplayOrder');
+
+    async function updateFaqDisplayOrder() {
+      if (!categorySelect || !orderInput) return;
+      var cat = categorySelect.value;
+      try {
+        var sb = window.__supabase;
+        var maxRes = await sb.from('faqs')
+          .select('display_order')
+          .eq('category', cat)
+          .order('display_order', { ascending: false })
+          .limit(1);
+        var maxOrder = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].display_order || 0) : 0;
+        orderInput.value = maxOrder + 1;
+      } catch (e) {
+        orderInput.value = 1;
+      }
+    }
+    if (categorySelect) categorySelect.addEventListener('change', updateFaqDisplayOrder);
+    await updateFaqDisplayOrder();
+
+    // 등록 모달 확인 버튼
+    var createBtn = document.getElementById('btnFaqCreate');
+    if (createBtn) {
+      createBtn.addEventListener('click', async function () {
+        var questionEl = document.getElementById('faqQuestion');
+        if (!questionEl || !questionEl.value.trim()) {
+          alert('질문을 입력하세요.');
+          if (questionEl) questionEl.focus();
+          return;
+        }
+
+        // 답변 필수 검증
+        var answerHtml = faqCreateQuill ? faqCreateQuill.root.innerHTML : '';
+        var answerText = faqCreateQuill ? faqCreateQuill.getText().trim() : '';
+        if (!answerText) {
+          alert('답변을 입력하세요.');
+          return;
+        }
+
+        var data = {
+          category: categorySelect ? categorySelect.value : '공통',
+          question: questionEl.value.trim(),
+          answer: answerHtml,
+          target: document.getElementById('faqTarget') ? document.getElementById('faqTarget').value : '전체(공통)',
+          display_order: orderInput ? parseInt(orderInput.value, 10) : 1,
+          visibility: '비공개'
+        };
+
+        var res = await api.insertRecord('faqs', data);
+        if (res.error) {
+          alert('FAQ 등록 실패: ' + (res.error.message || '알 수 없는 오류'));
+          return;
+        }
+
+        var newId = (res.data && res.data[0]) ? res.data[0].id : null;
+        if (newId) await api.insertAuditLog('FAQ등록', 'faqs', newId, {});
+        faqCreateSaved = true;
+        alert('FAQ가 등록되었습니다.');
+        location.href = 'contents.html#tab-faq';
+      });
+    }
+  }
+
   // ══════════════════════════════════════════
   // G. 공통 모달 (비공개/삭제)
   // ══════════════════════════════════════════
@@ -1861,6 +2204,7 @@
     if (isListPage()) initList();
     else if (isBannerCreatePage()) initBannerCreate();
     else if (isNoticeCreatePage()) initNoticeCreate();
+    else if (isFaqCreatePage()) initFaqCreate();
     else if (isBannerDetailPage()) loadBannerDetail();
     else if (isNoticeDetailPage()) loadNoticeDetail();
     else if (isFaqDetailPage()) loadFaqDetail();
