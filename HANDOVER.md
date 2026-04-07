@@ -23,7 +23,8 @@
 [진행중] DB 연결 보완 및 UI 개선 (PR #59~#104)
   - 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리, 정산관리, 채팅관리, 후기관리, 교육관리 : 수정 완료
   - 콘텐츠관리(배너 탭) : 수정 완료
-  - 콘텐츠관리(공지/FAQ/약관 탭) ~ 설정 : 작업 예정
+  - 콘텐츠관리(공지사항 탭) : 수정 완료 (목록 필터 3행 통일 + 등록/상세 페이지 전면 재구성)
+  - 콘텐츠관리(FAQ/약관 탭) ~ 설정 : 작업 예정
   ↓
 [예정] 호스팅 전환·모바일앱 백엔드·기존 서버 정리
   - Phase 4,5,6 (DB 연결 보완 및 UI 개선 후 진행예정)
@@ -344,6 +345,80 @@ components.css      → 재사용 UI 컴포넌트 (필터바, 테이블, 배지,
 - `content-banner-detail.html`: 상세 전용 페이지 (보기 모드 기본, [수정] 클릭 시 편집 모드)
 - 노출 상태 필드: 기본정보 블록 상단에 배치 (별도 섹션 아님)
 
+### 5-19. 콘텐츠관리 공지사항 첨부파일 Storage 관리
+
+**Supabase Storage 버킷**: `notice-attachments` (public)
+
+**사전 준비 완료:**
+- `notice-attachments` 버킷 생성 완료 (public)
+- Storage RLS Policy 3개 설정 완료 (기존 `banner-images`와 동일 패턴):
+
+```sql
+CREATE POLICY "Allow notice-attachments uploads"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'notice-attachments');
+
+CREATE POLICY "Allow notice-attachments updates"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'notice-attachments');
+
+CREATE POLICY "Allow notice-attachments deletes"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'notice-attachments');
+```
+
+**첨부파일 업로드 유틸리티 (contents.js):**
+- `uploadNoticeAttachment(file)` — `notice-attachments` 버킷에 `notices/{timestamp}_{random}.{ext}` 형태로 업로드, 공개 URL 반환
+- `deleteNoticeAttachment(url)` — URL에서 파일 경로를 추출하여 `notice-attachments` 버킷에서 삭제
+- `validateNoticeFile(file)` — 파일 유형(PDF, DOC, DOCX, HWP, JPG, JPEG, PNG) 및 용량(10MB) 검증
+
+**다건 첨부 지원:**
+- 최대 10개 파일, 각 10MB
+- DB 저장: `notices.attachment_urls` (jsonb 배열)에 URL 배열로 저장
+- 등록/상세 편집 모두 동일 UI 적용 (파일 목록 + 개별 삭제 + 파일 추가 버튼)
+
+**고아 파일(orphan) 정리 로직:**
+
+| 케이스 | 페이지 | 처리 방식 |
+|--------|--------|----------|
+| 등록 안 하고 이탈 | content-notice-create | `beforeunload`/`pagehide` 이벤트에서 `noticeCreateSaved` 플래그가 false이면 업로드된 모든 첨부파일 삭제 |
+| 편집 중 파일 삭제 (새로 추가한 파일) | content-notice-detail | 즉시 Storage에서 삭제 |
+| 편집 중 파일 삭제 (기존 파일) | content-notice-detail | `deletedAttachUrls` 배열에 추가, 저장 시 일괄 삭제 |
+| 편집 취소 | content-notice-detail | 새로 추가한 파일(`addedAttachUrls`) Storage에서 삭제, 삭제 예정 목록 초기화 |
+| 공지 삭제 | content-notice-detail | 모든 첨부파일 Storage에서 삭제 후 notices 레코드 삭제 |
+
+### 5-20. 콘텐츠관리 공지사항 JS 상세 (contents.js)
+
+| 기능 | 함수/요소 | 동작 | 대상 페이지 |
+|------|-----------|------|------------|
+| 공지 상세 로드 | `loadNoticeDetail()` | notices 테이블 단건 조회, 보기 모드 렌더링, 푸시/공개 상태 버튼 동적 처리 | content-notice-detail |
+| 보기↔편집 모드 | `toggleMode()` | viewNoticeBasic/editNoticeBasic, viewNoticeBody/editNoticeBody 전환 | content-notice-detail |
+| Quill 에디터 | 편집 모드 진입 시 생성, 취소/저장 시 파괴 | `content` 필드의 HTML을 Quill에 로드/추출 | content-notice-detail |
+| 공지 등록 | `initNoticeCreate()` | Quill 즉시 초기화, 첨부파일 다건 업로드, 등록 처리 | content-notice-create |
+| 첨부파일 관리 | `renderEditAttachments()` | 파일 목록 렌더링 + 개별 삭제 버튼 | create, detail |
+| 푸시 발송 | `btnPushSend` 클릭 | push_sent가 true이면 disabled+발송완료 텍스트, 아니면 발송 모달 | content-notice-detail |
+| 공개/비공개 전환 | `btnToggleVisibility` 클릭 | 현재 상태 반대로 전환 모달, 보기 모드에서만 변경 가능 | content-notice-detail |
+
+**공지 등록/상세 페이지 구조:**
+- `content-notice-create.html`: 등록 전용 (공개상태 비공개 뱃지 고정, Quill 에디터 즉시 초기화)
+- `content-notice-detail.html`: 상세 전용 (보기 모드 기본, [수정] 클릭 시 편집 모드)
+- 본문: Quill 에디터로 작성, HTML string으로 `notices.content`에 저장, 조회 시 `innerHTML`로 렌더링
+
+### 5-21. URL 해시 기반 탭 복원 로직
+
+**구현 위치**: `js/components.js` — DOMContentLoaded 탭 전환 리스너 바로 아래
+
+**동작**: `contents.html#tab-notice` 등 URL 해시가 있으면 해당 탭 버튼을 자동 클릭하여 탭 활성화
+
+**적용 페이지**: 모든 콘텐츠관리 상세/등록 페이지의 뒤로가기 링크 + 삭제/등록 후 리다이렉트
+- 배너: `contents.html#tab-banner`
+- 공지: `contents.html#tab-notice`
+- FAQ: `contents.html#tab-faq`
+- 약관: `contents.html#tab-terms`
+
 ### 5-11. 설정(11번 메뉴) 규칙
 
 | 규칙 | 내용 |
@@ -611,7 +686,7 @@ js/settlements.js       819줄  (정산정보/내역 2탭, search_settlement_inf
 js/chats.js             974줄  (채팅/신고 2탭, search_chat_rooms·search_reports RPC, 채팅상세 DB 바인딩, 신고상세 DB 바인딩(admin 조인·report_logs), 비활성화, 제재/기각, 처리이력 로드)
 js/reviews.js           679줄  (보호자/유치원 2탭, search_guardian_reviews·search_kindergarten_reviews RPC, 기간퀵버튼(전체/당월/1개월/1주일), 숨김/해제)
 js/educations.js       2151줄  (교육 주제 CRUD + 이미지 Storage 관리 + 고아파일 정리 + 체크리스트/서약서 보기·편집·상태변경·삭제 + 이수현황 목록(RPC)+상세(동적 렌더링), 버전관리)
-js/contents.js         1154줄  (배너/공지/FAQ/약관 4탭, 배너 Storage 관리+고아정리+보기/편집 모드, 푸시발송, 버전발행)
+js/contents.js         1795줄  (배너/공지/FAQ/약관 4탭, 배너 Storage 관리+고아정리+보기/편집 모드, 공지사항 Quill 에디터+다건 첨부파일+보기/편집 모드, 푸시발송, 버전발행)
 js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규칙 추가/삭제)
 총 11,733줄  (Phase 3 완료 + DB 연결 보완·UI 개선 기준)
 ```

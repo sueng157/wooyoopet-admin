@@ -898,7 +898,7 @@
         await api.deleteRecord('banners', id);
         await api.insertAuditLog('배너삭제', 'banners', id, {});
         alert('삭제되었습니다.');
-        location.href = 'contents.html';
+        location.href = 'contents.html#tab-banner';
       });
     }
   }
@@ -907,8 +907,91 @@
   // C. 공지사항 상세 (content-notice-detail.html)
   // ══════════════════════════════════════════
 
+  var NOTICE_BUCKET = 'notice-attachments';
+  var ALLOWED_NOTICE_FILES = ['pdf', 'doc', 'docx', 'hwp', 'jpg', 'jpeg', 'png'];
+  var MAX_NOTICE_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  var MAX_NOTICE_FILE_COUNT = 10;
+
+  // ── Storage 헬퍼 함수 ──
+  async function uploadNoticeAttachment(file) {
+    var sb = window.__supabase;
+    var ext = file.name.split('.').pop().toLowerCase();
+    var fileName = 'notices/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    var res = await sb.storage.from(NOTICE_BUCKET).upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (res.error) throw res.error;
+    var pub = sb.storage.from(NOTICE_BUCKET).getPublicUrl(fileName);
+    return pub.data.publicUrl;
+  }
+
+  async function deleteNoticeAttachment(url) {
+    if (!url) return;
+    var sb = window.__supabase;
+    var m = url.match(new RegExp(NOTICE_BUCKET + '/(.+)$'));
+    if (!m) return;
+    await sb.storage.from(NOTICE_BUCKET).remove([m[1]]);
+  }
+
+  function validateNoticeFile(file) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (ALLOWED_NOTICE_FILES.indexOf(ext) === -1) {
+      alert('허용되지 않는 파일 형식입니다.\n허용: ' + ALLOWED_NOTICE_FILES.join(', ').toUpperCase());
+      return false;
+    }
+    if (file.size > MAX_NOTICE_FILE_SIZE) {
+      alert('파일 크기가 10MB를 초과합니다.');
+      return false;
+    }
+    return true;
+  }
+
+  function getFileNameFromUrl(url) {
+    if (!url) return '';
+    var parts = url.split('/');
+    var fullName = parts[parts.length - 1];
+    // timestamp_random.ext → 원본 이름 추출 불가하므로 전체 표시
+    return decodeURIComponent(fullName);
+  }
+
+  // ── 첨부파일 목록 렌더링 (보기 모드) ──
+  function renderViewAttachments(containerEl, urls) {
+    if (!containerEl) return;
+    if (!urls || urls.length === 0) {
+      containerEl.innerHTML = '<span style="color:var(--text-weak);">첨부 파일 없음</span>';
+      return;
+    }
+    var html = '<div class="cnt-attachment-list">';
+    for (var i = 0; i < urls.length; i++) {
+      var fname = getFileNameFromUrl(urls[i]);
+      html += '<div class="cnt-attachment-item">' +
+        '<a href="' + api.escapeHtml(urls[i]) + '" target="_blank" style="color:var(--primary);text-decoration:underline;">' + api.escapeHtml(fname) + '</a>' +
+        '</div>';
+    }
+    html += '</div>';
+    containerEl.innerHTML = html;
+  }
+
+  // ── 첨부파일 목록 렌더링 (편집 모드) ──
+  function renderEditAttachments(containerEl, urls, onDelete) {
+    if (!containerEl) return;
+    containerEl.innerHTML = '';
+    for (var i = 0; i < urls.length; i++) {
+      (function (idx) {
+        var fname = getFileNameFromUrl(urls[idx]);
+        var item = document.createElement('div');
+        item.className = 'cnt-attachment-item';
+        item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+        item.innerHTML = '<span style="font-size:13px;">' + api.escapeHtml(fname) + '</span>' +
+          '<button class="btn-action btn-action--outline-danger" style="padding:2px 8px;font-size:11px;" data-idx="' + idx + '">X</button>';
+        item.querySelector('button').addEventListener('click', function () {
+          onDelete(idx);
+        });
+        containerEl.appendChild(item);
+      })(i);
+    }
+  }
+
   function isNoticeDetailPage() {
-    return !!document.getElementById('detailNoticeBasic');
+    return !!document.getElementById('detailNoticeBasic') && !!document.getElementById('viewNoticeBasic');
   }
 
   async function loadNoticeDetail() {
@@ -918,36 +1001,345 @@
     if (result.error || !result.data) { alert('공지사항을 불러올 수 없습니다.'); return; }
     var d = result.data;
 
-    var el = document.getElementById('detailNoticeBasic');
-    if (el) {
-      api.setHtml(el, '<div class="info-grid">' +
-        '<span class="info-grid__label">제목</span><span class="info-grid__value">' + api.escapeHtml(d.title) + '</span>' +
-        '<span class="info-grid__label">대상</span><span class="info-grid__value">' + api.escapeHtml(d.target || '') + '</span>' +
-        '<span class="info-grid__label">상단 고정</span><span class="info-grid__value">' + (d.is_pinned ? '고정' : '-') + '</span>' +
-        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + api.autoBadge(d.visibility) + '</span>' +
-        '<span class="info-grid__label">조회수</span><span class="info-grid__value">' + (d.view_count || 0) + '</span>' +
-        '<span class="info-grid__label">푸시 발송</span><span class="info-grid__value">' + (d.push_sent ? '발송 완료' : '미발송') + '</span>' +
-        '<span class="info-grid__label">등록일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
-        '</div>');
+    // 원본 데이터 보존 (편집 취소 시 복원용)
+    var origData = JSON.parse(JSON.stringify(d));
+    var noticeQuill = null;
+    var editAttachUrls = [];
+    var addedAttachUrls = []; // 편집 중 새로 추가된 URL (취소 시 삭제용)
+    var deletedAttachUrls = []; // 편집 중 삭제 예정 URL (저장 시 Storage에서 삭제)
+
+    // ── 보기 모드 렌더링 ──
+    function renderViewMode() {
+      var viewEl = document.getElementById('viewNoticeBasic');
+      if (viewEl) {
+        var pushBadge = d.push_sent
+          ? '<span class="badge badge--c-blue">발송완료</span>'
+          : '<span class="badge badge--c-gray">미발송</span>';
+
+        viewEl.innerHTML =
+          '<span class="info-grid__label">고유번호</span><span class="info-grid__value">' + api.escapeHtml(d.id || '-') + '</span>' +
+          '<span class="info-grid__label">공지사항 제목</span><span class="info-grid__value">' + api.escapeHtml(d.title || '') + '</span>' +
+          '<span class="info-grid__label">대상</span><span class="info-grid__value">' + api.autoBadge(d.target || '') + '</span>' +
+          '<span class="info-grid__label">상단 고정</span><span class="info-grid__value">' + (d.is_pinned ? '<span style="color:var(--danger);font-weight:600;">고정</span>' : '-') + '</span>' +
+          '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>' +
+          '<span class="info-grid__label">푸시 발송</span><span class="info-grid__value">' + pushBadge + '</span>' +
+          '<span class="info-grid__label">조회수</span><span class="info-grid__value">' + api.formatNumber(d.view_count || 0) + '</span>' +
+          '<span class="info-grid__label">등록일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
+          '<span class="info-grid__label">수정일시</span><span class="info-grid__value">' + api.formatDate(d.updated_at) + '</span>';
+      }
+
+      // 본문 innerHTML 렌더링
+      var contentEl = document.getElementById('viewNoticeContent');
+      if (contentEl) {
+        contentEl.innerHTML = '<div class="notice-content-render ql-editor" style="line-height:1.6;padding:0;">' + (d.content || '') + '</div>';
+      }
+
+      // 첨부파일
+      var attachEl = document.getElementById('viewNoticeAttachments');
+      renderViewAttachments(attachEl, d.attachment_urls || []);
+
+      // 공개/비공개 전환 버튼 텍스트
+      var btnToggle = document.getElementById('btnToggleVisibility');
+      if (btnToggle) {
+        btnToggle.textContent = d.visibility === '공개' ? '비공개 전환' : '공개 전환';
+      }
+
+      // 푸시 발송 버튼 상태
+      var btnPush = document.getElementById('btnPushSend');
+      if (btnPush) {
+        if (d.push_sent) {
+          btnPush.textContent = '발송완료';
+          btnPush.disabled = true;
+          btnPush.classList.add('btn-action--disabled');
+        } else {
+          btnPush.textContent = '푸시 알림 발송';
+          btnPush.disabled = false;
+          btnPush.classList.remove('btn-action--disabled');
+        }
+      }
     }
 
-    var contentEl = document.getElementById('detailNoticeContent');
-    if (contentEl) {
-      api.setHtml(contentEl, '<div style="white-space:pre-wrap;line-height:1.6;">' + api.escapeHtml(d.content || '') + '</div>');
+    renderViewMode();
+
+    // ── 보기 ↔ 편집 전환 ──
+    function toggleMode(isView) {
+      document.getElementById('detailViewActions').style.display = isView ? '' : 'none';
+      document.getElementById('detailEditActions').style.display = isView ? 'none' : '';
+      document.getElementById('viewNoticeBasic').style.display = isView ? '' : 'none';
+      document.getElementById('editNoticeBasic').style.display = isView ? 'none' : '';
+      document.getElementById('viewNoticeBody').style.display = isView ? '' : 'none';
+      document.getElementById('editNoticeBody').style.display = isView ? 'none' : '';
     }
 
-    // 푸시 발송 모달
-    var pushBtn = document.querySelector('#pushModal .modal__btn--confirm-primary');
-    if (pushBtn) {
-      pushBtn.addEventListener('click', async function () {
-        await api.updateRecord('notices', id, { push_sent: true });
-        await api.insertAuditLog('푸시발송', 'notices', id, {});
-        alert('푸시 발송이 완료되었습니다.');
-        location.reload();
+    // ── [수정] 버튼 → 편집 모드 진입 ──
+    var btnEdit = document.getElementById('btnEditMode');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () {
+        toggleMode(false);
+
+        // 기본정보 편집 폼 렌더링
+        var editBasic = document.getElementById('editNoticeBasic');
+        if (editBasic) {
+          editBasic.innerHTML =
+            '<span class="info-grid__label">고유번호</span><span class="info-grid__value" style="color:var(--text-weak);">' + api.escapeHtml(d.id || '') + '</span>' +
+            '<span class="info-grid__label">공지사항 제목</span><span class="info-grid__value"><input type="text" class="form-input" id="editNoticeTitle" value="' + api.escapeHtml(d.title || '') + '"></span>' +
+            '<span class="info-grid__label">대상</span><span class="info-grid__value">' +
+              '<select class="form-select" id="editNoticeTarget">' +
+                '<option value="전체(공통)"' + (d.target === '전체(공통)' ? ' selected' : '') + '>전체(공통)</option>' +
+                '<option value="보호자"' + (d.target === '보호자' ? ' selected' : '') + '>보호자</option>' +
+                '<option value="유치원"' + (d.target === '유치원' ? ' selected' : '') + '>유치원</option>' +
+              '</select></span>' +
+            '<span class="info-grid__label">상단 고정</span><span class="info-grid__value"><label class="form-checkbox"><input type="checkbox" id="editNoticePinned"' + (d.is_pinned ? ' checked' : '') + '> 고정</label></span>' +
+            '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>' +
+            '<span class="info-grid__label">푸시 발송</span><span class="info-grid__value">' + (d.push_sent ? '<span class="badge badge--c-blue">발송완료</span>' : '<span class="badge badge--c-gray">미발송</span>') + '</span>' +
+            '<span class="info-grid__label">조회수</span><span class="info-grid__value">' + api.formatNumber(d.view_count || 0) + '</span>' +
+            '<span class="info-grid__label">등록일시</span><span class="info-grid__value">' + api.formatDate(d.created_at) + '</span>' +
+            '<span class="info-grid__label">수정일시</span><span class="info-grid__value">' + api.formatDate(d.updated_at) + '</span>';
+        }
+
+        // Quill 에디터 생성
+        var editorContainer = document.getElementById('noticeEditorContainer');
+        if (editorContainer) {
+          editorContainer.innerHTML = '';
+          noticeQuill = new Quill(editorContainer, {
+            theme: 'snow',
+            modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ color: [] }, { background: [] }], ['link', 'image'], ['clean']] }
+          });
+          noticeQuill.root.innerHTML = d.content || '';
+        }
+
+        // 첨부파일 편집 목록
+        editAttachUrls = (d.attachment_urls || []).slice();
+        addedAttachUrls = [];
+        deletedAttachUrls = [];
+        var editAttachList = document.getElementById('editAttachmentList');
+        renderEditAttachments(editAttachList, editAttachUrls, function (idx) {
+          var removed = editAttachUrls.splice(idx, 1)[0];
+          if (addedAttachUrls.indexOf(removed) !== -1) {
+            // 새로 추가한 건 즉시 Storage 삭제
+            addedAttachUrls.splice(addedAttachUrls.indexOf(removed), 1);
+            deleteNoticeAttachment(removed);
+          } else {
+            // 기존 첨부는 저장 시 삭제 예정 목록에 추가
+            deletedAttachUrls.push(removed);
+          }
+          renderEditAttachments(editAttachList, editAttachUrls, arguments.callee);
+        });
+
+        // 편집 모드 파일 추가 버튼
+        var btnEditAdd = document.getElementById('btnEditAddAttachment');
+        var editFileInput = document.getElementById('editNoticeFileInput');
+        if (btnEditAdd && editFileInput) {
+          btnEditAdd.onclick = function () {
+            if (editAttachUrls.length >= MAX_NOTICE_FILE_COUNT) {
+              alert('최대 ' + MAX_NOTICE_FILE_COUNT + '개까지 첨부할 수 있습니다.');
+              return;
+            }
+            editFileInput.click();
+          };
+          editFileInput.onchange = async function () {
+            var file = editFileInput.files[0];
+            if (!file) return;
+            if (!validateNoticeFile(file)) { editFileInput.value = ''; return; }
+            if (editAttachUrls.length >= MAX_NOTICE_FILE_COUNT) {
+              alert('최대 ' + MAX_NOTICE_FILE_COUNT + '개까지 첨부할 수 있습니다.');
+              editFileInput.value = '';
+              return;
+            }
+            try {
+              var url = await uploadNoticeAttachment(file);
+              editAttachUrls.push(url);
+              addedAttachUrls.push(url);
+              var editAttachList2 = document.getElementById('editAttachmentList');
+              renderEditAttachments(editAttachList2, editAttachUrls, function (idx2) {
+                var removed2 = editAttachUrls.splice(idx2, 1)[0];
+                if (addedAttachUrls.indexOf(removed2) !== -1) {
+                  addedAttachUrls.splice(addedAttachUrls.indexOf(removed2), 1);
+                  deleteNoticeAttachment(removed2);
+                } else {
+                  deletedAttachUrls.push(removed2);
+                }
+                renderEditAttachments(document.getElementById('editAttachmentList'), editAttachUrls, arguments.callee);
+              });
+            } catch (err) {
+              alert('파일 업로드 실패: ' + (err.message || err));
+            }
+            editFileInput.value = '';
+          };
+        }
       });
     }
 
-    bindContentModals('notices', id, d);
+    // ── [취소] 버튼 → 보기 모드 복원 ──
+    var btnCancel = document.getElementById('btnEditCancel');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', async function () {
+        // 새로 추가된 파일 정리
+        for (var i = 0; i < addedAttachUrls.length; i++) {
+          try { await deleteNoticeAttachment(addedAttachUrls[i]); } catch (e) { /* ignore */ }
+        }
+        addedAttachUrls = [];
+        deletedAttachUrls = [];
+
+        // Quill 파괴
+        if (noticeQuill) {
+          var container = document.getElementById('noticeEditorContainer');
+          if (container) container.innerHTML = '';
+          noticeQuill = null;
+        }
+
+        // 원본 데이터 복원
+        d = JSON.parse(JSON.stringify(origData));
+        renderViewMode();
+        toggleMode(true);
+      });
+    }
+
+    // ── [저장] 버튼 → 모달 열기 ──
+    var btnSave = document.getElementById('btnEditSave');
+    if (btnSave) {
+      btnSave.addEventListener('click', function () {
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 저장 모달 확인 ──
+    var btnSaveConfirm = document.getElementById('btnSaveConfirm');
+    if (btnSaveConfirm) {
+      btnSaveConfirm.addEventListener('click', async function () {
+        var titleEl = document.getElementById('editNoticeTitle');
+        if (!titleEl || !titleEl.value.trim()) {
+          alert('공지사항 제목을 입력하세요.');
+          if (titleEl) titleEl.focus();
+          return;
+        }
+
+        // 삭제 예정 파일 Storage에서 삭제
+        for (var i = 0; i < deletedAttachUrls.length; i++) {
+          try { await deleteNoticeAttachment(deletedAttachUrls[i]); } catch (e) { /* ignore */ }
+        }
+
+        var updateData = {
+          title: titleEl.value.trim(),
+          target: document.getElementById('editNoticeTarget') ? document.getElementById('editNoticeTarget').value : d.target,
+          is_pinned: document.getElementById('editNoticePinned') ? document.getElementById('editNoticePinned').checked : d.is_pinned,
+          content: noticeQuill ? noticeQuill.root.innerHTML : d.content,
+          attachment_urls: editAttachUrls.length > 0 ? editAttachUrls : null
+        };
+
+        var res = await api.updateRecord('notices', id, updateData);
+        if (res.error) {
+          alert('저장 실패: ' + (res.error.message || '알 수 없는 오류'));
+          return;
+        }
+
+        await api.insertAuditLog('공지수정', 'notices', id, {});
+
+        // 모달 닫기
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.remove('active');
+
+        // Quill 파괴 후 새 데이터로 보기 모드 복원
+        if (noticeQuill) {
+          var container = document.getElementById('noticeEditorContainer');
+          if (container) container.innerHTML = '';
+          noticeQuill = null;
+        }
+
+        // 갱신된 데이터 재로드
+        var refreshed = await api.fetchDetail('notices', id);
+        if (refreshed.data) {
+          d = refreshed.data;
+          origData = JSON.parse(JSON.stringify(d));
+        }
+        renderViewMode();
+        toggleMode(true);
+        alert('저장되었습니다.');
+      });
+    }
+
+    // ── [푸시 알림 발송] 버튼 ──
+    var btnPush = document.getElementById('btnPushSend');
+    if (btnPush) {
+      btnPush.addEventListener('click', function () {
+        if (d.push_sent) return;
+        var modal = document.getElementById('pushModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+    var btnPushConfirm = document.getElementById('btnPushConfirm');
+    if (btnPushConfirm) {
+      btnPushConfirm.addEventListener('click', async function () {
+        await api.updateRecord('notices', id, { push_sent: true });
+        await api.insertAuditLog('푸시발송', 'notices', id, {});
+        var modal = document.getElementById('pushModal');
+        if (modal) modal.classList.remove('active');
+        d.push_sent = true;
+        origData.push_sent = true;
+        renderViewMode();
+        alert('푸시 발송이 완료되었습니다.');
+      });
+    }
+
+    // ── [공개/비공개 전환] 버튼 ──
+    var btnToggle = document.getElementById('btnToggleVisibility');
+    if (btnToggle) {
+      btnToggle.addEventListener('click', function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        var titleEl = document.getElementById('toggleModalTitle');
+        var msgEl = document.getElementById('toggleModalMessage');
+        var confirmEl = document.getElementById('btnToggleConfirm');
+        if (titleEl) titleEl.textContent = newVis + ' 전환';
+        if (msgEl) {
+          msgEl.innerHTML = newVis === '비공개'
+            ? '이 공지사항을 비공개로 전환하면 앱에서 더 이상 표시되지 않습니다.<br>비공개로 전환하시겠습니까?'
+            : '이 공지사항을 공개로 전환하면 앱에서 표시됩니다.<br>공개로 전환하시겠습니까?';
+        }
+        if (confirmEl) confirmEl.textContent = newVis + ' 전환';
+        var modal = document.getElementById('toggleModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+    var btnToggleConfirm = document.getElementById('btnToggleConfirm');
+    if (btnToggleConfirm) {
+      btnToggleConfirm.addEventListener('click', async function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        await api.updateRecord('notices', id, { visibility: newVis });
+        await api.insertAuditLog('공개상태변경', 'notices', id, { from: d.visibility, to: newVis });
+        var modal = document.getElementById('toggleModal');
+        if (modal) modal.classList.remove('active');
+        d.visibility = newVis;
+        origData.visibility = newVis;
+        renderViewMode();
+        alert(newVis + '로 변경되었습니다.');
+      });
+    }
+
+    // ── [삭제] 버튼 ──
+    var btnDeleteOpen = document.getElementById('btnDeleteOpen');
+    if (btnDeleteOpen) {
+      btnDeleteOpen.addEventListener('click', function () {
+        var modal = document.getElementById('deleteModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+    var btnDeleteConfirm = document.getElementById('btnDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        // Storage 첨부파일 정리
+        var urls = d.attachment_urls || [];
+        for (var i = 0; i < urls.length; i++) {
+          try { await deleteNoticeAttachment(urls[i]); } catch (e) { /* ignore */ }
+        }
+        await api.deleteRecord('notices', id);
+        await api.insertAuditLog('공지삭제', 'notices', id, {});
+        alert('삭제되었습니다.');
+        location.href = 'contents.html#tab-notice';
+      });
+    }
+
+    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions']);
   }
 
   // ══════════════════════════════════════════
@@ -1237,7 +1629,119 @@
         if (newId) await api.insertAuditLog('배너등록', 'banners', newId, {});
         bannerCreateSaved = true;
         alert('배너가 등록되었습니다.');
-        location.href = 'contents.html';
+        location.href = 'contents.html#tab-banner';
+      });
+    }
+  }
+
+  // ── 공지 등록 (content-notice-create.html) ──
+
+  var noticeCreateAttachUrls = [];
+  var noticeCreateSaved = false;
+  var noticeCreateQuill = null;
+
+  async function initNoticeCreate() {
+    // 페이지 이탈 시 미저장 첨부파일 정리
+    function cleanupOrphanFiles() {
+      if (noticeCreateSaved) return;
+      for (var i = 0; i < noticeCreateAttachUrls.length; i++) {
+        try { deleteNoticeAttachment(noticeCreateAttachUrls[i]); } catch (e) { /* ignore */ }
+      }
+    }
+    window.addEventListener('beforeunload', cleanupOrphanFiles);
+    window.addEventListener('pagehide', cleanupOrphanFiles);
+
+    // Quill 에디터 즉시 초기화
+    var editorContainer = document.getElementById('noticeEditorContainer');
+    if (editorContainer) {
+      noticeCreateQuill = new Quill(editorContainer, {
+        theme: 'snow',
+        placeholder: '공지 내용을 입력하세요',
+        modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ color: [] }, { background: [] }], ['link', 'image'], ['clean']] }
+      });
+    }
+
+    // 첨부파일 목록 렌더링
+    var attachList = document.getElementById('noticeAttachmentList');
+    function refreshAttachList() {
+      renderEditAttachments(attachList, noticeCreateAttachUrls, function (idx) {
+        var removed = noticeCreateAttachUrls.splice(idx, 1)[0];
+        deleteNoticeAttachment(removed);
+        refreshAttachList();
+      });
+    }
+
+    // 파일 추가 버튼
+    var btnAdd = document.getElementById('btnAddAttachment');
+    var fileInput = document.getElementById('noticeFileInput');
+    if (btnAdd && fileInput) {
+      btnAdd.addEventListener('click', function () {
+        if (noticeCreateAttachUrls.length >= MAX_NOTICE_FILE_COUNT) {
+          alert('최대 ' + MAX_NOTICE_FILE_COUNT + '개까지 첨부할 수 있습니다.');
+          return;
+        }
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', async function () {
+        var file = fileInput.files[0];
+        if (!file) return;
+        if (!validateNoticeFile(file)) { fileInput.value = ''; return; }
+        if (noticeCreateAttachUrls.length >= MAX_NOTICE_FILE_COUNT) {
+          alert('최대 ' + MAX_NOTICE_FILE_COUNT + '개까지 첨부할 수 있습니다.');
+          fileInput.value = '';
+          return;
+        }
+        try {
+          var url = await uploadNoticeAttachment(file);
+          noticeCreateAttachUrls.push(url);
+          refreshAttachList();
+        } catch (err) {
+          alert('파일 업로드 실패: ' + (err.message || err));
+        }
+        fileInput.value = '';
+      });
+    }
+
+    // 등록 버튼 → 모달 열기
+    var btnRegister = document.getElementById('btnNoticeRegister');
+    if (btnRegister) {
+      btnRegister.addEventListener('click', function () {
+        var modal = document.getElementById('registerModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // 등록 모달 확인
+    var btnConfirm = document.getElementById('btnRegisterConfirm');
+    if (btnConfirm) {
+      btnConfirm.addEventListener('click', async function () {
+        var titleEl = document.getElementById('noticeTitle');
+        if (!titleEl || !titleEl.value.trim()) {
+          alert('공지사항 제목을 입력하세요.');
+          if (titleEl) titleEl.focus();
+          return;
+        }
+
+        var data = {
+          title: titleEl.value.trim(),
+          target: document.getElementById('noticeTarget') ? document.getElementById('noticeTarget').value : '전체(공통)',
+          is_pinned: document.getElementById('noticePinned') ? document.getElementById('noticePinned').checked : false,
+          visibility: '비공개',
+          content: noticeCreateQuill ? noticeCreateQuill.root.innerHTML : '',
+          attachment_urls: noticeCreateAttachUrls.length > 0 ? noticeCreateAttachUrls : null
+        };
+
+        var res = await api.insertRecord('notices', data);
+        if (res.error) {
+          alert('공지사항 등록 실패: ' + (res.error.message || '알 수 없는 오류'));
+          return;
+        }
+
+        var newId = (res.data && res.data[0]) ? res.data[0].id : null;
+        if (newId) await api.insertAuditLog('공지등록', 'notices', newId, {});
+        noticeCreateSaved = true;
+        alert('공지사항이 등록되었습니다.');
+        location.href = 'contents.html#tab-notice';
       });
     }
   }
@@ -1266,7 +1770,8 @@
         await api.deleteRecord(table, id);
         await api.insertAuditLog('콘텐츠삭제', table, id, {});
         alert('삭제되었습니다.');
-        location.href = 'contents.html';
+        var tabHash = { notices: '#tab-notice', faqs: '#tab-faq', terms: '#tab-terms', banners: '#tab-banner' };
+        location.href = 'contents.html' + (tabHash[table] || '');
       });
     }
 
@@ -1280,6 +1785,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     if (isListPage()) initList();
     else if (isBannerCreatePage()) initBannerCreate();
+    else if (isNoticeCreatePage()) initNoticeCreate();
     else if (isBannerDetailPage()) loadBannerDetail();
     else if (isNoticeDetailPage()) loadNoticeDetail();
     else if (isFaqDetailPage()) loadFaqDetail();

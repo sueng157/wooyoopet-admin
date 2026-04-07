@@ -40,6 +40,13 @@
       if (targetTab) targetTab.classList.add('active');
     });
 
+    // URL 해시 기반 탭 복원 (#tab-banner, #tab-notice, #tab-faq, #tab-terms 등)
+    var hash = window.location.hash;
+    if (hash) {
+      var targetBtn = document.querySelector('.tab-bar__item[data-tab-target="' + hash.substring(1) + '"]');
+      if (targetBtn) targetBtn.click();
+    }
+
     // ──────────────────────────────────────────
     // 2. 전체선택 체크박스
     //    <th class="data-table__checkbox"> 안의 checkbox = 전체선택

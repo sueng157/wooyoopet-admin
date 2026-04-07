@@ -167,6 +167,64 @@
 
 /* ── 모달 변형 스타일은 components.css 에 통합 ── */
 
+/* ── 첨부파일 목록 ── */
+.cnt-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cnt-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+/* ── 공지 본문 렌더링 영역 ── */
+.notice-content-render img {
+  max-width: 100%;
+  height: auto;
+}
+
+.notice-content-render p {
+  margin: 0 0 8px;
+}
+
+/* 조회 모드 — common.css 전역 리셋(ul,ol {list-style:none}) 오버라이드 */
+.notice-content-render ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+
+.notice-content-render ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+
+.notice-content-render li {
+  padding-left: 0;
+}
+
+/* 편집 모드(Quill) — 글머리기호/번호 들여쓰기 간격 축소 */
+.ql-editor ul,
+.ql-editor ol {
+  padding-left: 1.5em;
+}
+
+/* ── disabled 버튼 ── */
+.btn-action--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Quill 에디터 컨테이너 높이 ── */
+#noticeEditorContainer .ql-editor {
+  min-height: 200px;
+}
+
 /* ── 목록 table scroll wrapper → components.css 에 정의됨 ── */
 
 /* ── 배너 테이블 이미지 컬럼 최소 폭 ── */

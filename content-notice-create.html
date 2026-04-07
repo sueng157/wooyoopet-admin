@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="css/common.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/contents.css">
+  <!-- Quill 에디터 -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 </head>
 <body>
 <div class="layout">
@@ -41,69 +43,83 @@
   </aside>
 
   <div class="main">
-    <header class="header"><h1 class="header__title"><a href="contents.html" style="color:inherit;text-decoration:none;">콘텐츠관리</a> <span style="color:var(--text-weak);font-weight:400;font-size:16px;">› 공지사항 › 등록</span></h1><div class="header__right"><span class="header__admin-name">홍길동 관리자</span><span class="header__logout">로그아웃</span></div></header>
+    <header class="header"><h1 class="header__title"><a href="contents.html#tab-notice" style="color:inherit;text-decoration:none;">콘텐츠관리</a> <span style="color:var(--text-weak);font-weight:400;font-size:16px;">› 공지사항 › 등록</span></h1><div class="header__right"><span class="header__admin-name">홍길동 관리자</span><span class="header__logout">로그아웃</span></div></header>
 
     <div class="content">
 
+      <!-- 상단 액션바 -->
       <div class="detail-top">
-        <a href="contents.html" class="btn-back">← 공지사항 목록으로</a>
+        <a href="contents.html#tab-notice" class="btn-back">← 공지사항 목록으로</a>
         <div class="detail-actions">
-          
+          <button class="btn-action btn-action--primary" id="btnNoticeRegister">등록</button>
         </div>
       </div>
 
+      <!-- Block 1: 공지사항 기본정보 -->
       <div class="detail-card" id="detailNoticeCreate">
-        <div class="detail-card__header"><span class="detail-card__title">새 공지 등록</span></div>
+        <div class="detail-card__header"><span class="detail-card__title">공지사항 기본정보</span></div>
         <div class="info-grid">
-          <span class="info-grid__label">공지 제목</span>
-          <span class="info-grid__value"><input type="text" class="form-input" placeholder="공지 제목을 입력하세요"></span>
+          <span class="info-grid__label">고유번호</span>
+          <span class="info-grid__value" style="color:var(--text-weak);">(저장 시 자동 생성)</span>
+
+          <span class="info-grid__label">공지사항 제목</span>
+          <span class="info-grid__value"><input type="text" class="form-input" id="noticeTitle" placeholder="공지사항 제목을 입력하세요"></span>
 
           <span class="info-grid__label">대상</span>
           <span class="info-grid__value">
-            <select class="form-select"><option>전체</option><option>보호자</option><option>유치원</option></select>
+            <select class="form-select" id="noticeTarget">
+              <option value="전체(공통)">전체(공통)</option>
+              <option value="보호자">보호자</option>
+              <option value="유치원">유치원</option>
+            </select>
           </span>
 
           <span class="info-grid__label">상단 고정</span>
-          <span class="info-grid__value"><label class="form-checkbox"><input type="checkbox"> 고정</label></span>
+          <span class="info-grid__value"><label class="form-checkbox"><input type="checkbox" id="noticePinned"> 고정</label></span>
 
           <span class="info-grid__label">공개 상태</span>
-          <span class="info-grid__value">
-            <select class="form-select"><option>비공개</option><option>공개</option></select>
-          </span>
+          <span class="info-grid__value"><span class="badge badge--c-gray">비공개</span></span>
+        </div>
+      </div>
 
+      <!-- Block 2: 공지사항 본문 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">공지사항 본문</span></div>
+        <div class="info-grid">
           <span class="info-grid__label">본문 내용</span>
           <span class="info-grid__value cnt-full-width">
-            <textarea class="form-textarea" rows="12" placeholder="공지 내용을 입력하세요"></textarea>
+            <div id="noticeEditorContainer" style="height:300px;"></div>
           </span>
 
           <span class="info-grid__label">첨부 파일</span>
-          <span class="info-grid__value">
-            <div class="cnt-file-row">
-              <button class="btn-action btn-action--outline-primary" style="padding:4px 12px;font-size:12px;">파일 선택</button>
-              <span class="cnt-file-name" style="color:var(--text-weak);">선택된 파일 없음</span>
+          <span class="info-grid__value cnt-full-width">
+            <div id="noticeAttachmentList" class="cnt-attachment-list"></div>
+            <div class="cnt-file-row" style="margin-top:8px;">
+              <button class="btn-action btn-action--outline-primary" id="btnAddAttachment" style="padding:4px 12px;font-size:12px;">파일 추가</button>
+              <span style="color:var(--text-weak);font-size:12px;margin-left:8px;">PDF, DOC, DOCX, HWP, JPG, JPEG, PNG / 최대 10MB / 최대 10개</span>
+              <input type="file" id="noticeFileInput" style="display:none;" accept=".pdf,.doc,.docx,.hwp,.jpg,.jpeg,.png">
             </div>
           </span>
         </div>
       </div>
 
-      <div class="detail-bottom-actions">
-        <button class="btn-action btn-action--outline-primary" data-modal-open="pushModal">푸시 알림 발송</button>
-        <button class="btn-action btn-action--primary">등록</button>
-      </div>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="pushModal">
+<!-- 등록 확인 모달 -->
+<div class="modal-overlay" id="registerModal">
   <div class="modal">
-    <div class="modal__title">푸시 알림 발송</div>
-    <div class="modal__message">등록과 동시에 대상 회원에게 푸시 알림을 발송하시겠습니까?</div>
+    <div class="modal__title">공지사항 등록</div>
+    <div class="modal__message">공지사항을 등록하시겠습니까?</div>
     <div class="modal__actions">
       <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn modal__btn--confirm-primary">발송</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnRegisterConfirm">등록</button>
     </div>
   </div>
 </div>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
