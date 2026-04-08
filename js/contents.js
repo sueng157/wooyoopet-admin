@@ -1713,7 +1713,7 @@
   // ══════════════════════════════════════════
 
   function isTermsDetailPage() {
-    return !!document.getElementById('detailTermsBasic');
+    return !!document.getElementById('detailTermsBasic') && !!document.getElementById('viewTermsBasic');
   }
 
   async function loadTermsDetail() {
@@ -1722,66 +1722,332 @@
     var result = await api.fetchDetail('terms', id);
     if (result.error || !result.data) { alert('약관을 불러올 수 없습니다.'); return; }
     var d = result.data;
+    var origData = JSON.parse(JSON.stringify(d));
+    var termsDetailQuill = null;
 
-    var el = document.getElementById('detailTermsBasic');
-    if (el) {
-      api.setHtml(el, '<div class="info-grid">' +
-        '<span class="info-grid__label">약관명</span><span class="info-grid__value">' + api.escapeHtml(d.title) + '</span>' +
-        '<span class="info-grid__label">필수/선택</span><span class="info-grid__value">' + (d.is_required ? '<span style="color:var(--danger);">필수</span>' : '선택') + '</span>' +
-        '<span class="info-grid__label">현재 버전</span><span class="info-grid__value">' + api.escapeHtml(d.current_version || '') + '</span>' +
-        '<span class="info-grid__label">시행일</span><span class="info-grid__value">' + api.formatDate(d.effective_date, true) + '</span>' +
-        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + api.autoBadge(d.visibility) + '</span>' +
-        '</div>');
+    // ── 보기 모드 렌더링 ──
+    function renderViewMode() {
+      var viewEl = document.getElementById('viewTermsBasic');
+      if (viewEl) {
+        viewEl.innerHTML =
+          '<span class="info-grid__label">약관 고유번호</span><span class="info-grid__value">' + api.escapeHtml(d.id || '-') + '</span>' +
+          '<span class="info-grid__label">약관 제목</span><span class="info-grid__value">' + api.escapeHtml(d.title || '') + '</span>' +
+          '<span class="info-grid__label">필수 여부</span><span class="info-grid__value">' + requiredBadge(d.is_required) + '</span>' +
+          '<span class="info-grid__label">최초 등록일</span><span class="info-grid__value">' + api.formatDate(d.created_at, true) + '</span>' +
+          '<span class="info-grid__label">현재 버전</span><span class="info-grid__value">' + api.escapeHtml(d.current_version || '') + '</span>' +
+          '<span class="info-grid__label">현재 버전 시행일</span><span class="info-grid__value">' + (d.effective_date ? api.formatDate(d.effective_date, true) : '-') + '</span>' +
+          '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>';
+      }
+
+      var contentView = document.getElementById('viewTermsContent');
+      if (contentView) {
+        contentView.innerHTML = d.content || '<span style="color:var(--text-weak);">본문 없음</span>';
+      }
+
+      var btnToggle = document.getElementById('btnToggleVisibility');
+      if (btnToggle) {
+        btnToggle.textContent = d.visibility === '공개' ? '비공개 전환' : '공개 전환';
+      }
     }
 
-    // 버전 내역 로드
+    renderViewMode();
+
+    // ── 버전 이력 로드 ──
     var vBody = document.getElementById('detailTermsVersions');
+    var versionDataArr = [];
     if (vBody) {
       var vResult = await api.fetchList('term_versions', {
         filters: [{ column: 'term_id', op: 'eq', value: id }],
-        orderBy: 'effective_date', ascending: false, perPage: 100
+        orderBy: 'version_number', ascending: false, perPage: 100
       });
       if (vResult.data && vResult.data.length > 0) {
+        versionDataArr = vResult.data;
         var html = '';
-        for (var i = 0; i < vResult.data.length; i++) {
-          var v = vResult.data[i];
+        for (var vi = 0; vi < vResult.data.length; vi++) {
+          var v = vResult.data[vi];
           html += '<tr>' +
             '<td>' + api.escapeHtml(v.version_number || '') + '</td>' +
             '<td>' + api.formatDate(v.effective_date, true) + '</td>' +
             '<td>' + (v.end_date ? api.formatDate(v.end_date, true) : '-') + '</td>' +
             '<td>' + api.escapeHtml(v.change_reason || '-') + '</td>' +
+            '<td><a href="#" class="btn-version-view" data-version-idx="' + vi + '" style="color:var(--primary);font-weight:500;cursor:pointer;">보기</a></td>' +
             '</tr>';
         }
         vBody.innerHTML = html;
       } else {
-        vBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-weak);">버전 내역이 없습니다.</td></tr>';
+        vBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-weak);">버전 내역이 없습니다.</td></tr>';
       }
     }
 
-    // 약관 내용
-    var contentEl = document.getElementById('detailTermsContent');
-    if (contentEl) {
-      // 최신 버전의 내용 표시
-      var latestVersion = await api.fetchList('term_versions', {
-        filters: [{ column: 'term_id', op: 'eq', value: id }],
-        orderBy: 'effective_date', ascending: false, perPage: 1
+    // 이전 버전 본문 보기 모달
+    if (vBody) {
+      vBody.addEventListener('click', function (e) {
+        var link = e.target.closest('.btn-version-view');
+        if (!link) return;
+        e.preventDefault();
+        var idx = parseInt(link.getAttribute('data-version-idx'), 10);
+        var ver = versionDataArr[idx];
+        if (!ver) return;
+        var titleEl = document.getElementById('versionContentModalTitle');
+        if (titleEl) titleEl.textContent = ver.version_number + ' 약관 본문';
+        var bodyEl = document.getElementById('versionContentModalBody');
+        if (bodyEl) bodyEl.innerHTML = ver.content || '<span style="color:var(--text-weak);">본문 없음</span>';
+        var modal = document.getElementById('versionContentModal');
+        if (modal) modal.classList.add('active');
       });
-      if (latestVersion.data && latestVersion.data.length > 0) {
-        api.setHtml(contentEl, '<div style="white-space:pre-wrap;line-height:1.6;">' + api.escapeHtml(latestVersion.data[0].content || '') + '</div>');
-      }
     }
 
-    // 새 버전 발행 모달
-    var versionBtn = document.querySelector('#versionModal .modal__btn--confirm-primary');
-    if (versionBtn) {
-      versionBtn.addEventListener('click', async function () {
-        await api.insertAuditLog('약관버전발행', 'terms', id, {});
-        alert('새 버전이 발행되었습니다.');
+    // ── 보기 ↔ 편집 전환 (본문 블록만) ──
+    function toggleEditMode(isView) {
+      document.getElementById('detailViewActions').style.display = isView ? '' : 'none';
+      document.getElementById('detailEditActions').style.display = isView ? 'none' : '';
+      document.getElementById('viewTermsContent').style.display = isView ? '' : 'none';
+      document.getElementById('editTermsContent').style.display = isView ? 'none' : '';
+    }
+
+    // ── [새 버전 등록] 버튼 ──
+    var btnNewVersion = document.getElementById('btnNewVersion');
+    if (btnNewVersion) {
+      btnNewVersion.addEventListener('click', function () {
+        location.href = 'content-terms-version-create.html?id=' + id;
+      });
+    }
+
+    // ── [수정] 버튼 → 편집 모드 ──
+    var btnEdit = document.getElementById('btnEditMode');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', function () {
+        toggleEditMode(false);
+        var editorContainer = document.getElementById('termsDetailEditorContainer');
+        if (editorContainer) {
+          editorContainer.innerHTML = '';
+          termsDetailQuill = new Quill(editorContainer, {
+            theme: 'snow',
+            modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ indent: '-1' }, { indent: '+1' }], [{ color: [] }, { background: [] }], ['link'], ['clean']] }
+          });
+          termsDetailQuill.root.innerHTML = d.content || '';
+        }
+      });
+    }
+
+    // ── [취소] 버튼 ──
+    var btnCancel = document.getElementById('btnEditCancel');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', function () {
+        if (termsDetailQuill) {
+          var container = document.getElementById('termsDetailEditorContainer');
+          if (container) container.innerHTML = '';
+          termsDetailQuill = null;
+        }
+        d = JSON.parse(JSON.stringify(origData));
+        renderViewMode();
+        toggleEditMode(true);
+      });
+    }
+
+    // ── [저장] 버튼 → 모달 ──
+    var btnSave = document.getElementById('btnEditSave');
+    if (btnSave) {
+      btnSave.addEventListener('click', function () {
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 저장 모달 확인 ──
+    var btnSaveConfirm = document.getElementById('btnSaveConfirm');
+    if (btnSaveConfirm) {
+      btnSaveConfirm.addEventListener('click', async function () {
+        var contentHtml = termsDetailQuill ? termsDetailQuill.root.innerHTML : d.content;
+        var res = await api.updateRecord('terms', id, { content: contentHtml });
+        if (res.error) { alert('저장 실패: ' + (res.error.message || '알 수 없는 오류')); return; }
+        await api.insertAuditLog('약관수정', 'terms', id, {});
+        var modal = document.getElementById('saveModal');
+        if (modal) modal.classList.remove('active');
+        if (termsDetailQuill) {
+          var container = document.getElementById('termsDetailEditorContainer');
+          if (container) container.innerHTML = '';
+          termsDetailQuill = null;
+        }
+        var refreshed = await api.fetchDetail('terms', id);
+        if (refreshed.data) { d = refreshed.data; origData = JSON.parse(JSON.stringify(d)); }
+        renderViewMode();
+        toggleEditMode(true);
+        alert('저장되었습니다.');
+      });
+    }
+
+    // ── [공개/비공개 전환] 버튼 ──
+    var btnToggleVis = document.getElementById('btnToggleVisibility');
+    if (btnToggleVis) {
+      btnToggleVis.addEventListener('click', function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        var titleEl = document.getElementById('toggleModalTitle');
+        var msgEl = document.getElementById('toggleModalMessage');
+        var confirmEl = document.getElementById('btnToggleConfirm');
+        if (titleEl) titleEl.textContent = newVis + ' 전환';
+        if (msgEl) {
+          msgEl.innerHTML = newVis === '공개'
+            ? '이 약관을 공개로 전환하면 앱에서 표시됩니다.<br>공개로 전환하시겠습니까?'
+            : '이 약관을 비공개로 전환하면 앱에서 더 이상 표시되지 않습니다.<br>비공개로 전환하시겠습니까?';
+        }
+        if (confirmEl) confirmEl.textContent = newVis + ' 전환';
+        var modal = document.getElementById('toggleModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 토글 모달 확인 ──
+    var btnToggleConfirm = document.getElementById('btnToggleConfirm');
+    if (btnToggleConfirm) {
+      btnToggleConfirm.addEventListener('click', async function () {
+        var newVis = d.visibility === '공개' ? '비공개' : '공개';
+        var updateData = { visibility: newVis };
+        // 최초 공개 전환 시 effective_date + v1 이력 생성
+        if (newVis === '공개' && !d.effective_date) {
+          var todayStr = api.getToday();
+          updateData.effective_date = todayStr;
+          await api.insertRecord('term_versions', {
+            term_id: id,
+            version_number: d.current_version || 'v1',
+            effective_date: todayStr,
+            end_date: null,
+            change_reason: '최초 공개',
+            content: d.content || ''
+          });
+        }
+        await api.updateRecord('terms', id, updateData);
+        await api.insertAuditLog('공개상태변경', 'terms', id, { from: d.visibility, to: newVis });
+        alert(newVis + '로 변경되었습니다.');
         location.reload();
       });
     }
 
-    bindContentModals('terms', id, d);
+    // ── [삭제] 버튼 ──
+    var btnDeleteOpen = document.getElementById('btnDeleteOpen');
+    if (btnDeleteOpen) {
+      btnDeleteOpen.addEventListener('click', function () {
+        var modal = document.getElementById('deleteModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // ── 삭제 모달 확인 ──
+    var btnDeleteConfirm = document.getElementById('btnDeleteConfirm');
+    if (btnDeleteConfirm) {
+      btnDeleteConfirm.addEventListener('click', async function () {
+        var sb = window.__supabase;
+        await sb.from('term_versions').delete().eq('term_id', id);
+        await api.deleteRecord('terms', id);
+        await api.insertAuditLog('약관삭제', 'terms', id, {});
+        alert('삭제되었습니다.');
+        location.href = 'contents.html#tab-terms';
+      });
+    }
+
+    api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.detail-actions']);
+  }
+
+  // ══════════════════════════════════════════
+  // E-2. 약관 새 버전 등록 (content-terms-version-create.html)
+  // ══════════════════════════════════════════
+
+  function isTermsVersionCreatePage() {
+    return !!document.getElementById('detailTermsVersionCreate') && !!document.getElementById('versionEditorContainer');
+  }
+
+  async function initTermsVersionCreate() {
+    var id = api.getParam('id');
+    if (!id) return;
+
+    var btnBack = document.getElementById('btnBackToDetail');
+    if (btnBack) btnBack.href = 'content-terms-detail.html?id=' + id;
+
+    var result = await api.fetchDetail('terms', id);
+    if (result.error || !result.data) { alert('약관을 불러올 수 없습니다.'); return; }
+    var d = result.data;
+
+    // 다음 버전 번호 계산
+    var currentNum = 1;
+    var cv = d.current_version || '';
+    var match = cv.match(/v(\d+)/i);
+    if (match) currentNum = parseInt(match[1], 10);
+    var nextVersion = 'v' + (currentNum + 1);
+
+    var infoEl = document.getElementById('versionCreateInfo');
+    if (infoEl) {
+      infoEl.innerHTML =
+        '<span class="info-grid__label">약관 고유번호</span><span class="info-grid__value" style="color:var(--text-weak);">' + api.escapeHtml(d.id || '') + '</span>' +
+        '<span class="info-grid__label">약관 제목</span><span class="info-grid__value">' + api.escapeHtml(d.title || '') + '</span>' +
+        '<span class="info-grid__label">필수 여부</span><span class="info-grid__value">' + requiredBadge(d.is_required) + '</span>' +
+        '<span class="info-grid__label">새 버전</span><span class="info-grid__value">' + api.escapeHtml(nextVersion) + '</span>' +
+        '<span class="info-grid__label">공개 상태</span><span class="info-grid__value">' + publicBadge(d.visibility) + '</span>';
+    }
+
+    // Quill 에디터 초기화 (기존 본문 프리로드)
+    var versionQuill = null;
+    var editorContainer = document.getElementById('versionEditorContainer');
+    if (editorContainer) {
+      versionQuill = new Quill(editorContainer, {
+        theme: 'snow',
+        placeholder: '약관 본문을 입력하세요',
+        modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ indent: '-1' }, { indent: '+1' }], [{ color: [] }, { background: [] }], ['link'], ['clean']] }
+      });
+      versionQuill.root.innerHTML = d.content || '';
+    }
+
+    // 등록 모달 확인 버튼
+    var createBtn = document.getElementById('btnVersionCreate');
+    if (createBtn) {
+      createBtn.addEventListener('click', async function () {
+        var reasonEl = document.getElementById('versionChangeReason');
+        if (!reasonEl || !reasonEl.value.trim()) {
+          alert('수정 사유를 입력하세요.');
+          if (reasonEl) reasonEl.focus();
+          var modal = document.getElementById('registerModal');
+          if (modal) modal.classList.remove('active');
+          return;
+        }
+
+        var contentHtml = versionQuill ? versionQuill.root.innerHTML : '';
+        var contentText = versionQuill ? versionQuill.getText().trim() : '';
+        if (!contentText) {
+          alert('약관 본문을 입력하세요.');
+          var modal2 = document.getElementById('registerModal');
+          if (modal2) modal2.classList.remove('active');
+          return;
+        }
+
+        var todayStr = api.getToday();
+        var sb = window.__supabase;
+
+        // 이전 버전 end_date 업데이트
+        await sb.from('term_versions').update({ end_date: todayStr }).eq('term_id', id).is('end_date', null);
+
+        // 새 term_versions 삽입
+        var versionRes = await api.insertRecord('term_versions', {
+          term_id: id,
+          version_number: nextVersion,
+          effective_date: todayStr,
+          end_date: null,
+          change_reason: reasonEl.value.trim(),
+          content: contentHtml
+        });
+        if (versionRes.error) { alert('버전 등록 실패: ' + (versionRes.error.message || '알 수 없는 오류')); return; }
+
+        // terms 테이블 업데이트
+        var updateRes = await api.updateRecord('terms', id, {
+          current_version: nextVersion,
+          effective_date: todayStr,
+          content: contentHtml
+        });
+        if (updateRes.error) { alert('약관 업데이트 실패: ' + (updateRes.error.message || '알 수 없는 오류')); return; }
+
+        await api.insertAuditLog('약관버전등록', 'terms', id, { version: nextVersion });
+        alert('새 버전이 등록되었습니다.');
+        location.href = 'content-terms-detail.html?id=' + id;
+      });
+    }
   }
 
   // ══════════════════════════════════════════
@@ -2205,6 +2471,8 @@
     else if (isBannerCreatePage()) initBannerCreate();
     else if (isNoticeCreatePage()) initNoticeCreate();
     else if (isFaqCreatePage()) initFaqCreate();
+    else if (isTermsCreatePage()) initTermsCreate();
+    else if (isTermsVersionCreatePage()) initTermsVersionCreate();
     else if (isBannerDetailPage()) loadBannerDetail();
     else if (isNoticeDetailPage()) loadNoticeDetail();
     else if (isFaqDetailPage()) loadFaqDetail();

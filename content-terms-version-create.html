@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우유펫 관리자 — 새 버전 등록</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/contents.css">
+  <!-- Quill 에디터 -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar__logo-area">
+      <img src="assets/images/logo.png" alt="우유펫 로고" class="sidebar__logo-img">
+      <div class="sidebar__brand-ko">우유펫</div>
+      <div class="sidebar__brand-en">WOOYOOPET</div>
+    </div>
+    <nav class="sidebar__nav">
+      <a href="index.html" class="sidebar__menu-item">대시보드</a>
+      <a href="members.html" class="sidebar__menu-item" data-perm="perm_members">회원관리</a>
+      <a href="kindergartens.html" class="sidebar__menu-item" data-perm="perm_kindergartens">유치원관리</a>
+      <a href="pets.html" class="sidebar__menu-item" data-perm="perm_pets">반려동물관리</a>
+      <a href="reservations.html" class="sidebar__menu-item" data-perm="perm_reservations">돌봄예약관리</a>
+      <a href="payments.html" class="sidebar__menu-item" data-perm="perm_payments">결제관리</a>
+      <a href="settlements.html" class="sidebar__menu-item" data-perm="perm_settlements">정산관리</a>
+      <a href="chats.html" class="sidebar__menu-item" data-perm="perm_chats">채팅관리</a>
+      <a href="reviews.html" class="sidebar__menu-item" data-perm="perm_reviews">후기관리</a>
+      <a href="educations.html" class="sidebar__menu-item" data-perm="perm_educations">교육관리</a>
+      <a href="contents.html" class="sidebar__menu-item active" data-perm="perm_contents">콘텐츠관리</a>
+      <a href="settings.html" class="sidebar__menu-item" data-perm="perm_settings">설정</a>
+    </nav>
+    <div class="sidebar__profile">
+      <div class="sidebar__profile-row">
+        <div class="sidebar__avatar"><svg class="sidebar__avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2c0 .7.5 1.2 1.2 1.2h16.8c.7 0 1.2-.5 1.2-1.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+        <div class="sidebar__profile-info"><span class="sidebar__admin-name">홍길동</span><span class="sidebar__admin-role">관리자</span></div>
+      </div>
+      <div class="sidebar__logout">로그아웃</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="header"><h1 class="header__title"><a href="contents.html" style="color:inherit;text-decoration:none;">콘텐츠관리</a> <span style="color:var(--text-weak);font-weight:400;font-size:16px;">› 약관 › 상세 › 버전 등록</span></h1><div class="header__right"><span class="header__admin-name">홍길동 관리자</span><span class="header__logout">로그아웃</span></div></header>
+
+    <div class="content">
+
+      <!-- 상단 액션바 -->
+      <div class="detail-top">
+        <a id="btnBackToDetail" href="contents.html#tab-terms" class="btn-back">← 약관 상세로</a>
+        <div class="detail-actions">
+          <button class="btn-action btn-action--primary" data-modal-open="registerModal">등록</button>
+        </div>
+      </div>
+
+      <!-- 약관 정보 블록 -->
+      <div class="detail-card" id="detailTermsVersionCreate">
+        <div class="detail-card__header"><span class="detail-card__title">약관 정보</span></div>
+        <div class="info-grid" id="versionCreateInfo">
+          <!-- JS가 채움 -->
+        </div>
+      </div>
+
+      <!-- 수정 사유 블록 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">수정 사유</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">사유 <span style="color:var(--danger);">*</span></span>
+          <span class="info-grid__value cnt-full-width">
+            <textarea class="form-textarea" id="versionChangeReason" rows="3" placeholder="수정 사유를 입력하세요" style="width:100%;"></textarea>
+          </span>
+        </div>
+      </div>
+
+      <!-- 약관 본문 블록 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">약관 본문</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">본문 내용</span>
+          <span class="info-grid__value cnt-full-width">
+            <div id="versionEditorContainer" style="height:400px;"></div>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 등록 확인 모달 -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--primary);">새 버전 등록</div>
+    <div class="modal__message">
+      새 버전을 등록하시겠습니까?<br>
+      등록 즉시 현재 버전으로 시행됩니다.
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnVersionCreate">등록</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/common.js"></script>
+<script src="js/components.js"></script>
+<script src="js/api.js"></script>
+<script src="js/contents.js"></script>
+</body>
+</html>

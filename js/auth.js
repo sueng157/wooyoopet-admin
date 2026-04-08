@@ -68,6 +68,7 @@
     'content-faq-create.html':     'perm_contents',
     'content-terms-detail.html':   'perm_contents',
     'content-terms-create.html':   'perm_contents',
+    'content-terms-version-create.html': 'perm_contents',
     'settings.html':               'perm_settings',
     'setting-admin-detail.html':   'perm_settings',
     'setting-admin-create.html':   'perm_settings',

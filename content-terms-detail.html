@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="css/common.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/contents.css">
+  <!-- Quill 에디터 (편집 모드에서 사용) -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 </head>
 <body>
 <div class="layout">
@@ -45,69 +47,32 @@
 
     <div class="content">
 
+      <!-- 상단 액션바 -->
       <div class="detail-top">
         <a href="contents.html#tab-terms" class="btn-back">← 약관 목록으로</a>
-        <div class="detail-actions">
-          <button class="btn-action btn-action--outline-primary" data-modal-open="versionModal">새 버전 발행</button>
-          <button class="btn-action btn-action--outline-warning" data-modal-open="privateModal">비공개 전환</button>
-          <button class="btn-action btn-action--outline-danger" data-modal-open="deleteModal">삭제</button>
+        <!-- 보기 모드 버튼 -->
+        <div class="detail-actions" id="detailViewActions">
+          <a class="btn-action btn-action--outline-primary" id="btnNewVersion">새 버전 등록</a>
+          <button class="btn-action btn-action--outline-warning" id="btnToggleVisibility">비공개 전환</button>
+          <button class="btn-action btn-action--primary" id="btnEditMode">수정</button>
+          <button class="btn-action btn-action--outline-danger" id="btnDeleteOpen">삭제</button>
+        </div>
+        <!-- 편집 모드 버튼 -->
+        <div class="detail-actions" id="detailEditActions" style="display:none;">
+          <button class="btn-action btn-action--outline-gray" id="btnEditCancel">취소</button>
+          <button class="btn-action btn-action--primary" id="btnEditSave">저장</button>
         </div>
       </div>
 
+      <!-- 3-A-1. 약관 정보 블록 -->
       <div class="detail-card" id="detailTermsBasic">
         <div class="detail-card__header"><span class="detail-card__title">약관 정보</span></div>
-        <div class="info-grid">
-          <span class="info-grid__label">약관 고유번호</span>
-          <span class="info-grid__value">TRM-00000001</span>
-
-          <span class="info-grid__label">약관 제목</span>
-          <span class="info-grid__value"><input type="text" class="form-input" value="서비스 이용약관"></span>
-
-          <span class="info-grid__label">필수 여부</span>
-          <span class="info-grid__value">
-            <select class="form-select"><option selected>필수</option><option>선택</option></select>
-          </span>
-
-          <span class="info-grid__label">버전</span>
-          <span class="info-grid__value"><input type="text" class="form-input form-input--short" value="v1.2"></span>
-
-          <span class="info-grid__label">시행일</span>
-          <span class="info-grid__value"><input type="date" class="form-input form-input--short" value="2026-03-01"></span>
-
-          <span class="info-grid__label">공개 상태</span>
-          <span class="info-grid__value">
-            <select class="form-select"><option selected>공개</option><option>비공개</option></select>
-          </span>
-
-          <span class="info-grid__label">약관 본문</span>
-          <span class="info-grid__value cnt-full-width">
-            <textarea class="form-textarea form-textarea--tall" rows="16">제1조 (목적)
-이 약관은 우유펫(이하 "회사")이 제공하는 반려동물 돌봄 중개 서비스(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
-
-제2조 (정의)
-① "서비스"란 회사가 제공하는 반려동물 돌봄 중개 플랫폼을 말합니다.
-② "회원"이란 이 약관에 따라 이용계약을 체결하고 서비스를 이용하는 자를 말합니다.
-③ "보호자"란 반려동물의 돌봄을 요청하는 회원을 말합니다.
-④ "유치원"이란 반려동물 돌봄 서비스를 제공하는 회원(파트너)을 말합니다.
-
-제3조 (약관의 효력 및 변경)
-① 이 약관은 서비스 화면에 게시하거나 기타 방법으로 공지함으로써 효력이 발생합니다.
-② 회사는 관련 법령에 위배되지 않는 범위에서 이 약관을 개정할 수 있습니다.</textarea>
-          </span>
-
-          <span class="info-grid__label">등록일</span>
-          <span class="info-grid__value">2025-12-01</span>
-
-          <span class="info-grid__label">수정일</span>
-          <span class="info-grid__value">2026-03-01</span>
+        <div class="info-grid" id="viewTermsBasic">
+          <!-- JS가 채움 -->
         </div>
       </div>
 
-      <div class="detail-bottom-actions">
-        <button class="btn-action btn-action--primary">저장</button>
-      </div>
-
-      <!-- 버전 이력 -->
+      <!-- 3-A-2. 버전 이력 블록 -->
       <div class="detail-card" style="margin-top:24px;">
         <div class="detail-card__header"><span class="detail-card__title">버전 이력</span></div>
         <table class="mini-table">
@@ -121,59 +86,80 @@
             </tr>
           </thead>
           <tbody id="detailTermsVersions">
-            <tr>
-              <td>v1.1</td>
-              <td>2026-01-15</td>
-              <td>2026-02-28</td>
-              <td>환불 조항 변경</td>
-              <td><span class="mini-table__link">보기</span></td>
-            </tr>
-            <tr>
-              <td>v1.0</td>
-              <td>2025-12-01</td>
-              <td>2026-01-14</td>
-              <td>최초 등록</td>
-              <td><span class="mini-table__link">보기</span></td>
-            </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- 약관 본문 내용 (JS에서 최신 버전 표시) -->
-      <div class="detail-card" id="detailTermsContent" style="margin-top:24px;">
-        <div class="detail-card__header"><span class="detail-card__title">약관 본문</span></div>
-        <div style="padding:16px;"></div>
+      <!-- 3-A-3. 현재 버전 약관 본문 블록 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">현재 버전 약관 본문</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">본문 내용</span>
+          <span class="info-grid__value cnt-full-width">
+            <!-- 보기 모드 -->
+            <div id="viewTermsContent" class="terms-content-render ql-editor" style="line-height:1.6;padding:0;"></div>
+            <!-- 편집 모드 (초기 숨김) -->
+            <div id="editTermsContent" style="display:none;">
+              <div id="termsDetailEditorContainer" style="height:400px;"></div>
+            </div>
+          </span>
+        </div>
       </div>
-    </div><div class="modal-overlay" id="versionModal">
-  <div class="modal">
-    <div class="modal__title">새 버전 발행</div>
-    <div class="modal__message">새 버전을 발행하시겠습니까? 기존 버전은 이력에 보관되고 새 버전이 현재 적용 버전으로 전환됩니다.</div>
-    <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn modal__btn--confirm-primary">발행</button>
+
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="privateModal">
+
+<!-- 공개/비공개 전환 모달 -->
+<div class="modal-overlay" id="toggleModal">
   <div class="modal">
-    <div class="modal__title">비공개 전환</div>
-    <div class="modal__message">이 약관을 비공개로 전환하시겠습니까?</div>
+    <div class="modal__title" style="color:var(--warning);" id="toggleModalTitle">공개 상태 전환</div>
+    <div class="modal__message" id="toggleModalMessage"></div>
     <div class="modal__actions">
       <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
-      <button class="modal__btn modal__btn--confirm-warning">비공개 전환</button>
+      <button class="modal__btn modal__btn--confirm-warning" id="btnToggleConfirm">전환</button>
     </div>
   </div>
 </div>
+
+<!-- 저장 확인 모달 -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--primary);">약관 수정</div>
+    <div class="modal__message">수정사항을 저장하시겠습니까?</div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnSaveConfirm">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
 <div class="modal-overlay" id="deleteModal">
   <div class="modal">
     <div class="modal__title">약관 삭제</div>
-    <div class="modal__message">이 약관에 동의한 회원이 존재하여 삭제할 수 없습니다. 비공개로 전환하여 노출을 중단할 수 있습니다.</div>
+    <div class="modal__message">이전 버전 이력을 포함한 전체 약관이 삭제됩니다. 삭제하시겠습니까?</div>
     <div class="modal__actions">
-      <button class="modal__btn modal__btn--cancel" data-modal-close>닫기</button>
-      <button class="modal__btn modal__btn--delete" disabled style="opacity:0.4;cursor:not-allowed">삭제</button>
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--delete" id="btnDeleteConfirm">삭제</button>
     </div>
   </div>
 </div>
+
+<!-- 이전 버전 본문 보기 모달 (대형) -->
+<div class="modal-overlay" id="versionContentModal">
+  <div class="modal modal--large">
+    <div class="modal__title" style="color:var(--text-primary);" id="versionContentModalTitle">약관 본문</div>
+    <div class="modal__body-scroll">
+      <div id="versionContentModalBody" class="terms-content-render ql-editor" style="line-height:1.6;padding:0;"></div>
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
