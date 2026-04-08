@@ -2,8 +2,8 @@
 
 반려동물 돌봄 플랫폼 **우유펫**의 관리자 백오피스 대시보드입니다.  
 소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. Supabase DB를 공유하며, 모바일 앱과의 연동은 Phase 5에서 진행 예정입니다.  
-**백엔드 구축 Phase 1~3 완료** (DB 스키마·인증·API 연결), 현재 **DB 연결 보완 및 UI 개선** 진행중입니다.  
-총 **HTML 42개**, **CSS 15개** (common + components + 메뉴별 12개 + login), **JS 17개** (공통 5개 + 페이지전용 12개, 총 12,800줄).  
+**백엔드 구축 Phase 1~3 완료** (DB 스키마·인증·API 연결), **DB 연결 보완 및 UI 개선 완료** (PR #59~#112). 설정·대시보드는 모바일앱 백엔드 연결 후 후속진행 예정.  
+총 **HTML 43개**, **CSS 15개** (common + components + 메뉴별 12개 + login), **JS 17개** (공통 5개 + 페이지전용 12개, 총 13,068줄).  
 **CSS 리팩터링 Phase 1~6 전체 완료** — 7색 배지 시스템, 공통 컴포넌트 통합, 색상 변수 체계 확립 (총 3,430줄).  
 **UI 일관성 통일 완료** — 다운로드 버튼·테이블 링크/헤더 "상세" 통일, 상세 페이지 breadcrumb(`대메뉴 › 탭 › 상세`) + 뒤로가기(`← 탭이름 목록으로`) 전면 통일 (PR #37).  
 **JavaScript UI 구현 완료** — 인라인 JS 전면 제거, 외부 JS + `data-*` 속성 방식으로 전환. 모달 시스템(57개), 마스킹 토글(17개), 탭 전환(18탭), 체크박스·정렬·검증·카운터, 교육관리 동적 항목, 설정 규칙 추가/삭제. 42페이지 JS 에러 0건 (PR #39~#42).
@@ -35,7 +35,7 @@ python3 -m http.server 8080
 | 7 | 채팅관리 | `chats.html` | `chat-detail.html`, `report-detail.html` | ✅ |
 | 8 | 후기관리 | `reviews.html` | `review-detail.html`, `review-kg-detail.html` | ✅ |
 | 9 | 교육관리 | `educations.html` | `education-detail.html`, `education-create.html`, `education-checklist-detail.html`, `education-checklist-create.html`, `education-pledge-detail.html`, `education-pledge-create.html`, `education-status-detail.html` | ✅ |
-| 10 | 콘텐츠관리 | `contents.html` | `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html` | ✅ |
+| 10 | 콘텐츠관리 | `contents.html` | `content-banner-detail.html`, `content-banner-create.html`, `content-notice-detail.html`, `content-notice-create.html`, `content-faq-detail.html`, `content-faq-create.html`, `content-terms-detail.html`, `content-terms-create.html`, `content-terms-version-create.html` | ✅ |
 | 11 | 설정 | `settings.html` | `setting-admin-detail.html`, `setting-admin-create.html`, `setting-feedback-detail.html` | ✅ |
 
 ---
@@ -101,6 +101,7 @@ webapp/
 ├── content-faq-create.html
 ├── content-terms-detail.html
 ├── content-terms-create.html
+├── content-terms-version-create.html
 ├── settings.html
 ├── setting-admin-detail.html
 ├── setting-admin-create.html
@@ -159,9 +160,9 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 - **common.js** (141줄): 모달 시스템(열기/닫기/ESC/오버레이), 마스킹 토글, 소개글 더보기/접기, textarea→버튼 활성화
 - **components.js** (231줄): 탭 전환(`data-tab-target`), 전체선택 체크박스, 순서 화살표(▲/▼), 버전 검증(`x.x.x`), 글자수 카운터, URL 해시 탭 복원
 - **api.js** (842줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
-- **페이지전용 JS** (12개): dashboard(244), members(818), kindergartens(1,006), pets(516), reservations(523), payments(725), settlements(821), chats(974), reviews(679), educations(2,151), contents(2,214), settings(504)
+- **페이지전용 JS** (12개): dashboard(244), members(818), kindergartens(1,006), pets(516), reservations(523), payments(725), settlements(821), chats(974), reviews(679), educations(2,151), contents(2,482), settings(504)
 
-총 **12,800줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
+총 **13,068줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
 
 ---
 
@@ -205,14 +206,10 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 5. **JavaScript UI 인터랙션** — 4개 JS 파일, 621줄, 인라인 JS 0건 (PR #39~#42)
 6. **백엔드 구축 Phase 1~3** — DB 스키마·인증·API 연결, 17 JS 8,364줄 (PR #48~#57)
 
-### 진행중
-7. **DB 연결 보완 및 UI 개선** — 전체 페이지 DB 연결 오류 수정 + UI 개선
-   - ✅ 회원관리, 유치원관리, 반려동물관리, 돌봄예약관리, 결제관리, 정산관리, 채팅관리, 후기관리: 수정 완료 (PR #59~#101)
-   - ✅ 교육관리: DB 연결 + 버전관리 UI + 3depth 서약서 + 이수현황 목록+상세 완료 (PR #100~#103)
-   - ✅ 콘텐츠관리(배너 탭): Storage 이미지 관리 + 보기/편집 모드 + 노출상태 자동계산 완료 (PR #104)
-   - ✅ 콘텐츠관리(공지사항 탭): Quill 에디터 + 다건 첨부파일 + 보기/편집 모드 + 푸시발송 완료 (PR #106~#107)
-   - ✅ 콘텐츠관리(FAQ 탭): Quill 에디터 + 보기/편집 모드 + RPC 트랜잭션 순서관리 완료 (PR #110)
-   - ⬜ 콘텐츠관리(약관 탭) ~ 설정: 작업 예정
+### 완료
+7. **DB 연결 보완 및 UI 개선** — 전체 페이지 DB 연결 오류 수정 + UI 개선 (PR #59~#112)
+   - ✅ 회원관리~콘텐츠관리: 작업 완료
+   - ⬜ 설정, 대시보드: 모바일앱 백엔드 연결 후 후속진행 예정
 
 ### 다음 단계
 8. **Phase 4: 호스팅 전환** — Cloudflare Pages + 커스텀 도메인
