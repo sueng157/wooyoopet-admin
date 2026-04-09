@@ -35,8 +35,10 @@
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
 - **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 예정
-- **저장소**: `https://github.com/sueng157/20260316-Wooyoopet-Backend-wfgwaehjk.git`
-- **브랜치 전략**: `main` (머지용) / `genspark_ai_developer` (작업용)
+- **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
+- **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
+- **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
+- **Pages 기본 주소**: `https://wooyoopet-admin.pages.dev`
 - **스펙 문서**: `full_spec_with_tables.md` (루트에 위치, 대메뉴 0~11번 전체 명세)
 
 ---
@@ -749,8 +751,10 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 42개)의 사이드바를 동기화
 5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
 6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
-7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `main`으로
-8. **사용자 확인 후 머지**
+7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `develop`으로
+8. **사용자 확인 후 머지** (develop에 머지 — 배포 안 됨)
+
+> **배포 흐름**: 사용자가 `develop → main` PR을 직접 만들어 머지할 때만 Cloudflare Pages 자동 배포가 실행됩니다.
 9. **스펙 동기화**: 협의로 변경/추가된 내용을 `full_spec_with_tables.md`, `README.md`에 반영 → 별도 PR
 
 ---
@@ -758,24 +762,27 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 ## 8. Git 워크플로우
 
 ```bash
-# 1. main 동기화
-git checkout main && git pull origin main
+# 1. develop 동기화
+git checkout develop && git pull origin develop
 
-# 2. 작업 브랜치 전환 + main 기반 리베이스
-git checkout genspark_ai_developer && git rebase origin/main
+# 2. 작업 브랜치 전환 + develop 기반 리베이스
+git checkout genspark_ai_developer && git rebase origin/develop
 
 # 3. 작업 후 커밋
 git add [files] && git commit -m "feat(xxx): 설명"
 
 # 4. PR 전 동기화 확인
-git fetch origin main && git rebase origin/main
+git fetch origin develop && git rebase origin/develop
 
 # 5. 커밋이 여러 개면 스쿼시
 git reset --soft HEAD~N && git commit -m "종합 메시지"
 
-# 6. 푸시 + PR 생성
+# 6. 푸시 + PR 생성 (develop으로)
 git push -f origin genspark_ai_developer
-gh pr create --base main --head genspark_ai_developer --title "..." --body "..."
+gh pr create --base develop --head genspark_ai_developer --title "..." --body "..."
+
+# 7. 배포 (사용자가 직접 수행)
+# develop → main PR 생성 & 머지 → Cloudflare Pages 자동 배포
 ```
 
 > **인증 실패 시**: `setup_github_environment` 도구 실행 후 재시도
@@ -985,15 +992,31 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 ---
 
-### Phase 4: 호스팅 전환
+### Phase 4: 관리자 페이지 배포 ✅ 완료
 
 | 순서 | 작업 | 상태 | 비고 |
 |------|------|------|------|
-| 4-1 | Cloudflare 계정 생성 | ⬜ 예정 | Pages + Registrar 설정 |
-| 4-2 | Cloudflare Pages 배포 | ⬜ 예정 | GitHub 연결, 자동 배포 |
-| 4-3 | 도메인 이전 | ⬜ 예정 | wooyoopet.com → Cloudflare Registrar |
-| 4-4 | 커스텀 도메인 연결 | ⬜ 예정 | admin.wooyoopet.com → Cloudflare Pages |
-| 4-5 | SSL/보안 설정 | ⬜ 예정 | HTTPS 강제, 보안 헤더 |
+| 4-1 | Cloudflare 계정 생성 | ✅ 완료 | Pages 설정 완료 |
+| 4-2 | Cloudflare Pages 배포 | ✅ 완료 | GitHub `wooyoopet-admin` 연결, `main` 브랜치 자동 배포 |
+| 4-3 | SmileServ DNS에 CNAME 추가 | ✅ 완료 | `admin` → `wooyoopet-admin.pages.dev` |
+| 4-4 | 커스텀 도메인 연결 | ✅ 완료 | `admin.wooyoopet.com` → Cloudflare Pages |
+| 4-5 | auth.js 배포 호환성 수정 | ✅ 완료 | Cloudflare Pages URL(.html 없는 경로) 대응 (PR #114) |
+
+**Phase 4 배포 전략 (변경됨):**
+- **기존 계획**: wooyoopet.com 도메인 전체를 Cloudflare Registrar로 이전
+- **변경된 계획**: 기존 서비스(wooyoopet.com, api/chat 서브도메인) 유지, `admin.wooyoopet.com` 서브도메인만 CNAME으로 Cloudflare Pages에 연결
+- **네임서버**: 스마일서브(iwinv) 유지 (Cloudflare로 이전하지 않음)
+- **도메인 전체 이전**: Phase 6에서 기존 서버 해지 시 진행 예정
+
+**현재 DNS 구조:**
+
+| 도메인 | 대상 | 용도 |
+|--------|------|------|
+| `wooyoopet.com` | 115.68.168.218 (SmileServ) | 메인 사이트 |
+| `www.wooyoopet.com` | 115.68.168.218 (SmileServ) | 메인 사이트 |
+| `api.wooyoopet.com` | 1.226.82.192 | 모바일앱 API |
+| `chat.wooyoopet.com` | 1.226.82.192 | 채팅 서버 |
+| `admin.wooyoopet.com` | wooyoopet-admin.pages.dev (CNAME) | 관리자 페이지 (신규) |
 
 ---
 
@@ -1019,7 +1042,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 6-1 | 기존 데이터 백업 | ⬜ 예정 | MariaDB 데이터 + 서버 파일 백업 |
 | 6-2 | 카페24 해지 | ⬜ 예정 | 채팅 서버 해지 (월 ₩132,000 절감) |
 | 6-3 | 스마일서브 해지 | ⬜ 예정 | 메인 서버 해지 (월 ₩3,000 절감) |
-| 6-4 | 도메인 이전 완료 확인 | ⬜ 예정 | Cloudflare에서 wooyoopet.com 관리 |
+| 6-4 | 도메인 DNS 전체 이전 | ⬜ 예정 | SmileServ 네임서버 → Cloudflare 이전, 기존 DNS 레코드 13개 복제 후 전환 |
 
 ---
 

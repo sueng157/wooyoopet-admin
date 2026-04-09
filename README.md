@@ -17,7 +17,8 @@ cd /home/user/webapp
 python3 -m http.server 8080
 ```
 
-브라우저에서 `http://localhost:8080/index.html` 접속.
+로컬 개발 시: 브라우저에서 `http://localhost:8080/index.html` 접속.  
+배포 사이트: `https://admin.wooyoopet.com` (Cloudflare Pages)
 
 ---
 
@@ -191,8 +192,9 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 
 ## 브랜치 전략
 
-- `main` — 머지 대상 (안정 브랜치)
-- `genspark_ai_developer` — 작업 브랜치 (PR 후 main에 머지)
+- `main` — 배포 전용 (Cloudflare Pages 자동 배포, `admin.wooyoopet.com`)
+- `develop` — 개발 완료·테스트 브랜치 (AI 작업 결과 머지 대상)
+- `genspark_ai_developer` — AI 작업 브랜치 (PR은 `develop`으로)
 
 ---
 
@@ -212,6 +214,6 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
    - ⬜ 설정, 대시보드: 모바일앱 백엔드 연결 후 후속진행 예정
 
 ### 다음 단계
-8. **Phase 4: 호스팅 전환** — Cloudflare Pages + 커스텀 도메인
+8. **Phase 4: 관리자 페이지 배포** ✅ — Cloudflare Pages + `admin.wooyoopet.com` 서브도메인 연결 완료
 9. **Phase 5: 모바일 앱 백엔드 전환** — React Native 앱 Supabase 연동
 10. **Phase 6: 기존 서버 해지** — 카페24·스마일서브 해지
