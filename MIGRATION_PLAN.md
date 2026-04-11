@@ -87,7 +87,7 @@
 | 1-2 | MariaDB 핵심 테이블 분석 | ✅ 완료 | API에서 참조하는 테이블·컬럼 전부 확인 |
 | 1-3 | MariaDB ↔ Supabase 테이블 매핑 | ✅ 완료 | 섹션 4 (테이블 매핑표) |
 | 1-4 | PHP API → Supabase 전환 매핑 | ✅ 완료 | 섹션 5 (API 전환 매핑표 — 62개 전체) |
-| 1-5 | 누락 테이블·컬럼 식별 | ✅ 완료 | 섹션 6 (스키마 보강 목록 — 13개 신규 테이블) |
+| 1-5 | 누락 테이블·컬럼 식별 | ✅ 완료 | 섹션 6 (스키마 보강 목록 — 12개 신규 테이블) |
 | 1-6 | Edge Functions 설계 | ✅ 완료 | 섹션 7 (Edge Functions 8개 상세 설계) |
 
 ### Step 2: Supabase 스키마 보강
@@ -170,7 +170,7 @@
 | admin_accounts | (별도 관리) | 관리자 계정 | — |
 | feedbacks | g5_write_opinion | 피드백/개선의견 | set_suggest_insert |
 
-### 4-2. 추가 필요한 테이블 (✅ 확정 — 13개)
+### 4-2. 추가 필요한 테이블 (✅ 확정 — 12개)
 
 | 신규 테이블 | MariaDB 원본 | 용도 | PHP API 참조 | 난이도 |
 |------------|-------------|------|-------------|--------|
@@ -183,7 +183,7 @@
 | **favorite_animals** | g5_favorite_animal | 반려동물 즐겨찾기 | set_animal_favorite_add/remove, set_user_favorite_add/remove | 쉬움 |
 | **message_templates** | message_template | 채팅 상용문구 | get_message_template, set_message_template | 쉬움 |
 | **chat_room_members** | room_members | 채팅방 참여자 (mb_id, mb_5, last_read_message_id, is_muted) | chat.php (핵심), read_chat.php | 중간 |
-| **address_verifications** | g5_address_verification | 주소 인증 서류 | set_address_verification.php | 쉬움 |
+| ~~address_verifications~~ | ~~g5_address_verification~~ | ~~주소 인증 서류~~ | — | ❌ 제거: members.address_doc_urls 컬럼으로 대체 |
 | **payment_request_rooms** | payment_request_has_room | 결제요청↔채팅방 연결 | set_payment_request (room_id 매핑) | 쉬움 |
 | **scheduler_history** | scheduler_history | 스케줄러 실행 이력 | scheduler.php | 쉬움 |
 | **chat_guides** | g5_write_chat_partner_guide, g5_write_chat_user_guide | 채팅 가이드 문구 | get_chat_partner_guide, get_chat_user_guide | 쉬움 |
@@ -449,7 +449,7 @@
 
 ## 6. 스키마 보강 목록 ✅ 완료
 
-### 6-1. 신규 테이블 SQL (13개)
+### 6-1. 신규 테이블 SQL (12개)
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
@@ -462,7 +462,7 @@
 | sql/41_app_favorite_animals.sql | favorite_animals 테이블 (member_id, pet_id, is_favorite, timestamps) | ⬜ 작성 필요 |
 | sql/41_app_message_templates.sql | message_templates 테이블 (member_id, template, timestamps, deleted_at) | ⬜ 작성 필요 |
 | sql/41_app_chat_room_members.sql | chat_room_members 테이블 (room_id, member_id, role, last_read_message_id, is_muted) | ⬜ 작성 필요 |
-| sql/41_app_address_verifications.sql | address_verifications 테이블 (member_id, status, document_url, timestamps) | ⬜ 작성 필요 |
+| ~~sql/41_app_address_verifications.sql~~ | ~~address_verifications~~ | ❌ 제거: members.address_doc_urls로 대체 |
 | sql/41_app_payment_request_rooms.sql | payment_request_rooms 테이블 (reservation_id, chat_room_id) | ⬜ 작성 필요 |
 | sql/41_app_scheduler_history.sql | scheduler_history 테이블 (started_at, finished_at) | ⬜ 작성 필요 |
 | sql/41_app_chat_guides.sql | chat_guides 테이블 (type, title, content) | ⬜ 작성 필요 |
@@ -612,3 +612,4 @@
 |------|------|
 | 2026-04-11 | 최초 작성 — 프로젝트 개요, 수집 자료 현황, 작업 단계 설계, 테이블·API 매핑 프레임워크 |
 | 2026-04-11 | **Step 1 전수 분석 완료** — PHP API 95개 전부 읽기 완료, 테이블 매핑표 확정 (24기존+13신규), API 전환 매핑 85개 확정, Edge Functions 8개 상세 설계, 스키마 보강 목록 확정 |
+| 2026-04-11 | **Step 1 검토 반영** — address_verifications 테이블 제거 (members.address_doc_urls로 대체) → 신규 테이블 13→12개, DB_MAPPING_REFERENCE.md 전체 대조표 별도 작성 |
