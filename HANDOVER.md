@@ -27,7 +27,8 @@
 [완료] Phase 4: 관리자 페이지 배포 (Cloudflare Pages + admin.wooyoopet.com)
   ↓
 [진행중] Phase 5: 모바일 앱 백엔드 전환
-  - 앱 소스 분석 완료, 외주 개발자에게 자료 요청 완료 (수령 대기)
+  - 자료 수집 완료 (PHP API 109파일 + MariaDB 131테이블 + 채팅서버)
+  - 전수 분석 & 마이그레이션 설계 진행중 → MIGRATION_PLAN.md
   ↓
 [예정] Phase 6: 기존 서버 해지 및 정리
 ```
@@ -1026,20 +1027,39 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 ### Phase 5: 모바일 앱 백엔드 전환
 
-> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서 — API 62개 전수 목록, 인증/채팅/결제 분석, Supabase 전환 난이도 평가)
+> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계)
+
+#### 수집 자료 현황
+
+| # | 자료 | 상태 | 규모 | 출처 |
+|---|------|------|------|------|
+| 1 | 모바일 앱 소스코드 | ✅ 분석 완료 | 175파일, 31,342줄 | wooyoopet-app (Private) |
+| 2 | PHP API 소스코드 | ✅ 수령 완료 | 109파일 (현행 95 + 백업 14), 11,245줄 | 외주 개발자 전달 (2026-04-10) |
+| 3 | MariaDB 스키마 | ✅ 수령 완료 | 131테이블 (65MB → 146KB 정리) | 외주 개발자 전달 (2026-04-10) |
+| 4 | WebSocket 채팅 서버 | ✅ 수령 완료 | server.py + Docker | wooyoopet-backend repo |
+| 5 | Firebase 서비스 키 | ⚠️ 교체 필요 | JSON (GitHub 노출 사고) | wooyoopet-backend repo |
+| 6 | 카카오 알림톡 | ✅ 수령 완료 | alimtalk.php | wooyoopet-backend repo |
+
+> ⚠️ **보안 사고 (2026-04-11)**: wooyoopet-backend 저장소 Public 전환 시 Firebase 서비스 키·서버 비밀번호 노출. 즉시 Private 전환 완료. Firebase 키 교체·서버 비밀번호 변경 진행중 (외주 개발자 협조 필요).
+
+#### 작업 로드맵
 
 | 순서 | 작업 | 상태 | 비고 |
 |------|------|------|------|
-| 5-1 | 앱 소스코드 분석 | ✅ 완료 | wooyoopet-app(Private) 소스 분석, 175개 파일 31,342줄, MOBILE_APP_ANALYSIS.md 작성 |
-| 5-2 | API 호출부 분석 | ✅ 완료 | PHP API 62개 엔드포인트 전수 매핑 (토스 1개 제외) |
-| 5-3 | 외주 개발자 자료 요청 | ⏳ 요청 완료 | PHP API 소스, MariaDB 스키마, 채팅서버 소스 — 수령 대기중 |
-| 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정 활성화, admin.wooyoopet.com 안내 |
-| 5-5 | Supabase API로 교체 | ⬜ 예정 | PHP API → Supabase 자동 API 변경 (자료 수령 후 진행) |
-| 5-6 | 인증 교체 | ⬜ 예정 | 기존 인증 → Supabase Auth |
-| 5-7 | 채팅 교체 | ⬜ 예정 | 카페24 채팅 → Supabase Realtime |
-| 5-8 | 파일 업로드 교체 | ⬜ 예정 | 기존 → Supabase Storage |
-| 5-9 | 결제 연동 확인 | ⬜ 예정 | 이니시스 서브몰 결제 → Edge Functions 경유 |
-| 5-10 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
+| 5-1 | 앱 소스코드 분석 | ✅ 완료 | MOBILE_APP_ANALYSIS.md 작성 |
+| 5-2 | API 호출부 분석 | ✅ 완료 | PHP API 62개 엔드포인트 전수 매핑 |
+| 5-3 | 외주 개발자 자료 수령 | ✅ 완료 | PHP API 109파일 + MariaDB 131테이블 + 채팅서버 |
+| 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정, admin.wooyoopet.com |
+| 5-5 | 전수 분석 & 매핑 설계 | 🔄 진행중 | PHP API 95개 전수 읽기 + MariaDB↔Supabase 매핑 → MIGRATION_PLAN.md |
+| 5-6 | Supabase 스키마 보강 | ⬜ 예정 | 누락 테이블 추가, 컬럼 보강, 앱 사용자용 RLS → SQL 제공 |
+| 5-7 | 앱 API 전환 가이드 작성 | ⬜ 예정 | 62개 API별 전환 지침서 (외주 개발자용) |
+| 5-8 | Edge Functions 구현 | ⬜ 예정 | 결제 콜백, FCM 푸시, 알림톡, 스케줄러 |
+| 5-9 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
+| 5-10 | 채팅 전환 | ⬜ 예정 | 카페24 WebSocket → Supabase Realtime |
+| 5-11 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
+| 5-12 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
+
+> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조
 
 ---
 
