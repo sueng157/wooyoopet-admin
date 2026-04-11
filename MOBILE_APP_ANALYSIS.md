@@ -1,6 +1,6 @@
 # 모바일 앱 (wooyoopet-app) 분석 보고서
 
-> 최종 업데이트: 2026-04-09
+> 최종 업데이트: 2026-04-11 (PHP API 전수 분석 완료)
 > 분석 대상: https://github.com/sueng157/wooyoopet-app (Private)
 > 목적: Phase 5 – 모바일 앱 백엔드를 PHP/MariaDB → Supabase로 전환하기 위한 사전 분석
 
