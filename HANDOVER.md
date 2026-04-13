@@ -29,6 +29,8 @@
 [진행중] Phase 5: 모바일 앱 백엔드 전환
   - 자료 수집 완료 (PHP API 109파일 + MariaDB 131테이블 + 채팅서버)
   - 전수 분석 & 마이그레이션 설계 완료 → MIGRATION_PLAN.md (Step 1 완료)
+  - 교차 검증 완료 → DB_MAPPING_REFERENCE.md (PR #118~#121)
+  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 17컬럼 + API 62개 + Edge Functions 8개
   ↓
 [예정] Phase 6: 기존 서버 해지 및 정리
 ```
@@ -39,7 +41,7 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1 완료 + 교차 검증 완료, PR #118~#121)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
 - **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
@@ -1027,7 +1029,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 ### Phase 5: 모바일 앱 백엔드 전환
 
-> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계)
+> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계), `DB_MAPPING_REFERENCE.md` (DB 전체 매핑 대조표)
 
 #### 수집 자료 현황
 
@@ -1050,7 +1052,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-2 | API 호출부 분석 | ✅ 완료 | PHP API 62개 엔드포인트 전수 매핑 |
 | 5-3 | 외주 개발자 자료 수령 | ✅ 완료 | PHP API 109파일 + MariaDB 131테이블 + 채팅서버 |
 | 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정, admin.wooyoopet.com |
-| 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+13신규) + API 전환 매핑 85개 + Edge Functions 8개 설계 → MIGRATION_PLAN.md |
+| 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+9신규) + API 전환 매핑 62개 + Edge Functions 8개 설계 → MIGRATION_PLAN.md |
 | 5-6 | Supabase 스키마 보강 | ⬜ 예정 | 누락 테이블 추가, 컬럼 보강, 앱 사용자용 RLS → SQL 제공 |
 | 5-7 | 앱 API 전환 가이드 작성 | ⬜ 예정 | 62개 API별 전환 지침서 (외주 개발자용) |
 | 5-8 | Edge Functions 구현 | ⬜ 예정 | 결제 콜백, FCM 푸시, 알림톡, 스케줄러 |
@@ -1060,6 +1062,15 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-12 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
 
 > 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조
+
+#### Phase 5 진행 이력
+
+| PR | 대상 문서 | 주요 변경 내용 |
+|----|----------|---------------|
+| #118 | MIGRATION_PLAN | Step 1 전수 분석 완료 — PHP API 95개 읽기, DB 매핑 (24기존+12신규), API 전환 매핑 62개, Edge Functions 8개 상세 설계 |
+| #119 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | DB 매핑 전체 대조표 신규 작성, address_verifications 테이블 제거 (members.address_doc_urls로 대체) |
+| #120 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 테이블·컬럼명 전수 교정 — 실제 Supabase DB와 대조하여 85개 불일치 수정 (테이블명 7개, 컬럼명 15개, 불필요 매핑 8개 삭제, 누락 컬럼 49개 보완, 신규 컬럼 18개 확정), 신규 테이블 12→9개 |
+| #121 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 교차 검증 완료 — 실제 DB 대조 후 누락 컬럼 7건 추가 (reservations 3개, payments 1개, kindergartens 1개, kindergarten_reviews 1개, chat_messages 1개), 신규 컬럼 18→17개 조정 (address_doc_urls 이미 존재), 섹션 수량 오류 수정, 중복 제거, 오탈자 교정, address_doc_urls 동기화 트리거 추가, review image_urls/selected_tags jsonb 타입 교정 |
 
 ---
 
