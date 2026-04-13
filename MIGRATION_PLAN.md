@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-11 (Step 1 전수 분석 완료)
+> 최종 업데이트: 2026-04-13 (Step 1 전수 분석 완료 + 테이블·컬럼명 전수 교정)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석)
 
@@ -170,23 +170,24 @@
 | admin_accounts | (별도 관리) | 관리자 계정 | — |
 | feedbacks | g5_write_opinion | 피드백/개선의견 | set_suggest_insert |
 
-### 4-2. 추가 필요한 테이블 (✅ 확정 — 12개)
+### 4-2. 추가 필요한 테이블 (✅ 확정 — 9개)
+
+> 검토 결과 삭제된 항목:
+> - ~~address_verifications~~ → `members.address_doc_urls` 컬럼으로 대체
+> - ~~block_users~~ → `member_blocks` 테이블 이미 존재 (동일 기능)
+> - ~~payment_request_rooms~~ → `chat_room_reservations` 테이블 이미 존재 (동일 기능)
 
 | 신규 테이블 | MariaDB 원본 | 용도 | PHP API 참조 | 난이도 |
 |------------|-------------|------|-------------|--------|
 | **fcm_tokens** | fcm_token | FCM 토큰 저장 | fcm_token.php, chat.php (푸시 발송) | 쉬움 |
 | **notifications** | notification | 앱 알림 내역 | get_notification, delete_notification, chat.php | 쉬움 |
-| **animal_kinds** | animalKind | 품종 마스터 데이터 | get_animal_kind.php | 쉬움 |
+| **pet_breeds** | animalKind | 견종/묘종 목록 (type 컬럼으로 구분, 현재 dog만 운영) | get_animal_kind.php | 쉬움 |
 | **banks** | bank | 은행 목록 (code, name) | get_bank_list.php, settlement 관련 | 쉬움 |
-| **block_users** | block_user | 사용자 차단 | set_block_user, get_block_user, get_blocked_list | 쉬움 |
-| **favorite_partners** | g5_favorite_partner | 유치원 즐겨찾기 | set_partner_favorite_add/remove, get_favorite_partner_list | 쉬움 |
-| **favorite_animals** | g5_favorite_animal | 반려동물 즐겨찾기 | set_animal_favorite_add/remove, set_user_favorite_add/remove | 쉬움 |
-| **message_templates** | message_template | 채팅 상용문구 | get_message_template, set_message_template | 쉬움 |
-| **chat_room_members** | room_members | 채팅방 참여자 (mb_id, mb_5, last_read_message_id, is_muted) | chat.php (핵심), read_chat.php | 중간 |
-| ~~address_verifications~~ | ~~g5_address_verification~~ | ~~주소 인증 서류~~ | — | ❌ 제거: members.address_doc_urls 컬럼으로 대체 |
-| **payment_request_rooms** | payment_request_has_room | 결제요청↔채팅방 연결 | set_payment_request (room_id 매핑) | 쉬움 |
+| **favorite_kindergartens** | g5_favorite_partner | 유치원 즐겨찾기 | set_partner_favorite_add/remove, get_favorite_partner_list | 쉬움 |
+| **favorite_pets** | g5_favorite_animal | 반려동물 즐겨찾기 | set_animal_favorite_add/remove, set_user_favorite_add/remove | 쉬움 |
+| **chat_templates** | message_template + g5_write_chat_partner_guide + g5_write_chat_user_guide | 채팅 상용문구 + 가이드 문구 (type 컬럼으로 구분) | get_message_template, set_message_template, get_chat_partner_guide, get_chat_user_guide | 쉬움 |
+| **chat_room_members** | room_members | 채팅방 참여자 (읽음 위치 추적, 알림 차단) | chat.php (핵심), read_chat.php | 중간 |
 | **scheduler_history** | scheduler_history | 스케줄러 실행 이력 | scheduler.php | 쉬움 |
-| **chat_guides** | g5_write_chat_partner_guide, g5_write_chat_user_guide | 채팅 가이드 문구 | get_chat_partner_guide, get_chat_user_guide | 쉬움 |
 
 ### 4-3. 불필요한 테이블 (전환 제외)
 
@@ -201,63 +202,127 @@
 ### 4-4. 주요 컬럼 매핑 (MariaDB → Supabase)
 
 #### members (g5_member → members)
-| MariaDB 컬럼 | Supabase 컬럼 | 타입 | 비고 |
-|-------------|--------------|------|------|
-| mb_id (폰번호) | phone / id | text | Supabase Auth uid로 연결 |
-| mb_name | name | text | |
-| mb_nick | nickname | text | |
-| mb_4 | apartment_name | text | 아파트명 |
-| mb_5 | current_mode | text | '1'=보호자, '2'=유치원 |
-| mb_9 | latitude | numeric | 위도 |
-| mb_10 | longitude | numeric | 경도 |
-| mb_profile1 | profile_image_url | text | Storage URL로 변경 |
-| mb_addr1 | address | text | |
-| mb_dong | dong | text | 동 정보 |
-| mb_2 | birth_date | text | 주민번호 앞자리 |
-| mb_language | language | text | 기본값 '한국어' |
-| mb_app_version | app_version | text | |
-| chat_notify | chat_notify | text | Y/N |
-| reserve_notify | reserve_notify | text | Y/N |
-| attendance_notify | attendance_notify | text | Y/N |
-| review_notify | review_notify | text | Y/N |
-| new_kinder_notify | new_kinder_notify | text | Y/N |
+
+> 기존 30개 컬럼 + 신규 추가 11개 = 총 41개
+
+| MariaDB 컬럼 | Supabase 컬럼 | 타입 | 상태 | 비고 |
+|-------------|--------------|------|------|------|
+| mb_no (PK, auto) | id | uuid | ✅ 존재 | Supabase Auth uid |
+| mb_id | phone | text | ✅ 존재 | 폰번호가 ID |
+| mb_name | name | text | ✅ 존재 | |
+| mb_nick | nickname | text | ✅ 존재 | |
+| — | nickname_tag | text | ✅ 존재 | Supabase 신규 (#1001 형식) |
+| mb_profile1 | profile_image | text | ✅ 존재 | Storage URL |
+| mb_2 | birth_date | date | ✅ 존재 | 주민번호 앞자리 → 생년월일 |
+| mb_sex | gender | text | ✅ 존재 | |
+| mb_4 | address_complex | text | ✅ 존재 | 아파트/단지명 |
+| mb_addr1 | address_road | text | ✅ 존재 | 도로명주소 |
+| dong | address_building_dong | text | ✅ 존재 | 동 |
+| ho | address_building_ho | text | ✅ 존재 | 호 |
+| mb_5 | current_mode | text | ✅ 존재 | '1'→보호자, '2'→유치원 |
+| mb_1 | carrier | text | ✅ 존재 | 통신사 |
+| — | identity_verified | bool | ✅ 존재 | 본인인증 여부 |
+| — | identity_method | text | ✅ 존재 | 인증 방법 |
+| — | identity_carrier | text | ✅ 존재 | 인증 통신사 |
+| — | identity_verified_at | timestamptz | ✅ 존재 | 인증 일시 |
+| — | address_auth_status | text | ✅ 존재 | 주소인증 상태 |
+| — | address_auth_date | timestamptz | ✅ 존재 | 주소인증 일시 |
+| mb_join_status / mb_leave_status | status | text | ✅ 존재 | 정상/탈퇴/정지 |
+| — | noshow_count | int | ✅ 존재 | 노쇼 횟수 |
+| — | noshow_sanction | text | ✅ 존재 | 노쇼 제재 상태 |
+| — | noshow_sanction_end | timestamptz | ✅ 존재 | 노쇼 제재 종료일 |
+| — | suspend_start | timestamptz | ✅ 존재 | 정지 시작일 |
+| — | suspend_end | timestamptz | ✅ 존재 | 정지 종료일 |
+| — | suspend_reason | text | ✅ 존재 | 정지 사유 |
+| mb_leave_reason | withdraw_reason | text | ✅ 존재 | 탈퇴 사유 |
+| mb_leave_date | withdrawn_at | timestamptz | ✅ 존재 | 탈퇴 일시 |
+| — | created_at | timestamptz | ✅ 존재 | |
+| mb_9 | latitude | numeric | 🆕 추가 | 위도 (위치 기반 유치원 검색) |
+| mb_10 | longitude | numeric | 🆕 추가 | 경도 |
+| mb_language | language | text | 🆕 추가 | 앱 언어 (기본값 '한국어') |
+| mb_app_version | app_version | text | 🆕 추가 | 앱 버전 (강제 업데이트 체크) |
+| chat_notify | chat_notify | text | 🆕 추가 | 채팅 알림 ON/OFF (Y/N) |
+| reserve_notify | reservation_notify | text | 🆕 추가 | 예약 알림 ON/OFF |
+| attendance_notify | checkinout_notify | text | 🆕 추가 | 등하원 알림 ON/OFF |
+| review_notify | review_notify | text | 🆕 추가 | 후기 알림 ON/OFF |
+| new_kinder_notify | new_kindergarten_notify | text | 🆕 추가 | 신규 유치원 알림 ON/OFF |
+| direct | address_direct | text | 🆕 추가 | 직접입력 주소 |
+| — | address_doc_urls | text[] | 🆕 추가 | 주소 인증 서류 이미지 URL |
 
 #### kindergartens (g5_write_partner → kindergartens)
-| MariaDB 컬럼 | Supabase 컬럼 | 비고 |
-|-------------|--------------|------|
-| wr_subject | name | 유치원 이름 |
-| wr_content | description | 소개 |
-| wr_1 | has_own_pet | 자체 동물 여부 |
-| wr_2 | pricing | 가격 (파이프 구분 문자열) |
-| wr_3 | bank_name | 은행명 |
-| wr_4 | bank_account | 계좌번호 |
-| wr_5 | education_completed | 교육 이수 여부 |
-| wr_6 | registration_status | 등록 상태 (temp 등) |
-| partner_img1~10 | images (jsonb 또는 Storage) | 이미지 10개 |
-| freshness | freshness | 신선도 |
-| business_status | business_status | 사업자 상태 |
-| settlement_ready | settlement_ready | 정산 준비 완료 |
+
+> 기존 34개 컬럼 + 신규 추가 3개 = 총 37개
+
+| MariaDB 컬럼 | Supabase 컬럼 | 타입 | 상태 | 비고 |
+|-------------|--------------|------|------|------|
+| wr_id (PK) | id | uuid | ✅ 존재 | |
+| mb_id | member_id (FK) | uuid | ✅ 존재 | members 참조 |
+| wr_subject | name | text | ✅ 존재 | 유치원 이름 |
+| wr_content | description | text | ✅ 존재 | 유치원 소개 |
+| wr_2 | price_small_1h ~ price_large_walk (12개) | integer | ✅ 존재 | 파이프 구분 → 12개 개별 컬럼 |
+| partner_img1~10 | photo_urls | text[] | ✅ 존재 | 개별 10개 → 배열 1개 |
+| freshness | freshness_current | integer | ✅ 존재 | 현재 신선도 |
+| — | freshness_initial | integer | ✅ 존재 | 초기 신선도 |
+| business_status | business_status | text | ✅ 존재 | 영업중/방학중 |
+| settlement_ready | settlement_status | text | ✅ 존재 | 0/1 → 작성중/제출됨/승인/거절 |
+| mb_addr1 | address_road | text | ✅ 존재 | 도로명주소 |
+| mb_4 | address_complex | text | ✅ 존재 | 단지명 |
+| — | address_jibun | text | ✅ 존재 | 지번주소 |
+| mb_dong | address_building_dong | text | ✅ 존재 | 동 |
+| mb_ho | address_building_ho | text | ✅ 존재 | 호 |
+| auth_status | address_auth_status | text | ✅ 존재 | 인증상태 |
+| — | address_auth_date | timestamptz | ✅ 존재 | 인증일시 |
+| — | inicis_status | text | ✅ 존재 | 이니시스 등록상태 |
+| — | inicis_submall_code | text | ✅ 존재 | 서브몰 코드 |
+| — | seller_id | text | ✅ 존재 | 판매자 ID |
+| — | noshow_count | int | ✅ 존재 | 노쇼 횟수 |
+| — | noshow_sanction | text | ✅ 존재 | 노쇼 제재 |
+| — | created_at | timestamptz | ✅ 존재 | |
+| mb_9 | latitude | numeric | 🆕 추가 | 유치원 위도 |
+| mb_10 | longitude | numeric | 🆕 추가 | 유치원 경도 |
+| wr_6 | registration_status | text | 🆕 추가 | 등록 상태 (temp=임시저장) |
+
+> **검토 결과 불필요로 삭제된 매핑:**
+> - wr_1 (`has_own_pet`) → `kindergarten_resident_pets` 테이블로 판단 가능
+> - wr_3 (`bank_name`) → `settlement_infos.account_bank` 에 존재
+> - wr_4 (`bank_account`) → `settlement_infos.account_number` 에 존재
+> - wr_5 (`education_completed`) → `education_completions` 테이블로 판단 가능
 
 #### reservations (payment_request → reservations)
-| MariaDB 컬럼 | Supabase 컬럼 | 비고 |
-|-------------|--------------|------|
-| mb_id | guardian_id | 보호자 (요청자) |
-| to_mb_id | kindergarten_id | 유치원 (수행자) |
-| pet_id | pet_id | 반려동물 |
-| start_date + start_time | start_datetime | 시작 일시 |
-| end_date + end_time | end_datetime | 종료 일시 |
-| walk_count | walk_count | 산책 횟수 |
-| pickup_dropoff | pickup_dropoff | 픽업/드롭오프 |
-| price | price | 금액 |
-| penalty | penalty | 위약금 |
-| status | status | pending→completed→care_completed |
-| payment_approval_id | payment_id | 결제 연결 |
-| is_review_written | is_review_written | 후기 작성 여부 |
-| reject_reason | reject_reason | 거절 사유 |
-| reminder_start_sent_at | reminder_start_sent_at | 등원 알림 발송 |
-| reminder_end_sent_at | reminder_end_sent_at | 하원 알림 발송 |
-| care_start_sent_at | care_start_sent_at | 돌봄시작 알림 |
-| care_end_sent_at | care_end_sent_at | 돌봄종료 알림 |
+
+> 기존 18개 컬럼 + 신규 추가 4개 = 총 22개
+
+| MariaDB 컬럼 | Supabase 컬럼 | 타입 | 상태 | 비고 |
+|-------------|--------------|------|------|------|
+| id (PK, auto) | id | uuid | ✅ 존재 | |
+| mb_id | member_id (FK) | uuid | ✅ 존재 | 보호자 (요청자) |
+| to_mb_id | kindergarten_id (FK) | uuid | ✅ 존재 | 유치원 |
+| pet_id | pet_id (FK) | uuid | ✅ 존재 | 반려동물 |
+| start_date + start_time | checkin_scheduled | timestamptz | ✅ 존재 | 등원 예정 |
+| end_date + end_time | checkout_scheduled | timestamptz | ✅ 존재 | 하원 예정 |
+| — | checkin_actual | timestamptz | ✅ 존재 | 실제 등원 |
+| — | checkout_actual | timestamptz | ✅ 존재 | 실제 하원 |
+| walk_count | walk_count | int | ✅ 존재 | 산책 횟수 |
+| pickup_dropoff | pickup_requested | bool | ✅ 존재 | tinyint→bool |
+| status | status | text | ✅ 존재 | 수락대기/예약확정/돌봄진행중/돌봄완료 등 |
+| reject_reason | reject_reason | text | ✅ 존재 | 거절 사유 |
+| — | reject_detail | text | ✅ 존재 | 거절 상세 |
+| — | rejected_at | timestamptz | ✅ 존재 | 거절 일시 |
+| — | requested_at | timestamptz | ✅ 존재 | 요청 일시 |
+| — | guardian_checkout_confirmed | bool | ✅ 존재 | 보호자 하원 확인 |
+| — | kg_checkout_confirmed | bool | ✅ 존재 | 유치원 하원 확인 |
+| created_at | created_at | timestamptz | ✅ 존재 | |
+| reminder_start_sent_at | reminder_start_sent_at | timestamptz | 🆕 추가 | 등원 알림 발송 시각 (스케줄러 중복 방지) |
+| reminder_end_sent_at | reminder_end_sent_at | timestamptz | 🆕 추가 | 하원 알림 발송 시각 |
+| care_start_sent_at | care_start_sent_at | timestamptz | 🆕 추가 | 돌봄시작 알림 발송 시각 |
+| care_end_sent_at | care_end_sent_at | timestamptz | 🆕 추가 | 돌봄종료 알림 발송 시각 |
+
+> **검토 결과 불필요로 삭제된 매핑:**
+> - `price` → `payments.amount` 에 존재
+> - `penalty` → `refunds.penalty_amount` 에 존재
+> - `payment_id` → `payments.reservation_id` 로 역참조
+> - `is_review_written` → `guardian_reviews`/`kindergarten_reviews` JOIN으로 판단
+> - `is_settled` → `settlements` 테이블에서 관리
 
 ---
 
@@ -285,7 +350,7 @@
 | 4 | set_member_leave.php | RPC | members UPDATE (탈퇴) + g5_member_leave 이력 → Edge Function으로 Auth 삭제 | members | 중 |
 | 5 | set_mypage_mode_update.php | 자동 API | members UPDATE (current_mode) | members | 쉬움 |
 | 6 | set_profile_update.php | 자동 API + Storage | members UPDATE + Storage 프로필 이미지 업로드 | members | 쉬움 |
-| 7 | set_address_verification.php | 자동 API + Storage | address_verifications UPSERT + Storage 서류 업로드 | address_verifications | 쉬움 |
+| 7 | set_address_verification.php | 자동 API + Storage | members UPDATE (address_doc_urls) + Storage 서류 업로드 | members | 쉬움 |
 
 ### 5-2. 반려동물 (8개)
 
@@ -294,7 +359,7 @@
 | 8 | get_my_animal.php | 자동 API | pets SELECT WHERE member_id=? AND deleted=false | 쉬움 |
 | 9 | get_animal_by_id.php | 자동 API | pets SELECT WHERE id=? + favorite 조인 | 쉬움 |
 | 10 | get_animal_by_mb_id.php | 자동 API | pets SELECT WHERE member_id=? | 쉬움 |
-| 11 | get_animal_kind.php | 자동 API | animal_kinds SELECT WHERE name ILIKE ? | 쉬움 |
+| 11 | get_animal_kind.php | 자동 API | pet_breeds SELECT WHERE name ILIKE ? | 쉬움 |
 | 12 | set_animal_insert.php | 자동 API + Storage | pets INSERT + Storage 이미지 (최대 10개) + 4마리 제한 체크 | 쉬움 |
 | 13 | set_animal_update.php | 자동 API + Storage | pets UPDATE + Storage 이미지 교체 | 쉬움 |
 | 14 | set_animal_delete.php | 자동 API | pets UPDATE (soft delete: deleted=true) | 쉬움 |
@@ -343,7 +408,7 @@
 |---|---------|------|--------------|--------|
 | 35 | set_care_request.php | 자동 API | reservations UPDATE (status='completed') | 쉬움 |
 | 36 | set_care_complete.php | Edge Function | reservations UPDATE + chat_messages INSERT (care_end, review) + Realtime + FCM | 상 |
-| 37 | set_care_review.php | 자동 API | reservations UPDATE (is_review_written=true) | 쉬움 |
+| 37 | set_care_review.php | 자동 API | guardian_reviews/kindergarten_reviews INSERT (후기 작성) | 쉬움 |
 
 ### 5-7. 정산 (5개)
 
@@ -362,18 +427,18 @@
 | 43 | get_review.php | RPC | guardian_reviews/kindergarten_reviews SELECT + 태그 집계 (JSON 배열 파싱) + pets JOIN + kindergartens JOIN | 중 |
 | 44 | get_review_string.php | 자동 API | (리뷰 문구 마스터) → 별도 테이블 or 앱 내장 | 쉬움 |
 | 45 | set_review.php | 자동 API + Storage | reviews INSERT (type, tags JSON, images) + Storage 이미지 | 쉬움 |
-| 46 | set_care_review.php | (5-6에서 처리) | reservations UPDATE (is_review_written) | 쉬움 |
+| 46 | set_care_review.php | (5-6에서 처리) | guardian_reviews/kindergarten_reviews 존재 여부로 판단 | 쉬움 |
 
 ### 5-9. 즐겨찾기 (6개)
 
 | # | PHP API | 방식 | Supabase 대응 | 난이도 |
 |---|---------|------|--------------|--------|
-| 47 | set_animal_favorite_add.php | 자동 API | favorite_animals UPSERT (is_favorite='Y') — 유치원이 반려동물 찜 | 쉬움 |
-| 48 | set_animal_favorite_remove.php | 자동 API | favorite_animals UPDATE (is_favorite='N') | 쉬움 |
-| 49 | set_partner_favorite_add.php | 자동 API | favorite_partners UPSERT (is_favorite='Y') | 쉬움 |
-| 50 | set_partner_favorite_remove.php | 자동 API | favorite_partners UPDATE (is_favorite='N') | 쉬움 |
-| 51 | set_user_favorite_add.php | 자동 API | favorite_animals UPSERT — 보호자가 반려동물 찜 | 쉬움 |
-| 52 | set_user_favorite_remove.php | 자동 API | favorite_animals UPDATE (is_favorite='N') | 쉬움 |
+| 47 | set_animal_favorite_add.php | 자동 API | favorite_pets UPSERT (is_favorite='Y') — 유치원이 반려동물 찜 | 쉬움 |
+| 48 | set_animal_favorite_remove.php | 자동 API | favorite_pets UPDATE (is_favorite='N') | 쉬움 |
+| 49 | set_partner_favorite_add.php | 자동 API | favorite_kindergartens UPSERT (is_favorite='Y') | 쉬움 |
+| 50 | set_partner_favorite_remove.php | 자동 API | favorite_kindergartens UPDATE (is_favorite='N') | 쉬움 |
+| 51 | set_user_favorite_add.php | 자동 API | favorite_pets UPSERT — 보호자가 반려동물 찜 | 쉬움 |
+| 52 | set_user_favorite_remove.php | 자동 API | favorite_pets UPDATE (is_favorite='N') | 쉬움 |
 
 ### 5-10. 알림/FCM (5개)
 
@@ -382,7 +447,7 @@
 | 53 | fcm_token.php | 자동 API | fcm_tokens UPSERT (mb_id + token 중복 체크) | 쉬움 |
 | 54 | get_notification.php | 자동 API | notifications SELECT WHERE member_id=? ORDER BY created_at DESC | 쉬움 |
 | 55 | delete_notification.php | 자동 API | notifications DELETE (전체 or 단건) | 쉬움 |
-| 56 | get_notify_setting.php | 자동 API | members SELECT (chat_notify, reserve_notify 등 5개 컬럼) | 쉬움 |
+| 56 | get_notify_setting.php | 자동 API | members SELECT (chat_notify, reservation_notify, checkinout_notify, review_notify, new_kindergarten_notify) | 쉬움 |
 | 57 | set_notify_setting_update.php | 자동 API | members UPDATE (5개 알림 설정 컬럼) | 쉬움 |
 
 ### 5-11. 콘텐츠/기타 조회 (8개)
@@ -394,7 +459,7 @@
 | 60 | get_notice_detail.php | 자동 API | notices SELECT WHERE id=? | 쉬움 |
 | 61 | get_faq.php | 자동 API | faqs SELECT (검색, 페이징) | 쉬움 |
 | 62 | get_policy.php | 자동 API | terms SELECT (카테고리 필터) | 쉬움 |
-| 63 | get_guide.php | 자동 API | chat_guides SELECT (가이드) | 쉬움 |
+| 63 | get_guide.php | 자동 API | chat_templates SELECT WHERE type='guide' (가이드) | 쉬움 |
 | 64 | get_kakaolink.php | 자동 API | (카카오링크 마스터) → app_settings or 앱 내장 | 쉬움 |
 | 65 | get_bank_list.php | 자동 API | banks SELECT WHERE use_yn=true ORDER BY sort_order | 쉬움 |
 
@@ -402,11 +467,11 @@
 
 | # | PHP API | 방식 | Supabase 대응 | 난이도 |
 |---|---------|------|--------------|--------|
-| 66 | set_block_user.php | 자동 API | block_users INSERT/DELETE (토글) | 쉬움 |
-| 67 | set_block_user_add.php | 자동 API | block_users UPSERT (is_blocked='Y') | 쉬움 |
-| 68 | set_block_user_remove.php | 자동 API | block_users UPDATE (is_blocked='N') | 쉬움 |
-| 69 | get_block_user.php | 자동 API | block_users SELECT (차단 mb_id 목록) | 쉬움 |
-| 70 | get_blocked_list.php | 자동 API | block_users SELECT + members JOIN (차단 상세) | 쉬움 |
+| 66 | set_block_user.php | 자동 API | member_blocks INSERT/DELETE (토글) | 쉬움 |
+| 67 | set_block_user_add.php | 자동 API | member_blocks INSERT (blocker_id, blocked_id) | 쉬움 |
+| 68 | set_block_user_remove.php | 자동 API | member_blocks UPDATE (unblocked_at=NOW()) | 쉬움 |
+| 69 | get_block_user.php | 자동 API | member_blocks SELECT (차단 목록) | 쉬움 |
+| 70 | get_blocked_list.php | 자동 API | member_blocks SELECT + members JOIN (차단 상세) | 쉬움 |
 
 ### 5-13. 기타 (7개)
 
@@ -418,12 +483,12 @@
 | 74 | get_setting.php | 자동 API | members SELECT (language, app_version) + app_settings SELECT | 쉬움 |
 | 75 | set_suggest_insert.php | 자동 API | feedbacks INSERT | 쉬움 |
 | 76 | get_main_partner.php | RPC | kindergartens SELECT 전체 + members JOIN (메인 화면 목록) | 중 |
-| 77 | get_message_template.php | 자동 API | message_templates SELECT WHERE member_id=? | 쉬움 |
-| 78 | set_message_template.php | 자동 API | message_templates INSERT | 쉬움 |
+| 77 | get_message_template.php | 자동 API | chat_templates SELECT WHERE member_id=? AND type='custom' | 쉬움 |
+| 78 | set_message_template.php | 자동 API | chat_templates INSERT (type='custom') | 쉬움 |
 | 79 | get_partner_status.php | RPC | members + kindergartens LEFT JOIN (파트너 상태 요약) | 쉬움 |
 | 80 | get_partner_by_phone.php | RPC | members + kindergartens + pets JOIN (번호로 조회) | 쉬움 |
-| 81 | get_favorite_animal_list.php | 자동 API | favorite_animals SELECT + pets JOIN (유치원이 찜한 반려동물) | 쉬움 |
-| 82 | get_favorite_partner_list.php | 자동 API | favorite_partners SELECT + kindergartens JOIN (보호자가 찜한 유치원) | 쉬움 |
+| 81 | get_favorite_animal_list.php | 자동 API | favorite_pets SELECT + pets JOIN (유치원이 찞한 반려동물) | 쉬움 |
+| 82 | get_favorite_partner_list.php | 자동 API | favorite_kindergartens SELECT + kindergartens JOIN (보호자가 찞한 유치원) | 쉬움 |
 | 83 | scheduler.php | Edge Function | reservations 일괄 상태 변경 + FCM + Realtime (cron) | 상 |
 | 84 | buildings.php | Edge Function | 네이버 역지오코딩 + apt_buildings DB 조회 | 중 |
 | 85 | get_address.php | Edge Function | 행안부 주소 API 프록시 | 쉬움 |
@@ -449,31 +514,29 @@
 
 ## 6. 스키마 보강 목록 ✅ 완료
 
-### 6-1. 신규 테이블 SQL (12개)
+### 6-1. 신규 테이블 SQL (9개)
+
+> 검토 결과 삭제: ~~block_users~~ (→ member_blocks 존재), ~~payment_request_rooms~~ (→ chat_room_reservations 존재), ~~address_verifications~~ (→ members.address_doc_urls)
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
 | sql/41_app_fcm_tokens.sql | fcm_tokens 테이블 (member_id, token, created_at) | ⬜ 작성 필요 |
 | sql/41_app_notifications.sql | notifications 테이블 (member_id, title, content, created_at) | ⬜ 작성 필요 |
-| sql/41_app_animal_kinds.sql | animal_kinds 테이블 (id, name) + MariaDB 데이터 이관 | ⬜ 작성 필요 |
+| sql/41_app_pet_breeds.sql | pet_breeds 테이블 (id, type, name) + MariaDB 데이터 이관 | ⬜ 작성 필요 |
 | sql/41_app_banks.sql | banks 테이블 (code, name, use_yn, sort_order) + 데이터 이관 | ⬜ 작성 필요 |
-| sql/41_app_block_users.sql | block_users 테이블 (member_id, blocked_member_id, is_blocked, timestamps) | ⬜ 작성 필요 |
-| sql/41_app_favorite_partners.sql | favorite_partners 테이블 (protector_id, partner_id, is_favorite, timestamps) | ⬜ 작성 필요 |
-| sql/41_app_favorite_animals.sql | favorite_animals 테이블 (member_id, pet_id, is_favorite, timestamps) | ⬜ 작성 필요 |
-| sql/41_app_message_templates.sql | message_templates 테이블 (member_id, template, timestamps, deleted_at) | ⬜ 작성 필요 |
+| sql/41_app_favorite_kindergartens.sql | favorite_kindergartens 테이블 (member_id, kindergarten_id, is_favorite, timestamps) | ⬜ 작성 필요 |
+| sql/41_app_favorite_pets.sql | favorite_pets 테이블 (member_id, pet_id, is_favorite, timestamps) | ⬜ 작성 필요 |
+| sql/41_app_chat_templates.sql | chat_templates 테이블 (type, member_id, title, content, timestamps) — 상용문구+가이드 통합 | ⬜ 작성 필요 |
 | sql/41_app_chat_room_members.sql | chat_room_members 테이블 (room_id, member_id, role, last_read_message_id, is_muted) | ⬜ 작성 필요 |
-| ~~sql/41_app_address_verifications.sql~~ | ~~address_verifications~~ | ❌ 제거: members.address_doc_urls로 대체 |
-| sql/41_app_payment_request_rooms.sql | payment_request_rooms 테이블 (reservation_id, chat_room_id) | ⬜ 작성 필요 |
 | sql/41_app_scheduler_history.sql | scheduler_history 테이블 (started_at, finished_at) | ⬜ 작성 필요 |
-| sql/41_app_chat_guides.sql | chat_guides 테이블 (type, title, content) | ⬜ 작성 필요 |
 
 ### 6-2. 기존 테이블 변경 SQL
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
-| sql/42_members_add_app_columns.sql | members에 알림 설정 5개 + language + app_version 컬럼 추가 | ⬜ 작성 필요 |
-| sql/42_reservations_add_scheduler_columns.sql | reservations에 reminder_*_sent_at, care_*_sent_at 4개 컬럼 추가 | ⬜ 작성 필요 |
-| sql/42_kindergartens_add_registration_columns.sql | kindergartens에 settlement_ready, business_status, freshness 등 추가 | ⬜ 작성 필요 |
+| sql/42_members_add_app_columns.sql | members에 11개 컬럼 추가 (latitude, longitude, language, app_version, chat_notify, reservation_notify, checkinout_notify, review_notify, new_kindergarten_notify, address_direct, address_doc_urls) | ⬜ 작성 필요 |
+| sql/42_reservations_add_scheduler_columns.sql | reservations에 4개 컬럼 추가 (reminder_start_sent_at, reminder_end_sent_at, care_start_sent_at, care_end_sent_at) | ⬜ 작성 필요 |
+| sql/42_kindergartens_add_columns.sql | kindergartens에 3개 컬럼 추가 (latitude, longitude, registration_status) | ⬜ 작성 필요 |
 | sql/42_pets_add_legacy_columns.sql | pets에 wr_1~wr_11 매핑 확인 (이미 있는 컬럼과 대조) | ⬜ 확인 필요 |
 
 ### 6-3. 앱 사용자용 RLS 정책
@@ -536,7 +599,7 @@
   1. reservations INSERT (status='pending')
   2. payments 연결 (payment_approval_id)
   3. room_id 없으면 채팅방 자동 생성 (create_room 로직 재현)
-  4. payment_request_rooms INSERT
+  4. chat_room_reservations INSERT
   5. chat_messages INSERT (message_type='payment_request')
   6. Realtime 브로드캐스트
   7. 상대방 FCM 푸시
@@ -611,5 +674,6 @@
 | 날짜 | 내용 |
 |------|------|
 | 2026-04-11 | 최초 작성 — 프로젝트 개요, 수집 자료 현황, 작업 단계 설계, 테이블·API 매핑 프레임워크 |
-| 2026-04-11 | **Step 1 전수 분석 완료** — PHP API 95개 전부 읽기 완료, 테이블 매핑표 확정 (24기존+13신규), API 전환 매핑 85개 확정, Edge Functions 8개 상세 설계, 스키마 보강 목록 확정 |
+| 2026-04-11 | **Step 1 전수 분석 완료** — PHP API 95개 전부 읽기 완료, 테이블 매핑표 확정, API 전환 매핑 85개 확정, Edge Functions 8개 상세 설계 |
+| 2026-04-13 | **테이블·컬럼명 전수 교정** — 실제 Supabase DB와 대조하여 85개 불일치 수정: 신규 테이블 12→09개 (이름변경 4, 삭제 3), 컬럼명 오류 15개 수정, 불필요 매핑 8개 제거, 누락 컬럼 49개 보완, 신규 추가 컬럼 18개 확정 (members 11 + kindergartens 3 + reservations 4) |
 | 2026-04-11 | **Step 1 검토 반영** — address_verifications 테이블 제거 (members.address_doc_urls로 대체) → 신규 테이블 13→12개, DB_MAPPING_REFERENCE.md 전체 대조표 별도 작성 |
