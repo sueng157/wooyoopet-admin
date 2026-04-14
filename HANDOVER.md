@@ -1113,7 +1113,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거) |
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
 | 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
-| 5-6e | Supabase Secrets 등록 | ✅ 완료 | 3개 등록 (KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON). 추가 5개는 Step 4 때 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
+| 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-7 | 앱 API 전환 가이드 작성 | ⬜ 예정 | 62개 API별 전환 지침서 (외주 개발자용) |
 | 5-8 | Edge Functions 구현 | ⬜ 예정 | 결제 콜백, FCM 푸시, 알림톡, 스케줄러 |
 | 5-9 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
