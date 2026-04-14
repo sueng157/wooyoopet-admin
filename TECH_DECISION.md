@@ -45,7 +45,10 @@
 | **파일 저장** | 서버 로컬 | **Supabase Storage** | 무료 플랜: 1GB |
 | **채팅** | 카페24 서버 | **Supabase Realtime** | 카페24 서버 대체 |
 
-> **Supabase Storage 사용 현황**: 교육관리 이미지 → `education-images` 버킷 (상단 이미지 `top-images/`, 퀴즈 이미지 `quiz-images/`). 콘텐츠관리 배너 이미지 → `banner-images` 버킷 (PR #104). 공지사항 첨부파일 → `notice-attachments` 버킷 (public, PR #107, `notices/` 경로, PDF·DOC·DOCX·HWP·JPG·JPEG·PNG, 최대 10개/10MB). Storage RLS 정책은 관리자(is_admin) 전용으로 설정.
+> **Supabase Storage 사용 현황 (9개 버킷)**:
+> - **관리자 전용**: `education-images` (admin 전용 insert/delete, PR #123에서 public→admin 변경), `banner-images` (PR #104), `notice-attachments` (public, PR #107, PDF·DOC·DOCX·HWP·JPG·JPEG·PNG, 최대 10개/10MB)
+> - **앱+관리자 공용 (PR #123)**: `profile-images` (public), `pet-images` (public), `kindergarten-images` (public), `review-images` (public), `chat-files` (private), `address-docs` (private)
+> - Storage RLS 정책: 관리자(is_admin) + 앱 사용자(auth.uid() 기반) 분리 적용. 앱 정책 20개 (sql/43_02).
 | **관리자 페이지 호스팅** | 스마일서브 | **Cloudflare Pages** | ✅ 배포 완료 (`admin.wooyoopet.com`) |
 | **도메인** | 스마일서브 (연 ₩18,000) | 스마일서브 유지 (Phase 6에서 Cloudflare 이전 예정) | 서브도메인 CNAME만 추가 |
 | **DNS/보안** | 스마일서브 | **Cloudflare** | DDoS 보호 무료 포함 |
@@ -339,8 +342,9 @@
 
 | 순서 | 작업 | 설명 | 완료 조건 |
 |------|------|------|----------|
-| 5-1 | 앱 소스코드 수령 | 기존 개발자에게 최신 React Native 소스코드 수령 | 로컬에서 빌드·실행 가능 |
-| 5-2 | API 호출부 분석 | 기존 PHP API 엔드포인트 매핑 | 전체 API 목록 + 요청/응답 형식 정리 |
+| 5-1 | 앱 소스코드 수령 | 기존 개발자에게 최신 React Native 소스코드 수령 | ✅ 로컬에서 빌드·실행 가능 |
+| 5-2 | API 호출부 분석 | 기존 PHP API 엔드포인트 매핑 | ✅ 전체 API 목록 + 요청/응답 형식 정리 |
+| 5-2a | Supabase 스키마 보강 | 신규 테이블 9개 + 컬럼 추가 + RLS + Storage | ✅ SQL 17개 파일 실행 완료 (PR #123) |
 | 5-3 | Supabase API로 교체 | PHP API 호출 → Supabase 자동 API 호출로 변경 | 앱에서 Supabase DB 데이터 조회 가능 |
 | 5-4 | 인증 교체 | 기존 인증 → Supabase Auth | 앱 로그인이 Supabase Auth로 동작 |
 | 5-5 | 채팅 교체 | 카페24 채팅 → Supabase Realtime | 앱 채팅이 Supabase Realtime으로 동작 |

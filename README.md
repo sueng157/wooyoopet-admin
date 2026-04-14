@@ -3,6 +3,7 @@
 반려동물 돌봄 플랫폼 **우유펫**의 관리자 백오피스 대시보드입니다.  
 소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. Supabase DB를 공유하며, 모바일 앱과의 연동은 Phase 5에서 진행 예정입니다.  
 **백엔드 구축 Phase 1~3 완료** (DB 스키마·인증·API 연결), **DB 연결 보완 및 UI 개선 완료** (PR #59~#112). 설정·대시보드는 모바일앱 백엔드 연결 후 후속진행 예정.  
+**Phase 5 Step 1~2 완료** — 전수 분석·매핑 설계 (PR #118~#121) + Supabase 스키마 보강: 신규 테이블 9개, 컬럼 추가 6개(19컬럼), 앱 RLS 79개, Storage 버킷 6개·정책 20개, SQL 17파일 실행 완료 (PR #123).  
 총 **HTML 43개**, **CSS 15개** (common + components + 메뉴별 12개 + login), **JS 17개** (공통 5개 + 페이지전용 12개, 총 13,068줄).  
 **CSS 리팩터링 Phase 1~6 전체 완료** — 7색 배지 시스템, 공통 컴포넌트 통합, 색상 변수 체계 확립 (총 3,430줄).  
 **UI 일관성 통일 완료** — 다운로드 버튼·테이블 링크/헤더 "상세" 통일, 상세 페이지 breadcrumb(`대메뉴 › 탭 › 상세`) + 뒤로가기(`← 탭이름 목록으로`) 전면 통일 (PR #37).  
@@ -130,7 +131,18 @@ webapp/
 ├── CSS_REFACTORING_PLAN.md    # CSS 리팩터링 계획서 (Phase 1~6 전체 완료)
 ├── HANDOVER.md                # 개발 인수인계서 (CSS/JS 구조, 규칙, 작업 프로세스)
 ├── TECH_DECISION.md           # 기술 의사결정 문서 (Phase 1~6 로드맵)
-├── sql/                       # SQL 스크립트 (스키마 조회, 테스트 데이터, Auth 설정)
+├── sql/                       # SQL 스크립트
+│   ├── 00_schema_query.sql      # 스키마 조회
+│   ├── 10_test_data.sql         # 테스트 데이터 (PR #48)
+│   ├── 11~12_*.sql              # Auth 설정, Phase 3 RPC
+│   ├── 13~38_*.sql              # 메뉴별 RPC·트리거·스키마 변경
+│   ├── 40_faq_reorder_functions.sql  # FAQ 순서 관리 RPC
+│   ├── 41_01~41_09_app_*.sql    # [Phase 5] 신규 테이블 9개
+│   ├── 42_01~42_06_*.sql        # [Phase 5] 기존 테이블 컬럼 추가 6개
+│   └── 43_01~43_02_app_*.sql    # [Phase 5] 앱 RLS 79개 + Storage 버킷 6개
+├── MIGRATION_PLAN.md            # 모바일 앱 마이그레이션 설계서 (Phase 5)
+├── DB_MAPPING_REFERENCE.md      # MariaDB↔Supabase 전체 매핑 대조표
+├── MOBILE_APP_ANALYSIS.md       # 모바일 앱 소스 분석 보고서
 └── README.md
 ```
 
@@ -214,6 +226,11 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
    - ⬜ 설정, 대시보드: 모바일앱 백엔드 연결 후 후속진행 예정
 
 ### 다음 단계
-8. **Phase 4: 관리자 페이지 배포** ✅ — Cloudflare Pages + `admin.wooyoopet.com` 서브도메인 연결 완료
-9. **Phase 5: 모바일 앱 백엔드 전환** — React Native 앱 Supabase 연동
+8. **Phase 4: 관리자 페이지 배포** ✅ — Cloudflare Pages + `admin.wooyoopet.com` 서브도메인 연결 완료 (PR #114~#116)
+9. **Phase 5: 모바일 앱 백엔드 전환** — 진행중
+   - ✅ Step 1: 전수 분석 & 매핑 설계 (PR #118~#121) — PHP API 95개 전수 읽기, DB 매핑 24기존+9신규, API 전환 62개, Edge Functions 8개
+   - ✅ Step 2: Supabase 스키마 보강 (PR #123) — 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개 (SQL 17파일)
+   - ⬜ Step 3: 앱 API 전환 가이드 (62개 API별 전환 지침서)
+   - ⬜ Step 4: Edge Functions 구현 (결제·푸시·알림톡·스케줄러)
+   - ⬜ Step 5: 통합 테스트
 10. **Phase 6: 기존 서버 해지** — 카페24·스마일서브 해지

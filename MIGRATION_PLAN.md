@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-13 (Step 1 전수 분석 완료 + 테이블·컬럼명 전수 교정 + 매니저 검토 반영)
+> 최종 업데이트: 2026-04-14 (Step 2 Supabase 스키마 보강 완료 — 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석)
 
@@ -90,16 +90,16 @@
 | 1-5 | 누락 테이블·컬럼 식별 | ✅ 완료 | 섹션 6 (스키마 보강 목록 — 9개 신규 테이블) |
 | 1-6 | Edge Functions 설계 | ✅ 완료 | 섹션 7 (Edge Functions 8개 상세 설계) |
 
-### Step 2: Supabase 스키마 보강
+### Step 2: Supabase 스키마 보강 ✅ 완료
 
 **목표**: 모바일 앱이 사용할 수 있도록 Supabase에 누락된 테이블/컬럼을 추가하고, 앱 사용자용 RLS를 설정한다.
 
 | # | 세부 작업 | 상태 | 산출물 |
 |---|----------|------|--------|
-| 2-1 | 누락 테이블 추가 SQL | ⬜ 예정 | sql/41_migration_*.sql |
-| 2-2 | 기존 테이블 컬럼 추가/변경 SQL | ⬜ 예정 | sql/42_migration_*.sql |
-| 2-3 | 앱 사용자용 RLS 정책 설계 | ⬜ 예정 | sql/43_app_rls_*.sql |
-| 2-4 | 사장님이 Supabase에서 SQL 실행 | ⬜ 예정 | — |
+| 2-1 | 누락 테이블 추가 SQL (9개) | ✅ 완료 | sql/41_01~41_09 (Supabase 실행 완료) |
+| 2-2 | 기존 테이블 컬럼 추가/변경 SQL (6개) | ✅ 완료 | sql/42_01~42_06 (Supabase 실행 완료) |
+| 2-3 | 앱 사용자용 RLS + Storage 정책 | ✅ 완료 | sql/43_01 (RLS 79개) + sql/43_02 (Storage 버킷 6개 + 정책 20개) |
+| 2-4 | 사장님이 Supabase에서 SQL 실행 | ✅ 완료 | 17개 파일 전체 실행 확인 (PR #123) |
 
 ### Step 3: 앱 API 전환 가이드 작성
 
@@ -241,11 +241,11 @@
 | mb_10 | longitude | numeric | 🆕 추가 | 경도 |
 | mb_language | language | text | 🆕 추가 | 앱 언어 (기본값 '한국어') |
 | mb_app_version | app_version | text | 🆕 추가 | 앱 버전 (강제 업데이트 체크) |
-| chat_notify | chat_notify | text | 🆕 추가 | 채팅 알림 ON/OFF (Y/N) |
-| reserve_notify | reservation_notify | text | 🆕 추가 | 예약 알림 ON/OFF |
-| attendance_notify | checkinout_notify | text | 🆕 추가 | 등하원 알림 ON/OFF |
-| review_notify | review_notify | text | 🆕 추가 | 후기 알림 ON/OFF |
-| new_kinder_notify | new_kindergarten_notify | text | 🆕 추가 | 신규 유치원 알림 ON/OFF |
+| chat_notify | chat_notify | boolean | 🆕 추가 | 채팅 알림 DEFAULT true |
+| reserve_notify | reservation_notify | boolean | 🆕 추가 | 예약 알림 DEFAULT true |
+| attendance_notify | checkinout_notify | boolean | 🆕 추가 | 등하원 알림 DEFAULT true |
+| review_notify | review_notify | boolean | 🆕 추가 | 후기 알림 DEFAULT true |
+| new_kinder_notify | new_kindergarten_notify | boolean | 🆕 추가 | 신규 유치원 알림 DEFAULT true |
 | direct | address_direct | text | 🆕 추가 | 직접입력 주소 |
 | — | address_doc_urls | text[] | ✅ 존재 | 주소 인증 서류 이미지 URL |
 
@@ -533,32 +533,33 @@
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
-| sql/41_app_fcm_tokens.sql | fcm_tokens 테이블 (member_id, token, created_at) | ⬜ 작성 필요 |
-| sql/41_app_notifications.sql | notifications 테이블 (member_id, title, content, created_at) | ⬜ 작성 필요 |
-| sql/41_app_pet_breeds.sql | pet_breeds 테이블 (id, type, name) + MariaDB 데이터 이관 | ⬜ 작성 필요 |
-| sql/41_app_banks.sql | banks 테이블 (code, name, use_yn, sort_order) + 데이터 이관 | ⬜ 작성 필요 |
-| sql/41_app_favorite_kindergartens.sql | favorite_kindergartens 테이블 (member_id, kindergarten_id, is_favorite, timestamps) | ⬜ 작성 필요 |
-| sql/41_app_favorite_pets.sql | favorite_pets 테이블 (member_id, pet_id, is_favorite, timestamps) | ⬜ 작성 필요 |
-| sql/41_app_chat_templates.sql | chat_templates 테이블 (type, member_id, title, content, timestamps) — 상용문구+가이드 통합 | ⬜ 작성 필요 |
-| sql/41_app_chat_room_members.sql | chat_room_members 테이블 (room_id, member_id, role, last_read_message_id, is_muted) | ⬜ 작성 필요 |
-| sql/41_app_scheduler_history.sql | scheduler_history 테이블 (started_at, finished_at) | ⬜ 작성 필요 |
+| sql/41_01_app_fcm_tokens.sql | fcm_tokens 테이블 (member_id, device_id, token, platform) | ✅ 실행 완료 |
+| sql/41_02_app_notifications.sql | notifications 테이블 (member_id, type, title, content) | ✅ 실행 완료 |
+| sql/41_03_app_pet_breeds.sql | pet_breeds 테이블 (type, name) + 초기 데이터 72건 | ✅ 실행 완료 |
+| sql/41_04_app_banks.sql | banks 테이블 (code, name, is_active, sort_order) + 초기 데이터 24건 | ✅ 실행 완료 |
+| sql/41_05_app_favorite_kindergartens.sql | favorite_kindergartens 테이블 (member_id, kindergarten_id) | ✅ 실행 완료 |
+| sql/41_06_app_favorite_pets.sql | favorite_pets 테이블 (member_id, pet_id) | ✅ 실행 완료 |
+| sql/41_07_app_chat_templates.sql | chat_templates 테이블 (type, member_id, title, content) — 상용문구+가이드 통합 | ✅ 실행 완료 |
+| sql/41_08_app_chat_room_members.sql | chat_room_members 테이블 (room_id, member_id, role, last_read_message_id, is_muted) | ✅ 실행 완료 |
+| sql/41_09_app_scheduler_history.sql | scheduler_history 테이블 (started_at, finished_at, status) | ✅ 실행 완료 |
 
 ### 6-2. 기존 테이블 변경 SQL
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
-| sql/42_members_add_app_columns.sql | members에 10개 컬럼 추가 (latitude, longitude, language, app_version, chat_notify, reservation_notify, checkinout_notify, review_notify, new_kindergarten_notify, address_direct) — address_doc_urls는 이미 존재 | ⬜ 작성 필요 |
-| sql/42_reservations_add_scheduler_columns.sql | reservations에 4개 컬럼 추가 (reminder_start_sent_at, reminder_end_sent_at, care_start_sent_at, care_end_sent_at) | ⬜ 작성 필요 |
-| sql/42_kindergartens_add_columns.sql | kindergartens에 3개 컬럼 추가 (latitude, longitude, registration_status) | ⬜ 작성 필요 |
-| sql/42_pets_add_legacy_columns.sql | pets에 wr_1~wr_11 매핑 확인 (이미 있는 컬럼과 대조) | ⬜ 확인 필요 |
-| sql/42_address_doc_urls_sync_trigger.sql | members ↔ kindergartens address_doc_urls 동기화 트리거 (members.address_doc_urls 변경 시 해당 회원의 kindergartens.address_doc_urls 자동 동기화) | ⬜ 작성 필요 |
+| sql/42_01_members_add_app_columns.sql | members에 10개 컬럼 추가 (latitude, longitude, language, app_version, chat_notify, reservation_notify, checkinout_notify, review_notify, new_kindergarten_notify, address_direct) — 알림 5개는 boolean DEFAULT true | ✅ 실행 완료 |
+| sql/42_02_kindergartens_add_columns.sql | kindergartens에 3개 컬럼 추가 (latitude, longitude, registration_status) | ✅ 실행 완료 |
+| sql/42_03_reservations_add_scheduler_columns.sql | reservations에 4개 컬럼 추가 (reminder_start_sent_at, reminder_end_sent_at, care_start_sent_at, care_end_sent_at) + 4개 partial index | ✅ 실행 완료 |
+| sql/42_04_pets_verify_columns.sql | pets wr_1~wr_11 매핑 검증 (DDL 변경 없음, 14개 컬럼 확인) | ✅ 실행 완료 |
+| sql/42_05_address_doc_urls_sync_trigger.sql | members → kindergartens address_doc_urls 동기화 트리거 + 일괄 동기화 | ✅ 실행 완료 |
+| sql/42_06_pets_add_draft_birth_columns.sql | pets에 2개 컬럼 추가 (is_birth_date_unknown, is_draft) + idx_pets_draft 인덱스 | ✅ 실행 완료 |
 
 ### 6-3. 앱 사용자용 RLS 정책
 
 | SQL 파일 | 내용 | 상태 |
 |---------|------|------|
-| sql/43_app_rls_policies.sql | 인증된 앱 사용자(authenticated)용 RLS: 본인 데이터만 읽기/쓰기, 공개 데이터(배너/공지 등) 전체 읽기 | ⬜ 작성 필요 |
-| sql/43_app_storage_policies.sql | Storage RLS: 프로필/반려동물/유치원/채팅/리뷰/주소인증 버킷별 정책 | ⬜ 작성 필요 |
+| sql/43_01_app_rls_policies.sql | 앱 사용자 RLS 79개 정책 (39테이블, 661줄): owner CRUD 12, read/update 8, public-select 13, subquery 5, admin-only 8개 제외. auth.uid() 직접 사용 | ✅ 실행 완료 |
+| sql/43_02_app_storage_policies.sql | Storage 버킷 6개 생성 (profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs) + 정책 20개 + education-images admin 전용 전환 (318줄) | ✅ 실행 완료 |
 
 ---
 
@@ -694,3 +695,4 @@
 | 2026-04-11 | **Step 1 검토 반영** — address_verifications 테이블 제거 (members.address_doc_urls로 대체) → 신규 테이블 13→12개, DB_MAPPING_REFERENCE.md 전체 대조표 별도 작성 |
 | 2026-04-13 | **테이블·컬럼명 전수 교정** — 실제 Supabase DB와 대조하여 85개 불일치 수정: 신규 테이블 12→09개 (이름변경 4, 삭제 3), 컬럼명 오류 15개 수정, 불필요 매핑 8개 제거, 누락 컬럼 49개 보완, 신규 추가 컬럼 18개 확정 (members 11 + kindergartens 3 + reservations 4) |
 | 2026-04-13 | **매니저 검토 반영** — 실제 DB 대조 후 누락 컬럼 추가 (reservations 3개, payments 1개, kindergartens 1개, chat_messages 1개), members.address_doc_urls 상태 ✅ 존재로 변경 (신규 추가 18→17개), 섹션 번호 수량 오류 4건 수정, set_care_review.php 중복 제거, 오탈자 교정, 변경 이력 날짜순 정렬, address_doc_urls 동기화 트리거 작업 추가 |
+| 2026-04-14 | **Step 2 Supabase 스키마 보강 완료** — 신규 테이블 9개(sql/41_01~41_09) 생성, 기존 테이블 컬럼 추가 6개(sql/42_01~42_06), 앱 사용자 RLS 79개(sql/43_01, 39테이블), Storage 버킷 6개 + 정책 20개(sql/43_02) 작성·실행 완료. members 알림 컬럼 text→boolean DEFAULT true 변경, education-images 정책 admin 전용 전환, pets 테이블에 is_birth_date_unknown/is_draft 2개 컬럼 추가(14→16), DB_MAPPING_REFERENCE.md wr_1~wr_11 매핑 확정 (PR #123) |

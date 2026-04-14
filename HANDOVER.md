@@ -30,7 +30,8 @@
   - 자료 수집 완료 (PHP API 109파일 + MariaDB 131테이블 + 채팅서버)
   - 전수 분석 & 마이그레이션 설계 완료 → MIGRATION_PLAN.md (Step 1 완료)
   - 교차 검증 완료 → DB_MAPPING_REFERENCE.md (PR #118~#121)
-  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 17컬럼 + API 62개 + Edge Functions 8개
+  - Step 2 SQL 실행 완료 → 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개 (PR #123)
+  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 62개 + Edge Functions 8개
   ↓
 [예정] Phase 6: 기존 서버 해지 및 정리
 ```
@@ -41,7 +42,7 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1 완료 + 교차 검증 완료, PR #118~#121)
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~2 완료, PR #118~#123)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
 - **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
@@ -475,6 +476,61 @@ USING (bucket_id = 'notice-attachments');
 - 버전 관리: `term_versions` 테이블에 이력 저장 (version_number, effective_date, end_date, change_reason, content)
 - 첫 공개 시 v1 이력: terms.visibility가 '비공개'→'공개' 전환 시 v1 term_versions 레코드 자동 생성 (effective_date = today)
 - 모달 4개: toggleModal(공개/비공개 전환), saveModal(수정 저장), deleteModal(삭제 확인), versionContentModal(이전 버전 본문 보기, modal--large)
+
+### 5-24. 모바일 앱 Storage 버킷 & RLS (PR #123)
+
+**Phase 5 Step 2에서 추가된 Storage 버킷 6개** (sql/43_02_app_storage_policies.sql):
+
+| 버킷 | Public | 앱 사용자 권한 | 경로 규칙 |
+|------|--------|--------------|----------|
+| `profile-images` | ✅ | owner insert/update/delete, all select | `{member_id}/avatar.jpg` |
+| `pet-images` | ✅ | owner insert/update/delete, all select | `{member_id}/{pet_id}/1.jpg` |
+| `kindergarten-images` | ✅ | owner insert/update/delete, all select | `{member_id}/{kindergarten_id}/1.jpg` |
+| `review-images` | ✅ | author insert/update/delete, all select | `{member_id}/{review_id}/1.jpg` |
+| `chat-files` | ❌ | participants select/insert, admin delete | `{room_id}/{timestamp}_{file}` |
+| `address-docs` | ❌ | owner select/insert/delete | `{member_id}/doc.jpg` |
+
+**기존 버킷 정책 변경**:
+- `education-images`: public insert/delete → **admin 전용** insert/delete (`is_admin()` 체크)
+- `banner-images`, `notice-attachments`: 변경 없음 (관리자 전용 유지)
+
+**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 20개 = 총 **9개 버킷, 20개 앱 정책**
+
+### 5-25. Phase 5 Step 2 SQL 파일 목록 (PR #123)
+
+**Step 2-A: 신규 테이블 9개** (sql/41_01~41_09)
+
+| SQL 파일 | 테이블 | 주요 내용 |
+|---------|--------|----------|
+| `41_01_app_fcm_tokens.sql` | fcm_tokens | FCM 토큰 (member_id, device_id, token, platform) |
+| `41_02_app_notifications.sql` | notifications | 앱 알림 내역 (member_id, type, title, content) |
+| `41_03_app_pet_breeds.sql` | pet_breeds | 견종/묘종 목록 + 초기 데이터 INSERT 72건 |
+| `41_04_app_banks.sql` | banks | 은행 목록 + 초기 데이터 INSERT 24건 |
+| `41_05_app_favorite_kindergartens.sql` | favorite_kindergartens | 유치원 즐겨찾기 (member_id, kindergarten_id) |
+| `41_06_app_favorite_pets.sql` | favorite_pets | 반려동물 즐겨찾기 (member_id, pet_id) |
+| `41_07_app_chat_templates.sql` | chat_templates | 채팅 상용문구 + 가이드 (type: custom/guide_guardian/guide_kindergarten) |
+| `41_08_app_chat_room_members.sql` | chat_room_members | 채팅방 참여자 (room_id, member_id, role, last_read_message_id, is_muted) |
+| `41_09_app_scheduler_history.sql` | scheduler_history | 스케줄러 실행 이력 (started_at, finished_at, status) |
+
+**Step 2-B: 기존 테이블 컬럼 추가 6개** (sql/42_01~42_06)
+
+| SQL 파일 | 대상 테이블 | 추가 컬럼 수 | 주요 내용 |
+|---------|-----------|------------|----------|
+| `42_01_members_add_app_columns.sql` | members | 10개 | latitude, longitude, language, app_version, 5개 알림(boolean DEFAULT true), address_direct |
+| `42_02_kindergartens_add_columns.sql` | kindergartens | 3개 | latitude, longitude, registration_status |
+| `42_03_reservations_add_scheduler_columns.sql` | reservations | 4개 | reminder_start/end_sent_at, care_start/end_sent_at + 4개 partial index |
+| `42_04_pets_verify_columns.sql` | pets | 0개(검증) | 기존 14개 컬럼 매핑 확인, DDL 변경 없음 |
+| `42_05_address_doc_urls_sync_trigger.sql` | members→kindergartens | 트리거 | address_doc_urls 동기화 트리거 + 일괄 동기화 |
+| `42_06_pets_add_draft_birth_columns.sql` | pets | 2개 | is_birth_date_unknown, is_draft + idx_pets_draft 인덱스 |
+
+**Step 2-C: RLS 정책 + Storage** (sql/43_01~43_02)
+
+| SQL 파일 | 줄 수 | 주요 내용 |
+|---------|------|----------|
+| `43_01_app_rls_policies.sql` | 661 | 앱 사용자 RLS 79개 (39테이블: CRUD 12, read/update 8, public-select 13, subquery 5, admin-only 8개 제외) |
+| `43_02_app_storage_policies.sql` | 318 | Storage 버킷 6개 생성 + 정책 20개, education-images 정책 admin 전용 전환 |
+
+> 총 17개 SQL 파일, 약 2,200줄. 전체 Supabase SQL Editor에서 실행 완료.
 
 ### 5-11. 설정(11번 메뉴) 규칙
 
@@ -1053,7 +1109,10 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-3 | 외주 개발자 자료 수령 | ✅ 완료 | PHP API 109파일 + MariaDB 131테이블 + 채팅서버 |
 | 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정, admin.wooyoopet.com |
 | 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+9신규) + API 전환 매핑 62개 + Edge Functions 8개 설계 → MIGRATION_PLAN.md |
-| 5-6 | Supabase 스키마 보강 | ⬜ 예정 | 누락 테이블 추가, 컬럼 보강, 앱 사용자용 RLS → SQL 제공 |
+| 5-6a | Supabase 신규 테이블 9개 추가 | ✅ 완료 | sql/41_01~41_09 (fcm_tokens, notifications, pet_breeds, banks, favorite_kindergartens, favorite_pets, chat_templates, chat_room_members, scheduler_history) |
+| 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거) |
+| 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
+| 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
 | 5-7 | 앱 API 전환 가이드 작성 | ⬜ 예정 | 62개 API별 전환 지침서 (외주 개발자용) |
 | 5-8 | Edge Functions 구현 | ⬜ 예정 | 결제 콜백, FCM 푸시, 알림톡, 스케줄러 |
 | 5-9 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
@@ -1071,6 +1130,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #119 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | DB 매핑 전체 대조표 신규 작성, address_verifications 테이블 제거 (members.address_doc_urls로 대체) |
 | #120 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 테이블·컬럼명 전수 교정 — 실제 Supabase DB와 대조하여 85개 불일치 수정 (테이블명 7개, 컬럼명 15개, 불필요 매핑 8개 삭제, 누락 컬럼 49개 보완, 신규 컬럼 18개 확정), 신규 테이블 12→9개 |
 | #121 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 교차 검증 완료 — 실제 DB 대조 후 누락 컬럼 7건 추가 (reservations 3개, payments 1개, kindergartens 1개, kindergarten_reviews 1개, chat_messages 1개), 신규 컬럼 18→17개 조정 (address_doc_urls 이미 존재), 섹션 수량 오류 수정, 중복 제거, 오탈자 교정, address_doc_urls 동기화 트리거 추가, review image_urls/selected_tags jsonb 타입 교정 |
+| #123 | SQL 17개 파일, DB_MAPPING_REFERENCE | **Step 2 완료** — 신규 테이블 9개(sql/41_01~41_09), 기존 테이블 컬럼 추가 6개(sql/42_01~42_06: members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거), 앱 사용자 RLS 79개(sql/43_01, 39테이블), Storage 버킷 6개 + 정책 20개(sql/43_02), DB_MAPPING_REFERENCE.md wr_1~wr_11 매핑 확정·pets 14→16컬럼 |
 
 ---
 
