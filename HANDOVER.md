@@ -1085,7 +1085,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 ### Phase 5: 모바일 앱 백엔드 전환
 
-> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계), `DB_MAPPING_REFERENCE.md` (DB 전체 매핑 대조표)
+> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계), `DB_MAPPING_REFERENCE.md` (DB 전체 매핑 대조표), `DB_FUNCTIONS.md` (Supabase RPC 함수 목록), `legacy_php_api_all.txt` (PHP API 소스 전문 8,034줄)
 
 #### 수집 자료 현황
 
@@ -1108,20 +1108,22 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-2 | API 호출부 분석 | ✅ 완료 | PHP API 62개 엔드포인트 전수 매핑 |
 | 5-3 | 외주 개발자 자료 수령 | ✅ 완료 | PHP API 109파일 + MariaDB 131테이블 + 채팅서버 |
 | 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정, admin.wooyoopet.com |
-| 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+9신규) + API 전환 매핑 62개 + Edge Functions 8개 설계 → MIGRATION_PLAN.md |
+| 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+9신규) + API 전환 매핑 66개 (전수조사 교정) + Edge Functions 7개 설계 → MIGRATION_PLAN.md |
 | 5-6a | Supabase 신규 테이블 9개 추가 | ✅ 완료 | sql/41_01~41_09 (fcm_tokens, notifications, pet_breeds, banks, favorite_kindergartens, favorite_pets, chat_templates, chat_room_members, scheduler_history) |
 | 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거) |
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
 | 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
-| 5-7 | 앱 API 전환 가이드 작성 | ⬜ 예정 | 62개 API별 전환 지침서 (외주 개발자용) |
-| 5-8 | Edge Functions 구현 | ⬜ 예정 | 결제 콜백, FCM 푸시, 알림톡, 스케줄러 |
-| 5-9 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
-| 5-10 | 채팅 전환 | ⬜ 예정 | 카페24 WebSocket → Supabase Realtime |
-| 5-11 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
-| 5-12 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
+| 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 11개 설계 삽입. Edge Functions 8→7개 교정 (PR #128, #130) |
+| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ⬜ 예정 | sql/44_01~44_11 — 앱용 RPC 함수 11개 (유치원/보호자 조회, 예약, 정산, 리뷰 등) |
+| 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ⬜ 예정 | 66개 API별 전환 지침서 (외주 개발자용), Step 2.5 완료 후 진행 |
+| 5-9 | Edge Functions 구현 (Step 4) | ⬜ 예정 | 7개: inicis-callback, send-chat-message, create-reservation, complete-care, send-alimtalk, send-push, scheduler |
+| 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
+| 5-11 | 채팅 전환 | ⬜ 예정 | 카페24 WebSocket → Supabase Realtime |
+| 5-12 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
+| 5-13 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
 
-> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조
+> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조. 다음 작업(Step 2.5)은 앱용 RPC 함수 11개 SQL 작성 (sql/44_01~44_11).
 
 #### Phase 5 진행 이력
 
@@ -1132,6 +1134,10 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #120 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 테이블·컬럼명 전수 교정 — 실제 Supabase DB와 대조하여 85개 불일치 수정 (테이블명 7개, 컬럼명 15개, 불필요 매핑 8개 삭제, 누락 컬럼 49개 보완, 신규 컬럼 18개 확정), 신규 테이블 12→9개 |
 | #121 | MIGRATION_PLAN, DB_MAPPING_REFERENCE | 교차 검증 완료 — 실제 DB 대조 후 누락 컬럼 7건 추가 (reservations 3개, payments 1개, kindergartens 1개, kindergarten_reviews 1개, chat_messages 1개), 신규 컬럼 18→17개 조정 (address_doc_urls 이미 존재), 섹션 수량 오류 수정, 중복 제거, 오탈자 교정, address_doc_urls 동기화 트리거 추가, review image_urls/selected_tags jsonb 타입 교정 |
 | #123 | SQL 17개 파일, DB_MAPPING_REFERENCE | **Step 2 완료** — 신규 테이블 9개(sql/41_01~41_09), 기존 테이블 컬럼 추가 6개(sql/42_01~42_06: members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거), 앱 사용자 RLS 79개(sql/43_01, 39테이블), Storage 버킷 6개 + 정책 20개(sql/43_02), DB_MAPPING_REFERENCE.md wr_1~wr_11 매핑 확정·pets 14→16컬럼 |
+| #124 | HANDOVER, MIGRATION_PLAN, README, TECH_DECISION | Phase 5 Step 2 완료 반영 — 4개 문서 상태 업데이트 |
+| #125~#126 | MIGRATION_PLAN, HANDOVER | Supabase Secrets 등록 완료 반영 (8개) + 보안 사고 해결 상태 업데이트. ※ main에 잘못 merge → PR#129로 main revert, develop으로 이전 |
+| #128 | MIGRATION_PLAN | **Step 2.5 설계 + API 전수조사 교정** — 앱용 RPC 함수 11개 설계 삽입, API 매핑 85→66개 교정 (미사용 19개 제거, 누락 3개 추가), Edge Functions 8→7개 (address-proxy 삭제, create-reservation 이름변경), Phase A~D 전환 순서 추가 |
+| #130 | MIGRATION_PLAN | PR#129 merge 시 PR#128 변경사항 소실 복구 |
 
 ---
 
