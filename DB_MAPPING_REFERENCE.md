@@ -199,29 +199,32 @@
 
 ---
 
-### 2-3. 반려동물 — g5_write_animal (55컬럼) → pets (14컬럼)
+### 2-3. 반려동물 — g5_write_animal (55컬럼) → pets (16컬럼)
 
-| # | MariaDB 컬럼 | MariaDB 용도 (추정) | Supabase 컬럼 | 상태 | 비고 |
+| # | MariaDB 컬럼 | MariaDB 용도 (확인) | Supabase 컬럼 | 상태 | 비고 |
 |---|-------------|------|--------------|------|------|
 | 1 | wr_id (PK) | ID | id | ✅ 존재 | uuid |
 | 2 | mb_id | 소유자 | member_id (FK) | ✅ 존재 | 폰번호→uuid |
 | 3 | wr_subject | 이름 | name | ✅ 존재 | |
 | 4 | wr_content | 소개 | description | ✅ 존재 | |
-| 5 | wr_1 | 성별 | gender | ✅ 존재 | 수컷/암컷 |
-| 6 | wr_2 | 품종 | breed | ✅ 존재 | |
-| 7 | wr_3 | 종류(분류) | — | ❓ | breed에 통합? 외주 확인 필요 |
-| 8 | wr_4 | 생년월일 | birth_date | ✅ 존재 | date 타입 |
-| 9 | animal_kind_mix | 믹스 여부 | — | ❓ | breed에 포함 or 별도 관리 |
-| 10 | wr_5 | 체중 | weight | ✅ 존재 | numeric |
-| 11 | wr_6 | 중성화 여부 (Y/N) | is_neutered | ✅ 존재 | bool |
-| 12 | wr_7 | 예방접종 여부 | is_vaccinated | ✅ 존재 | bool |
-| 13 | wr_8~wr_11 | — (미상) | — | ❓ | 용도 확인 필요 (외주 개발자) |
-| 14 | firstYN | 대표 동물 | is_representative | ✅ 존재 | bool |
-| 15 | deleteYN | 삭제 여부 | — | — | soft delete 방식 |
-| 16 | animal_img1~10 | 이미지 10개 | photo_urls | ✅ 존재 | text[] 배열 |
-| 17 | — | — | size_class | ✅ 존재 | 소형/중형/대형 (Supabase 신규) |
+| 5 | wr_1 | 이름 (중복) | name | ✅ 존재 | wr_subject와 동일값, 무시 |
+| 6 | wr_2 | 성별 | gender | ✅ 존재 | 수컷/암컷 |
+| 7 | wr_3 | 중성화 여부 | is_neutered | ✅ 존재 | bool |
+| 8 | wr_4 | 품종 | breed | ✅ 존재 | |
+| 9 | wr_5 | 생년월일 | birth_date | ✅ 존재 | date 타입 |
+| 10 | wr_6 | 생일 체크 여부 | is_birth_date_unknown | 🆕 추가 | bool DEFAULT false (sql/42_06) |
+| 11 | wr_7 | 몸무게 | weight | ✅ 존재 | numeric |
+| 12 | wr_8 | 백신 접종 여부 | is_vaccinated | ✅ 존재 | bool |
+| 13 | wr_9 | (미사용) | — | — | 제외 |
+| 14 | wr_10 | 임시저장 여부 | is_draft | 🆕 추가 | bool DEFAULT false (sql/42_06) |
+| 15 | wr_11 | 믹스 체크 여부 | — | — | breed='믹스견'으로 처리, 별도 컬럼 불필요 |
+| 16 | animal_kind_mix | 믹스 여부 | — | — | breed에 포함 (위 wr_11과 동일 역할) |
+| 17 | firstYN | 대표 동물 | is_representative | ✅ 존재 | bool |
+| 18 | deleteYN | 삭제 여부 | — | — | soft delete 방식 |
+| 19 | animal_img1~10 | 이미지 10개 | photo_urls | ✅ 존재 | text[] 배열 |
+| 20 | — | — | size_class | ✅ 존재 | 소형/중형/대형 (트리거 자동 계산) |
 
-**⚠️ 확인 필요: wr_3, wr_8~wr_11의 정확한 용도** → 외주 개발자에게 확인 or 앱 코드에서 역추적
+**✅ 외주 개발자 확인 완료 (2026-04-14)**: wr_1~wr_11 용도 전부 확정. 기존 매핑 순서 전면 교정됨.
 
 ---
 
@@ -442,19 +445,23 @@
 | reservations | kg_checkout_confirmed_at | timestamptz | ✅ 존재 | 유치원 하원 확인 시각 |
 | reservations | auto_complete_scheduled_at | timestamptz | ✅ 존재 | 자동 완료 예정 시각 (스케줄러 Edge Function에서 사용) |
 
-### 3-4. 반려동물 wr_3 ~ wr_11 용도 미확인
+### 3-4. 반려동물 wr_1 ~ wr_11 매핑 — ✅ 확인 완료
 
-g5_write_animal 테이블의 wr_3, wr_8, wr_9, wr_10, wr_11 컬럼의 정확한 용도를 앱 코드 또는 외주 개발자에게 확인 필요.
+외주 개발자 확인 완료 (2026-04-14). 기존 추정이 전면 틀렸으며 아래가 정확한 매핑:
 
-현재 추정:
-- wr_1 = 성별 (수컷/암컷)
-- wr_2 = 품종
-- wr_3 = 종류 (대형/중형/소형?) → size_class와 동일?
-- wr_4 = 생년월일
-- wr_5 = 체중
-- wr_6 = 중성화 (Y/N)
-- wr_7 = 예방접종
-- wr_8~wr_11 = **용도 미확인**
+| MariaDB | 용도 (확정) | Supabase 컬럼 | 상태 |
+|---------|-----------|--------------|------|
+| wr_1 | 이름 | name | ✅ 존재 (wr_subject와 중복) |
+| wr_2 | 성별 | gender | ✅ 존재 |
+| wr_3 | 중성화 여부 | is_neutered | ✅ 존재 |
+| wr_4 | 품종 | breed | ✅ 존재 |
+| wr_5 | 생년월일 | birth_date | ✅ 존재 |
+| wr_6 | 생일 체크 여부 | is_birth_date_unknown | 🆕 추가 (sql/42_06) |
+| wr_7 | 몸무게 | weight | ✅ 존재 |
+| wr_8 | 백신 접종 여부 | is_vaccinated | ✅ 존재 |
+| wr_9 | (미사용) | — | 제외 |
+| wr_10 | 임시저장 여부 | is_draft | 🆕 추가 (sql/42_06) |
+| wr_11 | 믹스 체크 여부 | — | breed='믹스견'으로 처리 |
 
 ---
 
@@ -465,3 +472,4 @@ g5_write_animal 테이블의 wr_3, wr_8, wr_9, wr_10, wr_11 컬럼의 정확한 
 | 2026-04-11 | 최초 작성 — 매니저 검토용 전체 매핑 대조표 |
 | 2026-04-13 | **전수 교정** — 실제 Supabase DB와 대조하여 85개 불일치 수정: 테이블명 7개 교정 (pet_breeds, favorite_kindergartens, favorite_pets, chat_templates 등), 컬럼명 15개 교정 (address_complex, profile_image, checkin_scheduled 등), 불필요 매핑 8개 삭제, 누락 컬럼 49개 보완, 신규 추가 컬럼 18개 확정 |
 | 2026-04-13 | **매니저 검토 반영** — members.address_doc_urls → ✅ 존재로 변경 (신규 18→17개), kindergartens.address_doc_urls 추가 (✅ 존재), reservations 3개 컬럼 추가 (guardian_checkout_confirmed_at, kg_checkout_confirmed_at, auto_complete_scheduled_at), payments.cancel_reason 추가, kindergarten_reviews.is_guardian_only 추가, chat_messages.image_urls 추가, 테이블별 컬럼 수 정정 |
+| 2026-04-14 | **외주 개발자 확인 반영** — g5_write_animal wr_1~wr_11 매핑 전면 교정 (기존 추정 순서 전부 틀림), 신규 컬럼 2개 추가 (is_birth_date_unknown ← wr_6, is_draft ← wr_10), pets 14→16컬럼, 섹션 2-3 매핑표 재작성, 섹션 3-4 미확인→확인완료로 변경 |
