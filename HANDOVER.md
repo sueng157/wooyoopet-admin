@@ -1114,8 +1114,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
 | 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
-| 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 11개 설계 삽입. Edge Functions 8→7개 교정 (PR #128, #130) |
-| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ⬜ 예정 | sql/44_01~44_11 — 앱용 RPC 함수 11개 (유치원/보호자 조회, 예약, 정산, 리뷰 등) |
+| 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 12개 설계 삽입 (리뷰 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
+| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | 🔄 진행 중 | sql/44_00 (공개 VIEW 3개) + sql/44_01~44_12 — 앱용 RPC 함수 12개. RLS 충돌 해결: VIEW 방식(방안 A) 확정. #8 완료 |
 | 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ⬜ 예정 | 66개 API별 전환 지침서 (외주 개발자용), Step 2.5 완료 후 진행 |
 | 5-9 | Edge Functions 구현 (Step 4) | ⬜ 예정 | 7개: inicis-callback, send-chat-message, create-reservation, complete-care, send-alimtalk, send-push, scheduler |
 | 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
@@ -1123,7 +1123,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-12 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
 | 5-13 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
 
-> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조. 다음 작업(Step 2.5)은 앱용 RPC 함수 11개 SQL 작성 (sql/44_01~44_11).
+> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조. Step 2.5 진행 중: 공개 VIEW 3개 완료(sql/44_00), RPC #8 완료(sql/44_08). 다음: #11 교육 → #1~#2 유치원 순서.
 
 #### Phase 5 진행 이력
 
