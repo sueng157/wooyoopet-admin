@@ -34,4 +34,5 @@
 
 - **#3, #4 (보호자 상세/목록)**: `legacy_php_api_all.txt`에 `get_protector.php`, `get_protector_list.php` 파일이 존재하지 않음. `MOBILE_APP_ANALYSIS.md`에서 앱 호출 파일(`hooks/useProtector.ts`, `utils/fetchProtectorList.ts`)만 확인됨. 유치원 상세/목록(`get_partner.php`/`get_partner_list.php`)의 보호자 버전으로 역추론하여 설계 예정.
 - **#9, #12 (리뷰 분리)**: PHP에서는 `get_review.php` 하나로 `type` 파라미터로 분기. Supabase에서는 RPC를 분리하여 각각 별도 함수로 구현 (`app_get_guardian_reviews` + `app_get_kindergarten_reviews`).
-- **구현 완료**: #1 (`app_get_kindergarten_detail`), #8 (`app_set_representative_pet`), #11 (`app_get_education_with_progress`) — 총 3개 완료.
+- **구현 완료 (4/12)**: #1 (`app_get_kindergarten_detail`), #2 (`app_get_kindergartens`), #8 (`app_set_representative_pet`), #11 (`app_get_education_with_progress`) — PR #133 merge 완료.
+- **작업 일시 중단**: 나머지 8개 RPC 함수는 본 매핑표의 확인 응답을 받은 후 재개합니다. 특히 #3·#4는 PHP 소스가 없어 역추론한 것이므로, 실제 앱 호출 화면을 확인해야 정확한 SQL을 작성할 수 있습니다.

@@ -1115,7 +1115,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 12개 설계 삽입 (리뷰 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
-| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | 🔄 진행 중 | sql/44_00 (공개 VIEW 3개) + sql/44_01~44_12 — 앱용 RPC 함수 12개. RLS 충돌 해결: VIEW 방식(방안 A) 확정. #8 완료 |
+| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ⏸️ 일시 중단 | sql/44_00 (공개 VIEW 3개) + sql/44_01~44_12 — 앱용 RPC 함수 12개 중 4개 완료 (#1,#2,#8,#11). RLS 충돌 해결: VIEW 방식(방안 A) 확정. **PR #133 merge 완료** |
+| 5-7a | 외주개발자 PHP 용도 확인 | ⏳ 대기 중 | RPC_PHP_MAPPING.md 전달 → 외주개발자 확인 응답 대기 중. 확인 후 나머지 8개 RPC 작업 재개 |
 | 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ⬜ 예정 | 66개 API별 전환 지침서 (외주 개발자용), Step 2.5 완료 후 진행 |
 | 5-9 | Edge Functions 구현 (Step 4) | ⬜ 예정 | 7개: inicis-callback, send-chat-message, create-reservation, complete-care, send-alimtalk, send-push, scheduler |
 | 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
@@ -1123,7 +1124,9 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-12 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
 | 5-13 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
 
-> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조. Step 2.5 진행 중: 공개 VIEW 3개 완료(sql/44_00), RPC #8 완료(sql/44_08). 다음: #11 교육 → #1~#2 유치원 순서.
+> 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조.
+> **Step 2.5 현황 (2026-04-15)**: 공개 VIEW 3개 완료(sql/44_00), RPC 4개 완료(sql/44_01, 44_02, 44_08, 44_11). PR #133 merge 완료.
+> **일시 중단 사유**: RPC 함수들의 실제 앱 사용 용도를 정확히 파악하기 위해 외주개발자에게 `RPC_PHP_MAPPING.md`를 전달하고 확인을 요청한 상태. 특히 #3(보호자 상세), #4(보호자 목록)는 PHP 소스가 없어 역추론한 것이므로 실제 앱 화면과의 매칭 확인이 필수. 확인 완료 후 나머지 8개 RPC 함수 작업 재개 예정.
 
 #### Phase 5 진행 이력
 
