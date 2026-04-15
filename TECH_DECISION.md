@@ -45,9 +45,12 @@
 | **파일 저장** | 서버 로컬 | **Supabase Storage** | 무료 플랜: 1GB |
 | **채팅** | 카페24 서버 | **Supabase Realtime** | 카페24 서버 대체 |
 
-> **Supabase Storage 사용 현황**: 교육관리 이미지 → `education-images` 버킷 (상단 이미지 `top-images/`, 퀴즈 이미지 `quiz-images/`). 콘텐츠관리 배너 이미지 → `banner-images` 버킷 (PR #104). 공지사항 첨부파일 → `notice-attachments` 버킷 (public, PR #107, `notices/` 경로, PDF·DOC·DOCX·HWP·JPG·JPEG·PNG, 최대 10개/10MB). Storage RLS 정책은 관리자(is_admin) 전용으로 설정.
-| **관리자 페이지 호스팅** | 스마일서브 | **Cloudflare Pages** | 완전 무료 |
-| **도메인** | 스마일서브 (연 ₩18,000) | **Cloudflare Registrar** | 원가 판매 (연 ~₩14,000) |
+> **Supabase Storage 사용 현황 (9개 버킷)**:
+> - **관리자 전용**: `education-images` (admin 전용 insert/delete, PR #123에서 public→admin 변경), `banner-images` (PR #104), `notice-attachments` (public, PR #107, PDF·DOC·DOCX·HWP·JPG·JPEG·PNG, 최대 10개/10MB)
+> - **앱+관리자 공용 (PR #123)**: `profile-images` (public), `pet-images` (public), `kindergarten-images` (public), `review-images` (public), `chat-files` (private), `address-docs` (private)
+> - Storage RLS 정책: 관리자(is_admin) + 앱 사용자(auth.uid() 기반) 분리 적용. 앱 정책 20개 (sql/43_02).
+| **관리자 페이지 호스팅** | 스마일서브 | **Cloudflare Pages** | ✅ 배포 완료 (`admin.wooyoopet.com`) |
+| **도메인** | 스마일서브 (연 ₩18,000) | 스마일서브 유지 (Phase 6에서 Cloudflare 이전 예정) | 서브도메인 CNAME만 추가 |
 | **DNS/보안** | 스마일서브 | **Cloudflare** | DDoS 보호 무료 포함 |
 
 ### 2-2. 비용 비교
@@ -323,22 +326,25 @@
 | 3-13 | 설정 연동 (11번) | 앱설정·관리자 계정·의견/피드백 탭 전체 | 설정 저장 + 변경 이력 기록 |
 | 3-14 | 공통 기능 연동 | 엑셀 다운로드, 감사 로그, 마스킹 전체보기 로그 | 전 메뉴 공통 기능 동작 |
 
-### Phase 4: 호스팅 전환
+### Phase 4: 관리자 페이지 배포 ✅ 완료
 
 | 순서 | 작업 | 설명 | 완료 조건 |
 |------|------|------|----------|
-| 4-1 | Cloudflare 계정 생성 | Pages + Registrar 설정 | 계정 활성화 |
-| 4-2 | Cloudflare Pages 배포 | GitHub 연결, 자동 배포 설정 | `*.pages.dev` URL로 접속 가능 |
-| 4-3 | 도메인 이전 | wooyoopet.com → Cloudflare Registrar | Cloudflare에서 도메인 관리 |
-| 4-4 | 커스텀 도메인 연결 | admin.wooyoopet.com → Cloudflare Pages | 커스텀 도메인으로 관리자 페이지 접속 |
-| 4-5 | SSL/보안 설정 | HTTPS 강제, 보안 헤더 설정 | SSL 인증서 자동 갱신 확인 |
+| 4-1 | Cloudflare 계정 생성 | Pages 설정 | ✅ 계정 활성화 |
+| 4-2 | Cloudflare Pages 배포 | GitHub `wooyoopet-admin` 연결, `main` 브랜치 자동 배포 | ✅ `wooyoopet-admin.pages.dev` 접속 확인 |
+| 4-3 | SmileServ DNS에 CNAME 추가 | `admin` → `wooyoopet-admin.pages.dev` | ✅ DNS 레코드 추가 완료 |
+| 4-4 | 커스텀 도메인 연결 | `admin.wooyoopet.com` → Cloudflare Pages | ✅ 커스텀 도메인으로 접속 확인 |
+| 4-5 | auth.js 배포 호환성 수정 | Cloudflare Pages URL(.html 없는 경로) 대응 | ✅ 리다이렉트 루프 해결 (PR #114) |
+
+> **배포 전략 변경**: 기존 계획(도메인 전체 Cloudflare Registrar 이전) → 변경(서브도메인만 CNAME 추가, 네임서버 유지). 도메인 전체 이전은 Phase 6에서 진행.
 
 ### Phase 5: 모바일 앱 백엔드 전환
 
 | 순서 | 작업 | 설명 | 완료 조건 |
 |------|------|------|----------|
-| 5-1 | 앱 소스코드 수령 | 기존 개발자에게 최신 React Native 소스코드 수령 | 로컬에서 빌드·실행 가능 |
-| 5-2 | API 호출부 분석 | 기존 PHP API 엔드포인트 매핑 | 전체 API 목록 + 요청/응답 형식 정리 |
+| 5-1 | 앱 소스코드 수령 | 기존 개발자에게 최신 React Native 소스코드 수령 | ✅ 로컬에서 빌드·실행 가능 |
+| 5-2 | API 호출부 분석 | 기존 PHP API 엔드포인트 매핑 | ✅ 전체 API 목록 + 요청/응답 형식 정리 |
+| 5-2a | Supabase 스키마 보강 | 신규 테이블 9개 + 컬럼 추가 + RLS + Storage | ✅ SQL 17개 파일 실행 완료 (PR #123) |
 | 5-3 | Supabase API로 교체 | PHP API 호출 → Supabase 자동 API 호출로 변경 | 앱에서 Supabase DB 데이터 조회 가능 |
 | 5-4 | 인증 교체 | 기존 인증 → Supabase Auth | 앱 로그인이 Supabase Auth로 동작 |
 | 5-5 | 채팅 교체 | 카페24 채팅 → Supabase Realtime | 앱 채팅이 Supabase Realtime으로 동작 |
