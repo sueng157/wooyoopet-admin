@@ -194,6 +194,9 @@ BEGIN
       ),
       -- 보호자 정보 (internal VIEW — RLS: id = auth.uid() 차단)
       -- 유치원 입장에서 상대방 = 보호자
+      -- [주소 비대칭 정책]
+      --   유치원: address_complex + address_building_dong 노출 (보호자가 동선 파악 필요)
+      --   보호자: address_complex만 노출 (개인정보 최소화, 동/호 비공개)
       'member', json_build_object(
         'id', mp.id,
         'name', mp.name,
@@ -208,6 +211,7 @@ BEGIN
         json_build_object(
           'amount', pay.amount,
           'status', pay.status,
+          'payment_method', pay.payment_method,
           'paid_at', pay.paid_at
         )
       ELSE NULL END
@@ -224,6 +228,7 @@ BEGIN
       SELECT pay_inner.id,
              pay_inner.amount,
              pay_inner.status,
+             pay_inner.payment_method,
              pay_inner.paid_at
       FROM payments pay_inner
       WHERE pay_inner.reservation_id = r.id

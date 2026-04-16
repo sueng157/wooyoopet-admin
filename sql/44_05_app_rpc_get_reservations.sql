@@ -202,6 +202,7 @@ BEGIN
         json_build_object(
           'amount', pay.amount,
           'status', pay.status,
+          'payment_method', pay.payment_method,
           'paid_at', pay.paid_at
         )
       ELSE NULL END
@@ -220,6 +221,7 @@ BEGIN
       SELECT pay_inner.id,
              pay_inner.amount,
              pay_inner.status,
+             pay_inner.payment_method,
              pay_inner.paid_at
       FROM payments pay_inner
       WHERE pay_inner.reservation_id = r.id
