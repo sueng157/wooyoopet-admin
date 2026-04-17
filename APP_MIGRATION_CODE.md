@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-17 (R1 리뷰 반영 — Issue 2~8 일괄 수정)
+> **최종 업데이트**: 2026-04-17 (R2 리뷰 반영 — Issue 1~3 수정)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -894,82 +894,294 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/usePetList.ts` → `fetchPets()`
 **Supabase 대응**: `supabase.from('pets').select('*').eq('member_id', userId).eq('deleted', false)`
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO: apiClient.get('api/get_my_animal.php', { mb_id })
+// 파일: hooks/usePetList.ts
+// 내 반려동물 목록 조회
+const fetchPets = async () => {
+  try {
+    const response = await apiClient.get('api/get_my_animal.php', {
+      mb_id: user.mb_id,  // 폰번호
+    })
+    if (response.result === 'Y') {
+      // response.data: 반려동물 배열
+      setPetList(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '반려동물 목록을 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: supabase.from('pets').select()
+// 파일: hooks/usePetList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 내 반려동물 목록 조회
+const fetchPets = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('pets')
+      .select('*')
+      .eq('member_id', user.id)     // UUID (auth.uid())
+      .eq('deleted', false)          // soft delete된 항목 제외
+      .order('is_representative', { ascending: false })  // 대표 동물 먼저
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setPetList(data)  // PetType[] 배열
+  } catch (error) {
+    Alert.alert('오류', '반려동물 목록을 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO: wr_1~wr_11 → 정규 컬럼명 매핑표 -->
+- `mb_id` (폰번호) → `member_id` (UUID) + `deleted=false` 필터 추가
+- `is_representative` 기준 정렬 추가 (대표 동물이 항상 맨 앞)
+- PHP 응답의 `wr_*` 컬럼명이 Supabase에서는 정규 컬럼명으로 변경됨 (아래 매핑표 참조)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `wr_id` | `id` (UUID) | 예 — 정수 → UUID |
+| `mb_id` | `member_id` (UUID) | 예 — 폰번호 → UUID |
+| `wr_subject` | `name` | 예 — 키 이름 변경 |
+| `wr_content` | `description` | 예 — 키 이름 변경 |
+| `wr_2` | `gender` | 예 — 키 이름 변경 |
+| `wr_3` | `is_neutered` (bool) | 예 — 문자열 → boolean |
+| `wr_4` | `breed` | 예 — 키 이름 변경 |
+| `wr_5` | `birth_date` (date) | 예 — 키 이름 변경 |
+| `wr_6` | `is_birth_date_unknown` (bool) | 예 — 문자열 → boolean |
+| `wr_7` | `weight` (numeric) | 예 — 키 이름 변경 |
+| `wr_8` | `is_vaccinated` (bool) | 예 — 문자열 → boolean |
+| `wr_10` | `is_draft` (bool) | 예 — 문자열 → boolean |
+| `firstYN` | `is_representative` (bool) | 예 — `'Y'`/`'N'` → true/false |
+| `deleteYN` | `deleted` (bool) | 예 — `'Y'`/`'N'` → true/false |
+| `animal_img1`~`animal_img10` | `photo_urls` (text[]) | 예 — 개별 10컬럼 → 배열 1개 |
+| — | `size_class` | 예 — 신규 (트리거 자동 계산: 소형/중형/대형) |
+| — | `created_at` | 예 — 신규 필드 |
 
 ---
 
-### API #10. get_animal_by_id.php → pets SELECT + favorite JOIN
+### API #10. get_animal_by_id.php → pets SELECT + favorite_pets 별도 조회
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: `hooks/usePetList.ts` (추정)
-**Supabase 대응**: `supabase.from('pets').select('*, favorite_pets(*)').eq('id', petId)`
+**관련 파일**: `hooks/usePetDetail.ts`
+**Supabase 대응**: `supabase.from('pets').select('*').eq('id', petId).single()` + `supabase.from('favorite_pets').select('id').eq('pet_id', petId).maybeSingle()`
+**Supabase 테이블**: `pets`, `favorite_pets`
+
+> ⚠️ **`!inner` JOIN을 사용하지 않는 이유**: `favorite_pets!inner(...)` 조인을 사용하면 찜하지 않은 반려동물은 조회 결과에서 제외되어 404 에러가 발생합니다. 따라서 반려동물 정보와 찜 여부를 **별도 2회 조회**하는 패턴을 사용합니다.
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePetDetail.ts (추정)
+// 반려동물 상세 조회 (찜 여부 포함)
+const fetchPetDetail = async (petId: string, myMbId: string) => {
+  try {
+    const response = await apiClient.get('api/get_animal_by_id.php', {
+      wr_id: petId,       // 반려동물 ID
+      mb_id: myMbId,      // 조회자 mb_id (찜 여부 확인용)
+    })
+    if (response.result === 'Y') {
+      setPetDetail(response.data)
+      setIsFavorite(response.data.is_favorite === 'Y')
+    }
+  } catch (error) {
+    Alert.alert('오류', '반려동물 정보를 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/usePetDetail.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 반려동물 상세 조회 (찜 여부 포함)
+const fetchPetDetail = async (petId: string) => {
+  try {
+    // Step 1: 반려동물 정보 조회
+    const { data: pet, error: petError } = await supabase
+      .from('pets')
+      .select('*')
+      .eq('id', petId)
+      .eq('deleted', false)
+      .single()
+
+    if (petError) {
+      Alert.alert('오류', petError.message)
+      return
+    }
+
+    // Step 2: 찜 여부 확인 (현재 로그인 사용자 기준)
+    const { data: favorite } = await supabase
+      .from('favorite_pets')
+      .select('id')
+      .eq('member_id', user.id)
+      .eq('pet_id', petId)
+      .eq('is_favorite', true)
+      .maybeSingle()
+
+    setPetDetail(pet)
+    setIsFavorite(!!favorite)
+  } catch (error) {
+    Alert.alert('오류', '반려동물 정보를 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `wr_id` → `id` (UUID), `mb_id` 파라미터 제거 (조회자는 JWT에서 자동 식별)
+- **찜 여부 별도 조회**: PHP는 응답에 `is_favorite` 포함 → Supabase는 `favorite_pets` 테이블을 **별도 쿼리**로 조회 (`!inner` JOIN 사용 시 찜하지 않은 반려동물이 결과에서 제외되므로 반드시 2회 분리 조회)
+- `.single()`: 반려동물 1건 조회 (배열 대신 객체 반환, 없으면 에러)
+- `.maybeSingle()`: 찜 데이터는 없을 수 있으므로 `maybeSingle()` 사용 (없으면 null, 에러 아님)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.*` (wr_* 컬럼) | `pet.*` (정규 컬럼명) | 예 — #9 매핑표와 동일 |
+| `data.is_favorite` (`'Y'`/`'N'`) | `!!favorite` (boolean) | 예 — 별도 쿼리 결과 |
 
 ---
 
-### API #11. get_animal_by_mb_id.php → pets SELECT
+### API #11. get_animal_by_mb_id.php → pets SELECT (본인 전용)
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/usePetList.ts` → `fetchPetsByMbId()`
-**Supabase 대응**: `supabase.from('pets').select('*').eq('member_id', targetMemberId)`
+**Supabase 대응**: `supabase.from('pets').select('*').eq('member_id', user.id).eq('deleted', false)`
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePetList.ts
+// 회원의 반려동물 목록 조회 (유치원 모드에서 보호자의 반려동물 확인)
+const fetchPetsByMbId = async (targetMbId: string) => {
+  try {
+    const response = await apiClient.get('api/get_animal_by_mb_id.php', {
+      mb_id: targetMbId,  // 조회 대상 회원 폰번호
+    })
+    if (response.result === 'Y') {
+      return response.data  // 반려동물 배열
+    }
+    return []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/usePetList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 본인의 반려동물 목록 조회 (RLS: member_id = auth.uid() → 본인 데이터만 조회 가능)
+// ⚠️ 타인의 반려동물은 RPC app_get_guardian_detail 사용 (§11 참조)
+const fetchMyPets = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data, error } = await supabase
+      .from('pets')
+      .select('id, name, breed, gender, birth_date, weight, size_class, photo_urls, is_representative, is_neutered, is_vaccinated')
+      .eq('member_id', user.id)  // RLS 보조 — 본인 UUID
+      .eq('deleted', false)
+      .order('is_representative', { ascending: false })
+
+    if (error) return []
+    return data
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` (폰번호) → `member_id` (UUID)
+- **RLS 제약 (중요)**: `pets` 테이블에는 `member_id = auth.uid()` RLS 정책이 적용되어 있으므로, `supabase.from('pets')` 직접 호출은 **본인 소유 반려동물만** 조회할 수 있습니다
+- **타인 반려동물 조회**: 유치원 모드에서 보호자의 반려동물을 확인해야 하는 경우, 이 API(#11)를 직접 사용하지 **마십시오**. 대신 RPC `app_get_guardian_detail` (SECURITY DEFINER)을 사용하세요. 이 RPC는 내부적으로 `internal.pets_public_info` VIEW를 통해 타인의 반려동물 데이터에 접근합니다
+- **결론**: API #11은 **"본인 반려동물 목록 조회"** 용도로만 사용하고, 타인(보호자/유치원) 반려동물은 반드시 해당 RPC를 통해 조회할 것
+
+**응답 매핑**: #9 매핑표와 동일
 
 ---
 
 ### API #12. get_animal_kind.php → pet_breeds SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 반려동물 등록/수정 화면
+**관련 파일**: `app/pet/searchBreed.tsx` (품종 검색 화면)
 **Supabase 대응**: `supabase.from('pet_breeds').select('*').ilike('name', '%keyword%')`
+**Supabase 테이블**: `pet_breeds`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/pet/searchBreed.tsx
+// 품종 검색 (자동완성)
+const searchBreed = async (keyword: string) => {
+  try {
+    const response = await apiClient.get('api/get_animal_kind.php', {
+      keyword: keyword,
+      type: 'dog',  // 'dog' 또는 'cat' (현재 dog만 운영)
+    })
+    if (response.result === 'Y') {
+      setBreedList(response.data)  // [{ kind_name: '말티즈' }, ...]
+    }
+  } catch (error) {
+    setBreedList([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/pet/searchBreed.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 품종 검색 (자동완성)
+const searchBreed = async (keyword: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('pet_breeds')
+      .select('id, name, type')
+      .eq('type', 'dog')                         // 현재 dog만 운영
+      .ilike('name', `%${keyword}%`)             // 부분 일치 검색 (대소문자 무시)
+      .order('name')
+      .limit(50)
+
+    if (error) {
+      setBreedList([])
+      return
+    }
+    setBreedList(data)  // [{ id, name, type }, ...]
+  } catch (error) {
+    setBreedList([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `kind_name` → `name` (컬럼명 변경)
+- MariaDB `LIKE` → Supabase `.ilike()` (PostgreSQL `ILIKE` — 대소문자 무시)
+- `type` 필터 추가 (`pet_breeds` 테이블은 dog/cat 통합, type 컬럼으로 구분)
+- `.limit(50)`: 검색 결과 수 제한 (자동완성 UX)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].kind_name` | `data[].name` | 예 — 키 이름 변경 |
+| `data[].kind_id` | `data[].id` (UUID) | 예 — 정수 → UUID |
+| — | `data[].type` | 예 — 신규 필드 (`'dog'`/`'cat'`) |
 
 ---
 
@@ -978,19 +1190,177 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API + Storage | **난이도**: 쉬움
 **관련 파일**: `components/PetRegisterForm.tsx`
 **Supabase 대응**: Storage `pet-images` 업로드 → `pets` INSERT
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: components/PetRegisterForm.tsx
+// 반려동물 등록
+const registerPet = async (petData: {
+  mb_id: string
+  wr_subject: string     // 이름
+  wr_content?: string    // 소개
+  wr_2: string           // 성별
+  wr_3: string           // 중성화 ('Y'/'N')
+  wr_4: string           // 품종
+  wr_5: string           // 생년월일
+  wr_6: string           // 생일 체크 ('Y'/'N')
+  wr_7: string           // 몸무게
+  wr_8: string           // 백신 접종 ('Y'/'N')
+  wr_10?: string         // 임시저장 ('Y'/'N')
+  images?: { uri: string }[]  // 이미지 (최대 10장)
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', petData.mb_id)
+    formData.append('wr_subject', petData.wr_subject)
+    formData.append('wr_content', petData.wr_content ?? '')
+    formData.append('wr_2', petData.wr_2)
+    formData.append('wr_3', petData.wr_3)
+    formData.append('wr_4', petData.wr_4)
+    formData.append('wr_5', petData.wr_5)
+    formData.append('wr_6', petData.wr_6 ?? 'N')
+    formData.append('wr_7', petData.wr_7)
+    formData.append('wr_8', petData.wr_8)
+    if (petData.wr_10) formData.append('wr_10', petData.wr_10)
+
+    // 이미지 파일 추가
+    petData.images?.forEach((img, index) => {
+      formData.append(`animal_img${index + 1}`, {
+        uri: img.uri,
+        type: 'image/jpeg',
+        name: `pet_${index + 1}.jpg`,
+      } as any)
+    })
+
+    const response = await apiClient.post('api/set_animal_insert.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '반려동물이 등록되었습니다')
+      return response.data
+    } else {
+      Alert.alert('오류', response.message ?? '등록 실패')
+      return null
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: Storage 업로드 + pets INSERT (4마리 제한 체크)
+// 파일: components/PetRegisterForm.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 반려동물 등록
+const registerPet = async (petData: {
+  name: string
+  description?: string
+  gender: string               // '수컷' | '암컷'
+  is_neutered: boolean
+  breed: string
+  birth_date: string           // 'YYYY-MM-DD'
+  is_birth_date_unknown: boolean
+  weight: number
+  is_vaccinated: boolean
+  is_draft?: boolean
+  images?: { uri: string }[]   // 이미지 (최대 10장)
+}) => {
+  try {
+    // Step 0: 4마리 제한 체크 (기존 PHP에서도 서버 측 검증)
+    const { count, error: countError } = await supabase
+      .from('pets')
+      .select('*', { count: 'exact', head: true })
+      .eq('member_id', user.id)
+      .eq('deleted', false)
+      .eq('is_draft', false)
+
+    if (countError) {
+      Alert.alert('오류', countError.message)
+      return null
+    }
+    if ((count ?? 0) >= 4) {
+      Alert.alert('알림', '반려동물은 최대 4마리까지 등록할 수 있습니다')
+      return null
+    }
+
+    // Step 1: 이미지 업로드 (Storage)
+    const photoUrls: string[] = []
+    if (petData.images && petData.images.length > 0) {
+      for (let i = 0; i < petData.images.length; i++) {
+        const filePath = `${user.id}/${Date.now()}_${i}.jpg`
+        const response = await fetch(petData.images[i].uri)
+        const blob = await response.blob()
+
+        const { error: uploadError } = await supabase.storage
+          .from('pet-images')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          Alert.alert('오류', `이미지 ${i + 1} 업로드 실패: ${uploadError.message}`)
+          return null
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('pet-images')
+          .getPublicUrl(filePath)
+
+        photoUrls.push(publicUrl)
+      }
+    }
+
+    // Step 2: pets 테이블 INSERT
+    const { data, error } = await supabase
+      .from('pets')
+      .insert({
+        member_id: user.id,
+        name: petData.name,
+        description: petData.description ?? '',
+        gender: petData.gender,
+        is_neutered: petData.is_neutered,
+        breed: petData.breed,
+        birth_date: petData.birth_date,
+        is_birth_date_unknown: petData.is_birth_date_unknown,
+        weight: petData.weight,
+        is_vaccinated: petData.is_vaccinated,
+        is_draft: petData.is_draft ?? false,
+        photo_urls: photoUrls.length > 0 ? photoUrls : null,
+        is_representative: false,        // 첫 등록 시 대표 아님 (별도 설정)
+      })
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    Alert.alert('완료', '반려동물이 등록되었습니다')
+    return data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData → JSON `.insert()`
+- `mb_id` 제거 → `member_id: user.id` (UUID)
+- 이미지: FormData `animal_img1~10` → Storage `pet-images` 버킷 업로드 후 `photo_urls` (text[]) 배열 저장
+- Storage 경로: `pet-images/{user.id}/{timestamp}_{index}.jpg`
+- **4마리 제한 체크**: `.select('*', { count: 'exact', head: true })`로 현재 등록 수 확인 (head: true → 데이터 본문 없이 count만)
+- `wr_3` (`'Y'`/`'N'`) → `is_neutered` (boolean): 값 타입 변환 필요
+- `wr_6` (`'Y'`/`'N'`) → `is_birth_date_unknown` (boolean)
+- `wr_8` (`'Y'`/`'N'`) → `is_vaccinated` (boolean)
+- `wr_10` (`'Y'`/`'N'`) → `is_draft` (boolean)
+- `size_class`는 DB 트리거가 `weight` 기준으로 자동 계산 (앱에서 전달 불필요)
+
+**응답 매핑**: #9 매핑표와 동일 (INSERT 후 `.select().single()`로 반환)
 
 ---
 
@@ -999,19 +1369,147 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API + Storage | **난이도**: 쉬움
 **관련 파일**: `components/PetRegisterForm.tsx`
 **Supabase 대응**: Storage 이미지 교체 → `pets` UPDATE
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: components/PetRegisterForm.tsx
+// 반려동물 수정
+const updatePet = async (petId: string, petData: {
+  mb_id: string
+  wr_subject: string
+  wr_content?: string
+  wr_2: string
+  wr_3: string
+  wr_4: string
+  wr_5: string
+  wr_6?: string
+  wr_7: string
+  wr_8: string
+  images?: { uri: string }[]   // 새로 추가/교체할 이미지
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append('wr_id', petId)
+    formData.append('mb_id', petData.mb_id)
+    // ... (나머지 필드 append)
+
+    petData.images?.forEach((img, index) => {
+      formData.append(`animal_img${index + 1}`, {
+        uri: img.uri, type: 'image/jpeg', name: `pet_${index + 1}.jpg`,
+      } as any)
+    })
+
+    const response = await apiClient.post('api/set_animal_update.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '반려동물 정보가 수정되었습니다')
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: components/PetRegisterForm.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 반려동물 수정
+const updatePet = async (petId: string, petData: {
+  name: string
+  description?: string
+  gender: string
+  is_neutered: boolean
+  breed: string
+  birth_date: string
+  is_birth_date_unknown: boolean
+  weight: number
+  is_vaccinated: boolean
+  newImages?: { uri: string }[]       // 새로 추가할 이미지
+  existingPhotoUrls?: string[]        // 유지할 기존 이미지 URL
+}) => {
+  try {
+    // Step 1: 새 이미지 업로드 (있는 경우)
+    const newPhotoUrls: string[] = []
+    if (petData.newImages && petData.newImages.length > 0) {
+      for (let i = 0; i < petData.newImages.length; i++) {
+        const filePath = `${user.id}/${Date.now()}_${i}.jpg`
+        const response = await fetch(petData.newImages[i].uri)
+        const blob = await response.blob()
+
+        const { error: uploadError } = await supabase.storage
+          .from('pet-images')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          Alert.alert('오류', `이미지 업로드 실패: ${uploadError.message}`)
+          return null
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('pet-images')
+          .getPublicUrl(filePath)
+
+        newPhotoUrls.push(publicUrl)
+      }
+    }
+
+    // Step 2: 기존 URL + 새 URL 합치기
+    const allPhotoUrls = [
+      ...(petData.existingPhotoUrls ?? []),
+      ...newPhotoUrls,
+    ]
+
+    // Step 3: pets 테이블 UPDATE
+    const { data, error } = await supabase
+      .from('pets')
+      .update({
+        name: petData.name,
+        description: petData.description ?? '',
+        gender: petData.gender,
+        is_neutered: petData.is_neutered,
+        breed: petData.breed,
+        birth_date: petData.birth_date,
+        is_birth_date_unknown: petData.is_birth_date_unknown,
+        weight: petData.weight,
+        is_vaccinated: petData.is_vaccinated,
+        photo_urls: allPhotoUrls.length > 0 ? allPhotoUrls : null,
+      })
+      .eq('id', petId)
+      .eq('member_id', user.id)    // RLS 보조 (본인 데이터만)
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    Alert.alert('완료', '반려동물 정보가 수정되었습니다')
+    return data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `wr_id` → `id` (UUID), `mb_id` 제거
+- 이미지 관리: 기존 PHP는 전체 교체 방식 → Supabase는 기존 URL 유지 + 새 이미지 추가 방식
+- `existingPhotoUrls`: 수정 화면에서 사용자가 삭제하지 않은 기존 이미지 URL
+- `newImages`: 새로 추가한 이미지 → Storage 업로드 후 URL 추가
+- `photo_urls` 배열에 합쳐서 UPDATE
+- `.eq('member_id', user.id)`: RLS와 함께 본인 데이터만 수정 가능하도록 이중 안전장치
+
+**응답 매핑**: #9 매핑표와 동일
 
 ---
 
@@ -1020,40 +1518,151 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/usePetList.ts` → `deletePet()`
 **Supabase 대응**: `supabase.from('pets').update({ deleted: true }).eq('id', petId)`
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePetList.ts
+// 반려동물 삭제 (soft delete)
+const deletePet = async (petId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('wr_id', petId)
+
+    const response = await apiClient.post('api/set_animal_delete.php', formData)
+    if (response.result === 'Y') {
+      // 목록에서 제거
+      setPetList(prev => prev.filter(p => p.wr_id !== petId))
+      Alert.alert('완료', '반려동물이 삭제되었습니다')
+    } else {
+      Alert.alert('오류', response.message ?? '삭제 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/usePetList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 반려동물 삭제 (soft delete: deleted=true)
+const deletePet = async (petId: string) => {
+  try {
+    const { error } = await supabase
+      .from('pets')
+      .update({ deleted: true })
+      .eq('id', petId)
+      .eq('member_id', user.id)    // RLS 보조
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    // 목록에서 제거
+    setPetList(prev => prev.filter(p => p.id !== petId))
+    Alert.alert('완료', '반려동물이 삭제되었습니다')
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `wr_id` → `id` (UUID), `mb_id` 제거
+- **soft delete**: `deleted=true` UPDATE (실제 행 삭제가 아님)
+- `deleted=true` 이후 모든 조회 쿼리에서 `.eq('deleted', false)` 필터로 제외됨
+- `internal.pets_public_info` VIEW에도 `WHERE deleted=false` 필터가 적용되어 있음
+- 목록 갱신: `wr_id` → `id` 로 필터 변경
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
 ### API #16. set_first_animal_set.php → RPC `app_set_representative_pet`
 
 **전환 방식**: RPC | **난이도**: 쉬움
-**관련 파일**: `app/pet/default.tsx` (추정)
+**관련 파일**: `app/pet/default.tsx`
 **Supabase 대응**: `supabase.rpc('app_set_representative_pet', { p_pet_id })`
+**Supabase 테이블**: `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/pet/default.tsx
+// 대표 반려동물 설정
+const setRepresentativePet = async (petId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('wr_id', petId)    // 대표로 설정할 반려동물 ID
+
+    const response = await apiClient.post('api/set_first_animal_set.php', formData)
+    if (response.result === 'Y' || response.result?.msg === 'SUCCESS') {
+      Alert.alert('완료', '대표 반려동물이 변경되었습니다')
+      fetchPets()  // 목록 새로고침
+    } else {
+      Alert.alert('오류', '대표 설정 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/pet/default.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 대표 반려동물 설정 (RPC: 기존 대표 해제 → 새 대표 설정)
+const setRepresentativePet = async (petId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_set_representative_pet', {
+      p_pet_id: petId,
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    // RPC 응답: { success: true, data: { ... }, reset_count: N }
+    if (data?.success) {
+      Alert.alert('완료', '대표 반려동물이 변경되었습니다')
+      fetchPets()  // 목록 새로고침
+    } else {
+      Alert.alert('오류', data?.error ?? '대표 설정 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData POST → `supabase.rpc()` (JSON)
+- `mb_id` 제거 → RPC 내부에서 `auth.uid()` 자동 사용 (SECURITY INVOKER)
+- `wr_id` → `p_pet_id` (UUID, RPC 파라미터 `p_` 접두사 규칙)
+- RPC가 수행하는 작업: ① p_pet_id 존재 검증 → ② 기존 대표 해제 (`is_representative=false`) → ③ 선택한 반려동물 대표 설정 (`is_representative=true`)
+- RPC 응답 형식: `{ success: boolean, data?: {...}, error?: string, reset_count?: number }`
+- 트랜잭션 안전성: RPC 내부에서 p_pet_id 존재 여부를 먼저 검증하므로, 기존 대표 해제 후 새 대표 설정 실패하는 경우가 없음
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result.msg` (`'SUCCESS'`) | `data.success` (boolean) | 예 — 문자열 → boolean |
+| — | `data.data` (대표로 설정된 반려동물 정보) | 예 — 신규 |
+| — | `data.reset_count` (해제된 기존 대표 수) | 예 — 신규 |
+| — | `data.error` (실패 사유) | 예 — 신규 |
 
 ---
 
@@ -1148,21 +1757,186 @@ const searchAddress = async (keyword: string) => {
 ### API #21. set_partner_update.php → kindergartens UPDATE + Storage
 
 **전환 방식**: 자동 API + Storage | **난이도**: 중
-**관련 파일**: `app/kindergarten/register.tsx`
-**Supabase 대응**: Storage `kindergarten-images` 업로드 → `kindergartens` UPDATE + `settlement_infos` UPSERT
+**관련 파일**: `app/kindergarten/register.tsx`, `hooks/useJoin.ts`
+**Supabase 대응**: Storage `kindergarten-images` 업로드 → `kindergartens` UPDATE
+**Supabase 테이블**: `kindergartens`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/register.tsx
+// 유치원 정보 등록/수정 (UPSERT)
+const updateKindergarten = async (kgData: {
+  mb_id: string
+  wr_subject: string         // 유치원 이름
+  wr_content: string         // 소개
+  wr_2: string               // 가격 (파이프 구분: '10000|12000|...')
+  mb_addr1: string           // 도로명주소
+  mb_4: string               // 단지명
+  mb_dong: string            // 동
+  mb_ho: string              // 호
+  business_status: string    // 영업 상태
+  images?: { uri: string }[] // 유치원 이미지 (최대 10장)
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', kgData.mb_id)
+    formData.append('wr_subject', kgData.wr_subject)
+    formData.append('wr_content', kgData.wr_content)
+    formData.append('wr_2', kgData.wr_2)
+    formData.append('mb_addr1', kgData.mb_addr1)
+    formData.append('mb_4', kgData.mb_4)
+    formData.append('mb_dong', kgData.mb_dong)
+    formData.append('mb_ho', kgData.mb_ho)
+    formData.append('business_status', kgData.business_status)
+
+    kgData.images?.forEach((img, index) => {
+      formData.append(`partner_img${index + 1}`, {
+        uri: img.uri, type: 'image/jpeg', name: `kg_${index + 1}.jpg`,
+      } as any)
+    })
+
+    const response = await apiClient.post('api/set_partner_update.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '유치원 정보가 저장되었습니다')
+      return response.data
+    }
+    Alert.alert('오류', response.message ?? '저장 실패')
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/register.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 유치원 정보 수정
+const updateKindergarten = async (kgData: {
+  name: string
+  description: string
+  price_small_1h?: number       // 소형 1시간 가격
+  price_small_24h?: number      // 소형 24시간 가격
+  price_small_walk?: number     // 소형 산책
+  price_small_pickup?: number   // 소형 픽업
+  price_medium_1h?: number      // 중형 1시간
+  price_medium_24h?: number     // 중형 24시간
+  price_medium_walk?: number    // 중형 산책
+  price_medium_pickup?: number  // 중형 픽업
+  price_large_1h?: number       // 대형 1시간
+  price_large_24h?: number      // 대형 24시간
+  price_large_walk?: number     // 대형 산책
+  price_large_pickup?: number   // 대형 픽업
+  address_road: string
+  address_complex: string
+  address_building_dong: string
+  address_building_ho: string
+  business_status: string       // '영업중' | '방학중'
+  latitude?: number
+  longitude?: number
+  newImages?: { uri: string }[]
+  existingPhotoUrls?: string[]
+}) => {
+  try {
+    // Step 1: 이미지 업로드 (새 이미지가 있는 경우)
+    const newPhotoUrls: string[] = []
+    if (kgData.newImages && kgData.newImages.length > 0) {
+      for (let i = 0; i < kgData.newImages.length; i++) {
+        const filePath = `${user.id}/${Date.now()}_${i}.jpg`
+        const response = await fetch(kgData.newImages[i].uri)
+        const blob = await response.blob()
+
+        const { error: uploadError } = await supabase.storage
+          .from('kindergarten-images')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          Alert.alert('오류', `이미지 업로드 실패: ${uploadError.message}`)
+          return null
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('kindergarten-images')
+          .getPublicUrl(filePath)
+
+        newPhotoUrls.push(publicUrl)
+      }
+    }
+
+    const allPhotoUrls = [
+      ...(kgData.existingPhotoUrls ?? []),
+      ...newPhotoUrls,
+    ]
+
+    // Step 2: kindergartens 테이블 UPDATE
+    const { data, error } = await supabase
+      .from('kindergartens')
+      .update({
+        name: kgData.name,
+        description: kgData.description,
+        price_small_1h: kgData.price_small_1h,
+        price_small_24h: kgData.price_small_24h,
+        price_small_walk: kgData.price_small_walk,
+        price_small_pickup: kgData.price_small_pickup,
+        price_medium_1h: kgData.price_medium_1h,
+        price_medium_24h: kgData.price_medium_24h,
+        price_medium_walk: kgData.price_medium_walk,
+        price_medium_pickup: kgData.price_medium_pickup,
+        price_large_1h: kgData.price_large_1h,
+        price_large_24h: kgData.price_large_24h,
+        price_large_walk: kgData.price_large_walk,
+        price_large_pickup: kgData.price_large_pickup,
+        address_road: kgData.address_road,
+        address_complex: kgData.address_complex,
+        address_building_dong: kgData.address_building_dong,
+        address_building_ho: kgData.address_building_ho,
+        business_status: kgData.business_status,
+        latitude: kgData.latitude,
+        longitude: kgData.longitude,
+        photo_urls: allPhotoUrls.length > 0 ? allPhotoUrls : null,
+      })
+      .eq('member_id', user.id)    // RLS 보조 (본인 유치원만)
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    Alert.alert('완료', '유치원 정보가 저장되었습니다')
+    return data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData → `.update()` (JSON)
+- `mb_id` 제거 → `.eq('member_id', user.id)` (UUID)
+- **가격 구조 변경**: 기존 `wr_2` (파이프 구분 문자열 `'10000|12000|...'`) → 12개 개별 integer 컬럼 (`price_small_1h`, `price_small_24h`, `price_small_walk`, `price_small_pickup`, `price_medium_1h`, `price_medium_24h`, `price_medium_walk`, `price_medium_pickup`, `price_large_1h`, `price_large_24h`, `price_large_walk`, `price_large_pickup`)
+- 이미지: `partner_img1~10` → Storage `kindergarten-images` 버킷 + `photo_urls` (text[])
+- 주소 컬럼: `mb_addr1` → `address_road`, `mb_4` → `address_complex`, `mb_dong` → `address_building_dong`, `mb_ho` → `address_building_ho`
+- `wr_subject` → `name`, `wr_content` → `description`
+- 위치 좌표 (`latitude`, `longitude`) 추가 가능 (신규 컬럼)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data.wr_subject` | `data.name` | 예 — 키 이름 변경 |
+| `data.wr_content` | `data.description` | 예 — 키 이름 변경 |
+| `data.wr_2` (파이프 구분) | `data.price_small_1h`, `price_small_24h`, `price_small_walk`, `price_small_pickup`, `price_medium_1h`, `price_medium_24h`, `price_medium_walk`, `price_medium_pickup`, `price_large_1h`, `price_large_24h`, `price_large_walk`, `price_large_pickup` (12개) | 예 — 문자열 → 개별 숫자 컬럼 |
+| `data.partner_img1~10` | `data.photo_urls` (text[]) | 예 — 개별 → 배열 |
 
 ---
 
@@ -1216,20 +1990,76 @@ const searchAddress = async (keyword: string) => {
 
 **전환 방식**: 자동 API | **난이도**: 중
 **관련 파일**: `hooks/useChat.ts` → `getMessageHistory()`
-**Supabase 대응**: `supabase.from('chat_messages').select('*').eq('room_id', roomId).order('created_at').range(from, to)`
+**Supabase 대응**: `supabase.from('chat_messages').select('*').eq('chat_room_id', roomId).order('created_at').range(from, to)`
+**Supabase 테이블**: `chat_messages`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts
+// 채팅 메시지 히스토리 조회 (페이지네이션)
+const getMessageHistory = async (roomId: string, page: number = 1) => {
+  try {
+    const response = await apiClient.get('api/chat.php', {
+      method: 'get_messages',
+      room_id: roomId,
+      mb_id: user.mb_id,
+      page: page,
+      per_page: 50,
+    })
+    if (response.result === 'Y') {
+      return response.data  // 메시지 배열
+    }
+    return []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 채팅 메시지 히스토리 조회 (페이지네이션)
+const getMessageHistory = async (roomId: string, page: number = 1, perPage: number = 50) => {
+  try {
+    const from = (page - 1) * perPage
+    const to = from + perPage - 1
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('id, chat_room_id, sender_id, sender_type, message_type, content, image_urls, is_read, created_at')
+      .eq('chat_room_id', roomId)
+      .order('created_at', { ascending: false })   // 최신 메시지 먼저
+      .range(from, to)
+
+    if (error) return []
+    return data
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `room_id` → `chat_room_id` (FK 컬럼명 변경)
+- `mb_id` 파라미터 제거 (JWT 자동 인증)
+- 페이지네이션: `page/per_page` → `.range(from, to)` (0-based offset)
+- `file_path` → `image_urls` (jsonb 배열), `file_type` → `message_type`으로 대체
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].id` | `data[].id` (UUID) | 예 — 정수 → UUID |
+| `data[].room_id` | `data[].chat_room_id` | 예 — 키 이름 변경 |
+| `data[].mb_id` | `data[].sender_id` (UUID) | 예 — 폰번호 → UUID |
+| `data[].message_type` | `data[].message_type` | 아니오 |
+| `data[].content` | `data[].content` | 아니오 |
+| `data[].file_path` | `data[].image_urls` (jsonb) | 예 — 문자열 → jsonb 배열 |
+| — | `data[].sender_type` | 예 — 신규 (보호자/유치원/시스템) |
+| — | `data[].is_read` | 예 — 신규 |
 
 ---
 
@@ -1239,18 +2069,7 @@ const searchAddress = async (keyword: string) => {
 **관련 파일**: `hooks/useChat.ts` → `send()`
 **Supabase 대응**: `supabase.functions.invoke('send-chat-message', { body })`
 
-**Before**:
-```typescript
-// TODO
-```
-
-**After**:
-```typescript
-// TODO
-```
-
-**변환 포인트**:
-<!-- TODO -->
+> **R4 (채팅 Realtime)에서 상세 작성 예정** — send_message는 Storage 파일 업로드 + Realtime 브로드캐스트 + FCM 푸시가 결합된 복잡한 로직으로, Edge Function 구현과 함께 R4에서 다룹니다. R2에서는 자동 API 대상만 작성합니다.
 
 ---
 
@@ -1258,20 +2077,65 @@ const searchAddress = async (keyword: string) => {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: 채팅 이미지 갤러리 화면
-**Supabase 대응**: `supabase.from('chat_messages').select('image_urls').eq('room_id', roomId).not('image_urls', 'is', null)`
+**Supabase 대응**: `supabase.from('chat_messages').select('image_urls, created_at').eq('chat_room_id', roomId).not('image_urls', 'is', null)`
+**Supabase 테이블**: `chat_messages`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts 또는 채팅 이미지 갤러리 화면
+// 채팅방의 이미지 메시지만 조회
+const getChatImages = async (roomId: string) => {
+  try {
+    const response = await apiClient.get('api/chat.php', {
+      method: 'get_images',
+      room_id: roomId,
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      return response.data  // [{ file_path, created_at }, ...]
+    }
+    return []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 채팅방의 이미지 메시지만 조회
+const getChatImages = async (roomId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('id, image_urls, created_at')
+      .eq('chat_room_id', roomId)
+      .not('image_urls', 'is', null)        // image_urls가 있는 메시지만
+      .order('created_at', { ascending: false })
+
+    if (error) return []
+    // image_urls를 평탄화: [{image_urls: ['url1','url2']}] → ['url1','url2']
+    return data.flatMap(msg => msg.image_urls ?? [])
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `file_path` (단일 문자열) → `image_urls` (jsonb 배열) — 한 메시지에 여러 이미지 가능
+- `.not('image_urls', 'is', null)`: image_urls가 NULL이 아닌 메시지만 필터
+- `flatMap`: 메시지별 image_urls 배열을 하나의 URL 배열로 평탄화
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].file_path` | `data[].image_urls` (jsonb 배열) | 예 — 문자열 → 배열 |
+| `data[].created_at` | `data[].created_at` | 아니오 |
 
 ---
 
@@ -1279,20 +2143,65 @@ const searchAddress = async (keyword: string) => {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useChat.ts` → `leaveRoom()`
-**Supabase 대응**: `supabase.from('chat_rooms').update({ deleted_at: new Date().toISOString() }).eq('id', roomId)`
+**Supabase 대응**: `supabase.from('chat_rooms').update({ status: '비활성' }).eq('id', roomId)`
+**Supabase 테이블**: `chat_rooms`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts
+// 채팅방 나가기
+const leaveRoom = async (roomId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('method', 'leave_room')
+    formData.append('room_id', roomId)
+    formData.append('mb_id', user.mb_id)
+
+    const response = await apiClient.post('api/chat.php', formData)
+    if (response.result === 'Y') {
+      // 채팅방 목록에서 제거
+      router.back()
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 채팅방 나가기 (status → '비활성')
+const leaveRoom = async (roomId: string) => {
+  try {
+    const { error } = await supabase
+      .from('chat_rooms')
+      .update({ status: '비활성' })
+      .eq('id', roomId)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    router.back()
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData + `method=leave_room` → `.update({ status: '비활성' })`
+- `mb_id` 제거, `room_id` → `.eq('id', roomId)` (UUID)
+- 기존: `deleted_at=NOW()` → Supabase: `status='비활성'` (chat_rooms는 status 컬럼으로 관리)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
@@ -1301,19 +2210,65 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useChat.ts` → `mutedRoom()`
 **Supabase 대응**: `supabase.from('chat_room_members').update({ is_muted }).eq('room_id', roomId).eq('member_id', userId)`
+**Supabase 테이블**: `chat_room_members`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts
+// 채팅방 알림 음소거 토글
+const mutedRoom = async (roomId: string, muted: boolean) => {
+  try {
+    const formData = new FormData()
+    formData.append('method', 'muted')
+    formData.append('room_id', roomId)
+    formData.append('mb_id', user.mb_id)
+    formData.append('is_muted', muted ? 'Y' : 'N')
+
+    const response = await apiClient.post('api/chat.php', formData)
+    if (response.result === 'Y') {
+      setIsMuted(muted)
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 채팅방 알림 음소거 토글
+const mutedRoom = async (roomId: string, muted: boolean) => {
+  try {
+    const { error } = await supabase
+      .from('chat_room_members')
+      .update({ is_muted: muted })
+      .eq('room_id', roomId)
+      .eq('member_id', user.id)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsMuted(muted)
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData + `method=muted` → `.update({ is_muted })` 직접 호출
+- `is_muted` 값: `'Y'`/`'N'` → `true`/`false` (boolean)
+- `mb_id` → `member_id` (UUID)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
@@ -1322,103 +2277,325 @@ const searchAddress = async (keyword: string) => {
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useChat.ts` → `readChat()`
 **Supabase 대응**: `supabase.from('chat_room_members').update({ last_read_message_id }).eq('room_id', roomId).eq('member_id', userId)`
+**Supabase 테이블**: `chat_room_members`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts
+// 메시지 읽음 처리
+const readChat = async (roomId: string, lastMessageId: string) => {
+  try {
+    const response = await apiClient.get('api/read_chat.php', {
+      room_id: roomId,
+      mb_id: user.mb_id,
+      last_read_id: lastMessageId,
+    })
+    // 읽음 처리 — 실패해도 무시
+  } catch (error) {
+    // 무시 (UX 영향 없음)
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 메시지 읽음 처리
+const readChat = async (roomId: string, lastMessageId: string) => {
+  try {
+    await supabase
+      .from('chat_room_members')
+      .update({ last_read_message_id: lastMessageId })
+      .eq('room_id', roomId)
+      .eq('member_id', user.id)
+    // 읽음 처리 — 실패해도 무시
+  } catch (error) {
+    // 무시 (UX 영향 없음)
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `last_read_id` → `last_read_message_id` (컬럼명 변경)
+- `mb_id` → `member_id` (UUID)
+- 에러 무시 패턴 유지 (읽음 처리 실패는 UX에 영향 없음)
 
 ---
 
 ### API #30. get_message_template.php → chat_templates SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 상용문구 관리 화면
+**관련 파일**: `app/chat/[room]/index.tsx`, `app/chat/commonPhrase.tsx`
 **Supabase 대응**: `supabase.from('chat_templates').select('*').eq('member_id', userId).eq('type', 'custom')`
+**Supabase 테이블**: `chat_templates`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/chat/[room]/index.tsx 또는 app/chat/commonPhrase.tsx
+// 내 상용문구 목록 조회
+const fetchTemplates = async () => {
+  try {
+    const response = await apiClient.get('api/get_message_template.php', {
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setTemplates(response.data)  // [{ id, content, ... }, ...]
+    }
+  } catch (error) {
+    setTemplates([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 내 상용문구 목록 조회
+const fetchTemplates = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('chat_templates')
+      .select('id, content, sort_order, created_at')
+      .eq('member_id', user.id)
+      .eq('type', 'custom')          // 개인 상용문구만 (가이드 문구 제외)
+      .order('sort_order')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      setTemplates([])
+      return
+    }
+    setTemplates(data)
+  } catch (error) {
+    setTemplates([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `member_id` (UUID) + `type='custom'` 필터 추가
+- `chat_templates` 테이블은 `custom`(개인 상용문구), `guide_guardian`(보호자 가이드), `guide_kindergarten`(유치원 가이드)을 type으로 구분
+- 앱에서 이 API는 **개인 상용문구만** 조회 → 반드시 `.eq('type', 'custom')` 필터 사용
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].id` (정수) | `data[].id` (UUID) | 예 — 정수 → UUID |
+| `data[].content` | `data[].content` | 아니오 |
+| `data[].mb_id` | — (RLS로 본인 데이터만) | 예 — 삭제됨 |
+| — | `data[].sort_order` | 예 — 신규 |
 
 ---
 
 ### API #31. set_message_template.php → chat_templates INSERT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 상용문구 등록 화면
-**Supabase 대응**: `supabase.from('chat_templates').insert({ member_id, type: 'custom', title, content })`
+**관련 파일**: `app/chat/commonPhrase.tsx`
+**Supabase 대응**: `supabase.from('chat_templates').insert({ member_id, type: 'custom', content })`
+**Supabase 테이블**: `chat_templates`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx
+// 상용문구 등록
+const addTemplate = async (content: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('content', content)
+
+    const response = await apiClient.post('api/set_message_template.php', formData)
+    if (response.result === 'Y') {
+      fetchTemplates()  // 목록 새로고침
+    } else {
+      Alert.alert('오류', response.message ?? '등록 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 상용문구 등록
+const addTemplate = async (content: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('chat_templates')
+      .insert({
+        member_id: user.id,
+        type: 'custom',
+        content: content,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    fetchTemplates()  // 목록 새로고침
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData → `.insert()` (JSON)
+- `mb_id` → `member_id` (UUID), `type: 'custom'` 명시
+- `.select().single()`: INSERT 후 생성된 데이터 반환
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
 ### API #32. update_message_template.php → chat_templates UPDATE
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 상용문구 수정 화면
-**Supabase 대응**: `supabase.from('chat_templates').update({ title, content }).eq('id', templateId).eq('member_id', userId)`
+**관련 파일**: `app/chat/commonPhrase.tsx`
+**Supabase 대응**: `supabase.from('chat_templates').update({ content }).eq('id', templateId).eq('member_id', userId)`
+**Supabase 테이블**: `chat_templates`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx
+// 상용문구 수정
+const updateTemplate = async (templateId: string, content: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('id', templateId)
+    formData.append('content', content)
+
+    const response = await apiClient.post('api/update_message_template.php', formData)
+    if (response.result === 'Y') {
+      fetchTemplates()
+    } else {
+      Alert.alert('오류', response.message ?? '수정 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 상용문구 수정
+const updateTemplate = async (templateId: string, content: string) => {
+  try {
+    const { error } = await supabase
+      .from('chat_templates')
+      .update({ content })
+      .eq('id', templateId)
+      .eq('member_id', user.id)  // RLS 보조 (본인 데이터만)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    fetchTemplates()
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData → `.update()` (JSON)
+- `mb_id` 제거 → `.eq('member_id', user.id)` RLS 보조
+- `id` → `.eq('id', templateId)` (UUID)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
 ### API #33. delete_message_template.php → chat_templates DELETE
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 상용문구 삭제
+**관련 파일**: `app/chat/commonPhrase.tsx`
 **Supabase 대응**: `supabase.from('chat_templates').delete().eq('id', templateId).eq('member_id', userId)`
+**Supabase 테이블**: `chat_templates`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx
+// 상용문구 삭제
+const deleteTemplate = async (templateId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('id', templateId)
+
+    const response = await apiClient.post('api/delete_message_template.php', formData)
+    if (response.result === 'Y') {
+      setTemplates(prev => prev.filter(t => t.id !== templateId))
+    } else {
+      Alert.alert('오류', response.message ?? '삭제 실패')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/chat/commonPhrase.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 상용문구 삭제
+const deleteTemplate = async (templateId: string) => {
+  try {
+    const { error } = await supabase
+      .from('chat_templates')
+      .delete()
+      .eq('id', templateId)
+      .eq('member_id', user.id)  // RLS 보조 (본인 데이터만)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData → `.delete()` (JSON)
+- `mb_id` 제거 → `.eq('member_id', user.id)` RLS 보조
+- **hard delete**: chat_templates는 soft delete가 아닌 실제 삭제 (개인 상용문구는 복구 불필요)
+- 목록에서 즉시 제거: `filter(t => t.id !== templateId)`
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
@@ -1555,21 +2732,105 @@ const searchAddress = async (keyword: string) => {
 ### API #40. set_care_review.php → guardian_reviews / kindergarten_reviews INSERT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 후기 작성 화면
+**관련 파일**: `app/review/kindergartenWrite.tsx`, `app/review/petWrite.tsx`
 **Supabase 대응**: `supabase.from('guardian_reviews').insert(...)` 또는 `supabase.from('kindergarten_reviews').insert(...)`
+**Supabase 테이블**: `guardian_reviews`, `kindergarten_reviews`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/review/kindergartenWrite.tsx 또는 petWrite.tsx
+// 돌봄 후기 작성
+const submitReview = async (reviewData: {
+  mb_id: string
+  type: 'pet' | 'partner'    // 보호자 후기 / 유치원 후기
+  partner_id: string
+  pet_id: string
+  content: string
+  tags: string[]              // 선택된 태그
+  satisfaction: string        // 만족도
+  reservation_id: string
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', reviewData.mb_id)
+    formData.append('type', reviewData.type)
+    formData.append('partner_id', reviewData.partner_id)
+    formData.append('pet_id', reviewData.pet_id)
+    formData.append('content', reviewData.content)
+    formData.append('tags', JSON.stringify(reviewData.tags))
+
+    const response = await apiClient.post('api/set_care_review.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '후기가 등록되었습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/review/kindergartenWrite.tsx 또는 petWrite.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 돌봄 후기 작성 (보호자 후기 또는 유치원 후기)
+const submitReview = async (reviewData: {
+  type: 'guardian' | 'kindergarten'   // 보호자→유치원 후기 / 유치원→보호자 후기
+  kindergarten_id: string
+  pet_id: string
+  member_id: string                    // 작성자 (auth.uid())
+  content: string
+  selected_tags: string[]              // 선택된 태그 (jsonb)
+  satisfaction: string                 // '최고예요' | '좋았어요' | '아쉬워요'
+  reservation_id: string
+}) => {
+  try {
+    // 후기 타입에 따라 다른 테이블에 INSERT
+    const tableName = reviewData.type === 'guardian'
+      ? 'guardian_reviews'          // 보호자가 유치원에 대해 작성
+      : 'kindergarten_reviews'      // 유치원이 보호자에 대해 작성
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .insert({
+        kindergarten_id: reviewData.kindergarten_id,
+        pet_id: reviewData.pet_id,
+        member_id: user.id,
+        content: reviewData.content,
+        selected_tags: reviewData.selected_tags,
+        satisfaction: reviewData.satisfaction,
+        reservation_id: reviewData.reservation_id,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    Alert.alert('완료', '후기가 등록되었습니다')
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `type='pet'` / `type='partner'` → 테이블 분리: `guardian_reviews` / `kindergarten_reviews`
+- `partner_id` → `kindergarten_id`, `protector_id` → `member_id`
+- `tags` (JSON 문자열) → `selected_tags` (jsonb 배열) — `JSON.stringify` 불필요, 배열 직접 전달
+- `satisfaction` 신규 필드: `'최고예요'` | `'좋았어요'` | `'아쉬워요'`
+- `reservation_id` 신규 FK: 예약과 연결
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data.type` | — (테이블명으로 구분) | 예 — 삭제 |
+| `data.partner_id` | `data.kindergarten_id` | 예 — 키 이름 변경 |
+| `data.tags` (JSON 문자열) | `data.selected_tags` (jsonb) | 예 — 키 이름 + 타입 변경 |
 
 ---
 
@@ -1602,41 +2863,180 @@ const searchAddress = async (keyword: string) => {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useSettlementInfo.ts`
-**Supabase 대응**: `supabase.from('settlement_infos').select('*').eq('kindergarten_id', kindergartenId)`
+**Supabase 대응**: `supabase.from('settlement_infos').select('*').eq('member_id', userId)`
+**Supabase 테이블**: `settlement_infos`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useSettlementInfo.ts
+// 정산 계좌 정보 조회
+const fetchSettlementInfo = async () => {
+  try {
+    const response = await apiClient.get('api/get_settlement_info.php', {
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setSettlementInfo(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '정산 정보를 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useSettlementInfo.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 정산 계좌 정보 조회
+const fetchSettlementInfo = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('settlement_infos')
+      .select('*')
+      .eq('member_id', user.id)
+      .maybeSingle()                 // 정산 정보 없을 수 있음
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setSettlementInfo(data)          // null이면 아직 미등록
+  } catch (error) {
+    Alert.alert('오류', '정산 정보를 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `member_id` (UUID)
+- `.maybeSingle()`: 정산 정보가 아직 등록되지 않은 유치원도 있으므로, 결과 없을 때 에러 대신 null 반환
+- 컬럼명 변경: `account_number`, `account_holder`, `account_bank`, `business_type`, `business_reg_number`, `operator_email` 등
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.mb_id` | `data.member_id` (UUID) | 예 |
+| `data.has_business` | `data.business_type` | 예 — `'Y'`/`'N'` → `'개인사업자'`/`'비사업자'` 등 |
+| `data.business_reg_no` | `data.business_reg_number` | 예 — 키 이름 변경 |
+| `data.settlement_email` | `data.operator_email` | 예 — 키 이름 변경 |
+| `data.account_number` | `data.account_number` | 아니오 |
+| `data.account_holder` | `data.account_holder` | 아니오 |
+| `data.status` | `data.inicis_status` | 예 — 키 이름 변경 |
+| `data.rrn_front_enc` + `rrn_back_enc` | `data.operator_ssn_masked` | 예 — 암호화→마스킹 |
 
 ---
 
 ### API #43. set_settlement_info.php → settlement_infos UPSERT
 
 **전환 방식**: 자동 API | **난이도**: 중
-**관련 파일**: `hooks/useSettlementInfo.ts`
+**관련 파일**: `app/settlement/account.tsx`, `app/settlement/info.tsx`
 **Supabase 대응**: `supabase.from('settlement_infos').upsert({ ... })`
+**Supabase 테이블**: `settlement_infos`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/settlement/info.tsx
+// 정산 계좌 정보 등록/수정
+const saveSettlementInfo = async (info: {
+  mb_id: string
+  has_business: string         // 'Y'/'N'
+  business_type?: string
+  business_reg_no?: string
+  settlement_email: string
+  account_number: string
+  account_holder: string
+  bank_name: string
+  rrn_front: string            // 주민번호 앞 6자리
+  rrn_back: string             // 주민번호 뒤 7자리 (암호화 필요)
+}) => {
+  try {
+    const formData = new FormData()
+    Object.entries(info).forEach(([key, value]) => {
+      if (value) formData.append(key, value)
+    })
+
+    const response = await apiClient.post('api/set_settlement_info.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '정산 정보가 저장되었습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/settlement/info.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 정산 계좌 정보 등록/수정
+const saveSettlementInfo = async (info: {
+  business_type: string        // '개인사업자' | '법인사업자' | '비사업자'
+  business_name?: string
+  business_category?: string
+  business_reg_number?: string
+  operator_name: string
+  operator_email: string
+  operator_phone: string
+  operator_birth_date?: string
+  operator_ssn_masked?: string // 마스킹된 주민번호 (앞6 + '- *******')
+  account_bank: string
+  account_number: string
+  account_holder: string
+  kindergarten_id: string
+}) => {
+  try {
+    const { data, error } = await supabase
+      .from('settlement_infos')
+      .upsert({
+        member_id: user.id,
+        kindergarten_id: info.kindergarten_id,
+        business_type: info.business_type,
+        business_name: info.business_name,
+        business_category: info.business_category,
+        business_reg_number: info.business_reg_number,
+        operator_name: info.operator_name,
+        operator_email: info.operator_email,
+        operator_phone: info.operator_phone,
+        operator_birth_date: info.operator_birth_date,
+        operator_ssn_masked: info.operator_ssn_masked,
+        account_bank: info.account_bank,
+        account_number: info.account_number,
+        account_holder: info.account_holder,
+        inicis_status: '작성중',
+      }, { onConflict: 'member_id' })
+      .select()
+      .single()
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    Alert.alert('완료', '정산 정보가 저장되었습니다')
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO: 주민번호 뒷자리 암호화 처리 (Edge Function 필요 여부) -->
+- FormData → `.upsert()` (JSON), `onConflict: 'member_id'`로 중복 시 UPDATE
+- `mb_id` → `member_id` (UUID)
+- `has_business` (`'Y'`/`'N'`) → `business_type` (`'개인사업자'`/`'법인사업자'`/`'비사업자'`)
+- `rrn_front` + `rrn_back` (암호화) → `operator_ssn_masked` (마스킹: `'960315-*******'`)
+- **주민번호 뒷자리**: 기존 PHP에서 암호화 저장 → Supabase에서는 마스킹 문자열만 저장. 전문 뒷자리는 앱 클라이언트에서 절대 저장하지 않음
+- `kindergarten_id` 추가 (FK, 유치원과 연결)
+- `bank_name` → `account_bank` (키 이름 변경)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
@@ -1689,21 +3089,133 @@ const searchAddress = async (keyword: string) => {
 ### API #45. set_review.php → guardian_reviews / kindergarten_reviews INSERT + Storage
 
 **전환 방식**: 자동 API + Storage | **난이도**: 쉬움
-**관련 파일**: 후기 작성 화면
-**Supabase 대응**: Storage `review-images` 업로드 → reviews INSERT
+**관련 파일**: `app/review/kindergartenWrite.tsx`, `app/review/petWrite.tsx`
+**Supabase 대응**: Storage `review-images` 업로드 → `guardian_reviews` 또는 `kindergarten_reviews` INSERT
+**Supabase 테이블**: `guardian_reviews`, `kindergarten_reviews`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/review/kindergartenWrite.tsx
+// 후기 작성 (이미지 포함)
+const submitReview = async (reviewData: {
+  mb_id: string
+  type: 'pet' | 'partner'
+  partner_id: string
+  pet_id: string
+  content: string
+  tags: string[]
+  images?: { uri: string }[]     // 후기 이미지 (최대 5장)
+  reservation_id: string
+}) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', reviewData.mb_id)
+    formData.append('type', reviewData.type)
+    formData.append('partner_id', reviewData.partner_id)
+    formData.append('pet_id', reviewData.pet_id)
+    formData.append('content', reviewData.content)
+    formData.append('tags', JSON.stringify(reviewData.tags))
+    formData.append('reservation_id', reviewData.reservation_id)
+
+    reviewData.images?.forEach((img, index) => {
+      formData.append(`image${index + 1}`, {
+        uri: img.uri, type: 'image/jpeg', name: `review_${index + 1}.jpg`,
+      } as any)
+    })
+
+    const response = await apiClient.post('api/set_review.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '후기가 등록되었습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/review/kindergartenWrite.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 후기 작성 (이미지 포함)
+const submitReview = async (reviewData: {
+  type: 'guardian' | 'kindergarten'
+  kindergarten_id: string
+  pet_id: string
+  content: string
+  selected_tags: string[]
+  satisfaction: string
+  reservation_id: string
+  images?: { uri: string }[]
+}) => {
+  try {
+    // Step 1: 이미지 업로드 (Storage)
+    const imageUrls: string[] = []
+    if (reviewData.images && reviewData.images.length > 0) {
+      for (let i = 0; i < reviewData.images.length; i++) {
+        const filePath = `${user.id}/${reviewData.reservation_id}_${Date.now()}_${i}.jpg`
+        const response = await fetch(reviewData.images[i].uri)
+        const blob = await response.blob()
+
+        const { error: uploadError } = await supabase.storage
+          .from('review-images')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          })
+
+        if (uploadError) {
+          Alert.alert('오류', `이미지 업로드 실패: ${uploadError.message}`)
+          return
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('review-images')
+          .getPublicUrl(filePath)
+
+        imageUrls.push(publicUrl)
+      }
+    }
+
+    // Step 2: 리뷰 INSERT
+    const tableName = reviewData.type === 'guardian'
+      ? 'guardian_reviews'
+      : 'kindergarten_reviews'
+
+    const { error } = await supabase
+      .from(tableName)
+      .insert({
+        member_id: user.id,
+        kindergarten_id: reviewData.kindergarten_id,
+        pet_id: reviewData.pet_id,
+        content: reviewData.content,
+        selected_tags: reviewData.selected_tags,
+        satisfaction: reviewData.satisfaction,
+        reservation_id: reviewData.reservation_id,
+        image_urls: imageUrls.length > 0 ? imageUrls : null,
+      })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    Alert.alert('완료', '후기가 등록되었습니다')
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 테이블 분리: `type` 파라미터 → `guardian_reviews` / `kindergarten_reviews` 테이블
+- 이미지: FormData → Storage `review-images` 버킷 + `image_urls` (jsonb 배열)
+- Storage 경로: `review-images/{user.id}/{reservation_id}_{timestamp}_{index}.jpg`
+- `tags` (JSON 문자열) → `selected_tags` (jsonb 배열)
+- `satisfaction` 신규 필드 추가
+- `partner_id` → `kindergarten_id`
+
+**응답 매핑**: #40과 동일
 
 ---
 
@@ -2058,82 +3570,285 @@ const searchAddress = async (keyword: string) => {
 ### API #62. set_solved.php → education_completions INSERT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
+**관련 파일**: `app/kindergarten/tutorial/index.tsx`
 **Supabase 대응**: `supabase.from('education_completions').insert({ member_id, topic_id })`
+**Supabase 테이블**: `education_completions`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/tutorial/index.tsx
+// 교육 퀴즈 이수 완료 저장
+const markSolved = async (educationId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('education_id', educationId)
+
+    const response = await apiClient.post('api/set_solved.php', formData)
+    if (response.result === 'Y') {
+      // 이수 완료 표시 업데이트
+      setSolvedList(prev => [...prev, educationId])
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/tutorial/index.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 교육 퀴즈 이수 완료 저장
+const markSolved = async (topicId: string) => {
+  try {
+    const { error } = await supabase
+      .from('education_completions')
+      .insert({
+        member_id: user.id,
+        topic_id: topicId,
+      })
+
+    if (error) {
+      // 23505: unique_violation — 이미 이수한 교육은 무시
+      if (error.code === '23505') return
+      Alert.alert('오류', error.message)
+      return
+    }
+    setSolvedList(prev => [...prev, topicId])
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `member_id` (UUID), `education_id` → `topic_id` (UUID)
+- 중복 체크: PHP에서 서버 측 처리 → Supabase는 UNIQUE 제약 위반 시 `23505` 에러 코드 → 앱에서 무시 처리
+- `.insert()` 단순 호출 (반환값 불필요)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
 
 ---
 
 ### API #63. get_bank_list.php → banks SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
+**관련 파일**: `hooks/useBankList.ts`
 **Supabase 대응**: `supabase.from('banks').select('*').eq('is_active', true).order('sort_order')`
+**Supabase 테이블**: `banks`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useBankList.ts
+// 은행 목록 조회
+const fetchBankList = async () => {
+  try {
+    const response = await apiClient.get('api/get_bank_list.php', {})
+    if (response.result === 'Y') {
+      setBankList(response.data)  // [{ code, name }, ...]
+    }
+  } catch (error) {
+    setBankList([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useBankList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 은행 목록 조회
+const fetchBankList = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('banks')
+      .select('id, code, name')
+      .eq('is_active', true)
+      .order('sort_order')
+
+    if (error) {
+      setBankList([])
+      return
+    }
+    setBankList(data)
+  } catch (error) {
+    setBankList([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 파라미터 없음 (마스터 데이터 전체 조회)
+- `is_active=true`: 사용 중인 은행만 필터
+- `sort_order`: 정렬 순서 (은행 코드 순 등)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].code` | `data[].code` | 아니오 |
+| `data[].name` | `data[].name` | 아니오 |
+| — | `data[].id` (UUID) | 예 — 신규 |
 
 ---
 
 ### API #64. get_favorite_animal_list.php → favorite_pets SELECT + pets JOIN
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 유치원 모드 — 찜한 반려동물 목록
-**Supabase 대응**: `supabase.from('favorite_pets').select('*, pet:pets(*)').eq('member_id', userId)`
+**관련 파일**: `hooks/useFavoriteAnimalList.ts` (유치원 모드 — 찜한 반려동물 목록)
+**Supabase 대응**: `supabase.from('favorite_pets').select('*, pet:pets(*)').eq('member_id', userId).eq('is_favorite', true)`
+**Supabase 테이블**: `favorite_pets`, `pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useFavoriteAnimalList.ts
+// 찜한 반려동물 목록 (유치원 모드)
+const fetchFavoriteAnimals = async () => {
+  try {
+    const response = await apiClient.get('api/get_favorite_animal_list.php', {
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setFavoriteList(response.data)
+    }
+  } catch (error) {
+    setFavoriteList([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useFavoriteAnimalList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 찜한 반려동물 목록 (유치원 모드)
+const fetchFavoritePets = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('favorite_pets')
+      .select(`
+        id,
+        pet_id,
+        created_at,
+        pet:pets (
+          id, name, breed, gender, birth_date, weight,
+          size_class, photo_urls, is_neutered, is_vaccinated,
+          member_id
+        )
+      `)
+      .eq('member_id', user.id)
+      .eq('is_favorite', true)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      setFavoriteList([])
+      return
+    }
+    setFavoriteList(data)
+  } catch (error) {
+    setFavoriteList([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `member_id` (UUID), `is_favorite=true` 필터 추가
+- **임베디드 JOIN**: `pet:pets(...)` 구문으로 반려동물 정보를 한 번에 가져옴 (별도 쿼리 불필요)
+- 응답 구조: `data[].pet.name`, `data[].pet.breed` 등 중첩 객체
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].wr_id` | `data[].pet.id` | 예 — 중첩 구조 |
+| `data[].wr_subject` | `data[].pet.name` | 예 — 중첩 + 키 이름 |
+| `data[].wr_4` | `data[].pet.breed` | 예 — 중첩 + 키 이름 |
+| `data[].animal_img1` | `data[].pet.photo_urls[0]` | 예 — 중첩 + 배열 |
 
 ---
 
 ### API #65. get_favorite_partner_list.php → favorite_kindergartens SELECT + kindergartens JOIN
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 보호자 모드 — 찜한 유치원 목록
-**Supabase 대응**: `supabase.from('favorite_kindergartens').select('*, kindergarten:kindergartens(*)').eq('member_id', userId)`
+**관련 파일**: `hooks/useFavoritePartnerList.ts` (보호자 모드 — 찜한 유치원 목록)
+**Supabase 대응**: `supabase.from('favorite_kindergartens').select('*, kindergarten:kindergartens(*)').eq('member_id', userId).eq('is_favorite', true)`
+**Supabase 테이블**: `favorite_kindergartens`, `kindergartens`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useFavoritePartnerList.ts
+// 찜한 유치원 목록 (보호자 모드)
+const fetchFavoritePartners = async () => {
+  try {
+    const response = await apiClient.get('api/get_favorite_partner_list.php', {
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setFavoriteList(response.data)
+    }
+  } catch (error) {
+    setFavoriteList([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useFavoritePartnerList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 찜한 유치원 목록 (보호자 모드)
+const fetchFavoriteKindergartens = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('favorite_kindergartens')
+      .select(`
+        id,
+        kindergarten_id,
+        created_at,
+        kindergarten:kindergartens (
+          id, name, description, address_road, address_complex,
+          photo_urls, business_status, latitude, longitude,
+          freshness_current, member_id
+        )
+      `)
+      .eq('member_id', user.id)
+      .eq('is_favorite', true)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      setFavoriteList([])
+      return
+    }
+    setFavoriteList(data)
+  } catch (error) {
+    setFavoriteList([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `member_id` (UUID), `is_favorite=true` 필터 추가
+- **임베디드 JOIN**: `kindergarten:kindergartens(...)` 구문으로 유치원 정보를 한 번에 가져옴
+- `partner` → `kindergarten` (용어 변환)
+- 응답 구조: `data[].kindergarten.name`, `data[].kindergarten.photo_urls` 등 중첩 객체
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].wr_subject` | `data[].kindergarten.name` | 예 — 중첩 + 키 이름 |
+| `data[].wr_content` | `data[].kindergarten.description` | 예 — 중첩 + 키 이름 |
+| `data[].partner_img1` | `data[].kindergarten.photo_urls[0]` | 예 — 중첩 + 배열 |
+| `data[].business_status` | `data[].kindergarten.business_status` | 예 — 중첩 |
 
 ---
 
@@ -2162,8 +3877,66 @@ pg_cron 또는 외부 cron → supabase.functions.invoke('scheduler')
 > 여러 API에서 반복적으로 사용하는 Storage 업로드 패턴입니다.
 
 ```typescript
-// TODO: 공통 Storage 업로드 헬퍼 함수
-// uploadImage(bucket, path, file) → publicUrl
+// 파일: utils/uploadImage.ts (신규 생성 — 공통 유틸)
+import { supabase } from '@/lib/supabase'
+
+/**
+ * Supabase Storage에 이미지를 업로드하고 공개 URL을 반환
+ * 여러 API에서 공통으로 사용 (#6, #7, #13, #14, #21, #45)
+ *
+ * @param bucket  Storage 버킷명 (예: 'pet-images')
+ * @param path    저장 경로 (예: '{userId}/{timestamp}.jpg')
+ * @param fileUri 로컬 이미지 URI (React Native file URI)
+ * @param contentType MIME 타입 (기본값: 'image/jpeg')
+ * @returns 공개 URL 문자열 또는 null (실패 시)
+ */
+export const uploadImage = async (
+  bucket: string,
+  path: string,
+  fileUri: string,
+  contentType: string = 'image/jpeg'
+): Promise<string | null> => {
+  try {
+    const response = await fetch(fileUri)
+    const blob = await response.blob()
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(path, blob, {
+        contentType,
+        upsert: false,
+      })
+
+    if (error) return null
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path)
+
+    return publicUrl
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 여러 이미지를 순차 업로드
+ * @returns 성공한 URL 배열 (실패한 이미지는 건너뜀)
+ */
+export const uploadImages = async (
+  bucket: string,
+  userId: string,
+  images: { uri: string }[],
+  prefix: string = ''
+): Promise<string[]> => {
+  const urls: string[] = []
+  for (let i = 0; i < images.length; i++) {
+    const path = `${userId}/${prefix}${Date.now()}_${i}.jpg`
+    const url = await uploadImage(bucket, path, images[i].uri)
+    if (url) urls.push(url)
+  }
+  return urls
+}
 ```
 
 ### 버킷 목록
@@ -2187,3 +3960,5 @@ pg_cron 또는 외부 cron → supabase.functions.invoke('scheduler')
 | 2026-04-17 | 리뷰 반영 — R4: 즐겨찾기 #46~#49 전환방식 수정 (DELETE→UPDATE is_favorite=false, INSERT→UPSERT is_favorite=true) |
 | 2026-04-17 | **R1 본문 작성** — §1 인증/회원 (#1~#6) Before/After 코드 + 응답 매핑 + §2 주소 인증 (#7~#8) Before/After 코드 + 응답 매핑. 총 8개 API 전환 코드 완성 |
 | 2026-04-17 | **R1 리뷰 반영 (Issue 2~8)** — §1 #4~#6 선행 작성 사유 노트 추가(Issue 3), #3 `convertBirthDate` 유틸 추가+params 변환 반영(Issue 4), #3 `convertGender` 유틸+CHECK 제약 명시+upsert 변환 적용 반영(Issue 5), #8 카카오 REST API 키 보안 경고 강조 박스 추가(Issue 6) |
+| 2026-04-17 | **R2 본문 작성** — §3 반려동물 (#9~#16) 8개 API Before/After 코드 + 응답 매핑, §4 유치원 프로필 (#21) 코드, §5 채팅 자동 API (#24, #26~#29) 5개 코드, 채팅 템플릿 (#30~#33) 4개 코드, §6 돌봄 후기 (#40) 코드, §7 정산 (#42~#43) 2개 코드, §8 리뷰 (#45) 코드, §13 기타 (#62~#65) 4개 코드, 부록 Storage 공통 유틸 작성. 총 R2에서 26개 API 코드 완성 |
+| 2026-04-17 | **R2 리뷰 반영 (Issue 1~3)** — Issue 1: #21 가격 컬럼 `price_*_add` 3개 → `price_*_24h` + `price_*_pickup` 6개로 교정 (총 12개 컬럼 정확 반영), Issue 2: #11 RLS 안내 명확화 (본인 전용 API, 타인 반려동물은 RPC `app_get_guardian_detail` 사용 안내), Issue 3: #10 `!inner` JOIN → 별도 2회 조회 패턴 교정 (찜하지 않은 반려동물 조회 실패 방지) |

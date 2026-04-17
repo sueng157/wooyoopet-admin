@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 가이드
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-17 (R1 리뷰 반영 — Issue 2~8 일괄 수정)
+> **최종 업데이트**: 2026-04-17 (R2 리뷰 반영 — Issue 1~3 수정)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **전제 조건**: Supabase 프로젝트 설정 완료, Step 2.5 RPC 13개 배포 완료
 > **관련 문서**: `MIGRATION_PLAN.md` (설계서), `APP_MIGRATION_CODE.md` (코드 예시), `RPC_PHP_MAPPING.md` (RPC 매핑), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
@@ -200,14 +200,14 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 | 0 | 문서 규칙 및 표기법 | 3-0 (완료) | — | ✅ 확정 |
 | 1 | 인증 전환 (mb_id → Supabase Auth) | 3-1 / R1 | 3개 (#1~#3) | ✅ 완료 |
 | 2 | apiClient 교체 (FormData → Supabase JS) | 3-1 / R1 | — (공통) | ✅ 완료 |
-| 3 | 반려동물 CRUD | 3-2 / R2 | 8개 (#9~#16) | ⬜ 예정 |
-| 4 | 즐겨찾기 CRUD | 3-2 / R2 (CODE: R6) | 4개 (#46~#49) | ⬜ 예정 |
-| 5 | 알림/FCM | 3-2 / R2 (CODE: R6) | 3개 (#50~#52) | ⬜ 예정 |
-| 6 | 콘텐츠 조회 | 3-2 / R2 (CODE: R6) | 5개 (#53~#57) | ⬜ 예정 |
-| 7 | 차단/신고 | 3-2 / R2 (CODE: R6) | 3개 (#58~#60) | ⬜ 예정 |
-| 8 | 채팅 템플릿 | 3-2 / R2 | 4개 (#30~#33) | ⬜ 예정 |
-| 9 | 주소 인증 / 프로필 / 회원 관리 | 3-2 / R2 | 6개 (#4~#8, #21) | ⬜ 예정 |
-| 10 | 기타 자동 API | 3-2 / R2 | 12개 (#24, #26~#29, #40, #42~#43, #45, #62~#65) | ⬜ 예정 |
+| 3 | 반려동물 CRUD | 3-2 / R2 | 8개 (#9~#16) | ✅ 완료 |
+| 4 | 즐겨찾기 CRUD | 3-2 / R2 (CODE: R6) | 4개 (#46~#49) | ✅ 완료 |
+| 5 | 알림/FCM | 3-2 / R2 (CODE: R6) | 3개 (#50~#52) | ✅ 완료 |
+| 6 | 콘텐츠 조회 | 3-2 / R2 (CODE: R6) | 5개 (#53~#57) | ✅ 완료 |
+| 7 | 차단/신고 | 3-2 / R2 (CODE: R6) | 3개 (#58~#60) | ✅ 완료 |
+| 8 | 채팅 템플릿 | 3-2 / R2 | 4개 (#30~#33) | ✅ 완료 |
+| 9 | 주소 인증 / 프로필 / 회원 관리 | 3-2 / R2 | 6개 (#4~#8, #21) | ✅ 완료 |
+| 10 | 기타 자동 API | 3-2 / R2 | 12개 (#24, #26~#29, #40, #42~#43, #45, #62~#65) | ✅ 완료 |
 | 11 | 유치원/보호자 RPC | 3-3 / R3 | 4개 (#17~#20) | ⬜ 예정 |
 | 12 | 예약 조회 RPC | 3-3 / R3 | 2개 (#37, #38) | ⬜ 예정 |
 | 13 | 리뷰/정산/교육 RPC | 3-3 / R3 | 4개 (#41, #44, #44b, #61) | ⬜ 예정 |
@@ -736,43 +736,83 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **Supabase 테이블**: `pets`, `pet_breeds`, `favorite_pets`
 > **관련 파일**: `hooks/usePetList.ts`, `types/petType.ts`
 
-### 3-1. API #9. get_my_animal.php → pets SELECT
+### 3-1. 아키텍처 변경 요약
 
-<!-- TODO: Before/After, 컬럼 매핑 (wr_1~wr_11 → 정규 컬럼명) -->
-<!-- 참조: APP_MIGRATION_CODE.md #9 -->
+**기존**: `apiClient.get/post('api/get_my_animal.php', { mb_id })` → PHP에서 `g5_write_animal` 테이블 조회, `wr_1`~`wr_11` 같은 난독화된 컬럼명 사용.
 
-### 3-2. API #10. get_animal_by_id.php → pets SELECT + favorite JOIN
+**전환 후**: `supabase.from('pets').select(...)` → 직접 `pets` 테이블 조회, 정규 컬럼명 (`name`, `breed`, `gender` 등) 사용. 이미지는 10개 개별 컬럼(`animal_img1`~`10`) 대신 `photo_urls` (text[]) 배열 1개로 통합.
 
-<!-- 참조: APP_MIGRATION_CODE.md #10 -->
+**핵심 변경 3가지**:
+1. **컬럼명 전면 교체**: `wr_*` → 의미 있는 이름 (아래 §3-9 매핑표)
+2. **이미지 구조**: 개별 10컬럼 → `text[]` 배열 + Storage 버킷 (`pet-images`)
+3. **boolean 변환**: `'Y'`/`'N'` 문자열 → `true`/`false` boolean
 
-### 3-3. API #11. get_animal_by_mb_id.php → pets SELECT
+### 3-2. API #9~#11 — 반려동물 조회 (3개)
 
-<!-- 참조: APP_MIGRATION_CODE.md #11 -->
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #9 | `get_my_animal.php` | `pets SELECT WHERE member_id=? AND deleted=false` | `mb_id` → `member_id` (UUID), `deleted=false` 필터 추가 |
+| #10 | `get_animal_by_id.php` | `pets SELECT WHERE id=?` + `favorite_pets` 별도 조회 | 찜 여부: PHP 응답 내장 → 별도 쿼리 분리 |
+| #11 | `get_animal_by_mb_id.php` | `pets SELECT WHERE member_id=?` | 타인 반려동물 조회 시 RLS 주의 |
 
-### 3-4. API #12. get_animal_kind.php → pet_breeds SELECT
+#9 (내 반려동물 목록)가 가장 기본이 되는 패턴이며, #10~#11은 파라미터만 다른 변형입니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #12 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #9, #10, #11 참조
 
-### 3-5. API #13. set_animal_insert.php → pets INSERT + Storage
+### 3-3. API #12 — 품종 검색
 
-<!-- TODO: Storage 업로드 패턴 (pet-images 버킷), 4마리 제한 체크 -->
-<!-- 참조: APP_MIGRATION_CODE.md #13 -->
+`get_animal_kind.php` → `pet_breeds SELECT`. MariaDB의 `animalKind` 테이블이 `pet_breeds`로 통합되었으며, `type` 컬럼(`'dog'`/`'cat'`)으로 구분합니다. 현재 `dog`만 운영 중이므로 `.eq('type', 'dog')` 필터를 사용합니다.
 
-### 3-6. API #14. set_animal_update.php → pets UPDATE + Storage
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #12 참조
 
-<!-- 참조: APP_MIGRATION_CODE.md #14 -->
+### 3-4. API #13~#14 — 반려동물 등록/수정
 
-### 3-7. API #15. set_animal_delete.php → pets UPDATE (soft delete)
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #13 | `set_animal_insert.php` | Storage `pet-images` 업로드 → `pets INSERT` | FormData 이미지 → Storage + `photo_urls[]`, 4마리 제한 체크 |
+| #14 | `set_animal_update.php` | Storage 이미지 교체 → `pets UPDATE` | 기존 URL 유지 + 새 이미지 추가 방식 |
 
-<!-- 참조: APP_MIGRATION_CODE.md #15 -->
+**Storage 업로드 패턴**: 두 API 모두 이미지 업로드가 포함됩니다. 기존 PHP는 FormData로 이미지를 한 번에 전송했지만, Supabase에서는 **Step 1: Storage 업로드** → **Step 2: DB INSERT/UPDATE** 2단계로 분리됩니다. 공통 업로드 유틸리티는 `APP_MIGRATION_CODE.md` 부록 참조.
 
-### 3-8. API #16. set_first_animal_set.php → RPC `app_set_representative_pet`
+**4마리 제한 체크** (#13): `.select('*', { count: 'exact', head: true })`로 현재 등록 수를 먼저 확인합니다. `head: true`는 데이터 본문 없이 count만 반환하여 효율적입니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #16 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #13, #14 참조
 
-### 3-9. PetType 인터페이스 변경 요약
+### 3-5. API #15 — 반려동물 삭제 (soft delete)
 
-<!-- TODO: 기존 PetType vs 전환 후 PetType 비교표 -->
+`set_animal_delete.php` → `pets UPDATE (deleted=true)`. **실제 행 삭제가 아닌 soft delete** 방식입니다. `deleted=true`로 설정된 반려동물은 모든 조회 쿼리에서 `.eq('deleted', false)` 필터로 제외됩니다. `internal.pets_public_info` VIEW에도 동일 필터가 적용되어 있습니다.
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #15 참조
+
+### 3-6. API #16 — 대표 반려동물 설정 (RPC)
+
+`set_first_animal_set.php` → `supabase.rpc('app_set_representative_pet', { p_pet_id })`. 이 API는 **자동 API가 아닌 RPC**입니다. 이유: 기존 대표 해제(전체 `is_representative=false`) → 새 대표 설정(`is_representative=true`) 2단계를 **트랜잭션 안전하게** 처리해야 하기 때문입니다.
+
+RPC 내부에서 `p_pet_id` 존재 여부를 먼저 검증하여, "모든 반려동물이 비대표가 되는" 버그를 원천 차단합니다.
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #16 참조
+
+### 3-7. PetType 인터페이스 변경 요약
+
+| 기존 필드 (wr_*) | 전환 후 필드 | 타입 변경 | 비고 |
+|---|---|---|---|
+| `wr_id` (정수) | `id` (UUID) | `number` → `string` | PK |
+| `mb_id` (폰번호) | `member_id` (UUID) | `string` → `string` | FK, 값 형태 변경 |
+| `wr_subject` | `name` | — | |
+| `wr_content` | `description` | — | |
+| `wr_2` | `gender` | — | |
+| `wr_3` (`'Y'`/`'N'`) | `is_neutered` | `string` → `boolean` | |
+| `wr_4` | `breed` | — | |
+| `wr_5` | `birth_date` | — | date 타입 |
+| `wr_6` (`'Y'`/`'N'`) | `is_birth_date_unknown` | `string` → `boolean` | |
+| `wr_7` (문자열) | `weight` | `string` → `number` | numeric 타입 |
+| `wr_8` (`'Y'`/`'N'`) | `is_vaccinated` | `string` → `boolean` | |
+| `wr_10` (`'Y'`/`'N'`) | `is_draft` | `string` → `boolean` | |
+| `firstYN` (`'Y'`/`'N'`) | `is_representative` | `string` → `boolean` | |
+| `deleteYN` (`'Y'`/`'N'`) | `deleted` | `string` → `boolean` | |
+| `animal_img1`~`10` | `photo_urls` | 10개 `string` → `string[]` | 배열 통합 |
+| — | `size_class` | — (신규) | 트리거 자동 계산 |
+| — | `created_at` | — (신규) | timestamptz |
 
 ---
 
@@ -783,21 +823,20 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **Supabase 테이블**: `favorite_kindergartens`, `favorite_pets`
 > **관련 파일**: `utils/handleFavorite.ts`
 
-### 4-1. API #46. set_partner_favorite_add.php → favorite_kindergartens UPSERT
+### 4-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #46 -->
+기존 PHP에서는 즐겨찾기 추가/삭제가 별도 PHP 파일(4개)로 분리되어 있었습니다. Supabase에서는 `favorite_kindergartens`과 `favorite_pets` 2개 테이블로 관리하며, `is_favorite` boolean 컬럼으로 활성/비활성을 토글합니다.
 
-### 4-2. API #47. set_partner_favorite_remove.php → favorite_kindergartens UPDATE
+**주요 변경**: 기존에는 행 INSERT/DELETE 방식이었으나, Supabase에서는 **UPSERT + `is_favorite` 플래그** 방식으로 전환합니다. 즐겨찾기 해제 시 행을 삭제하지 않고 `is_favorite=false`로 UPDATE하여 히스토리를 보존합니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #47 -->
+| # | PHP API | Supabase 대응 | 방식 |
+|---|---------|--------------|------|
+| #46 | `set_partner_favorite_add.php` | `favorite_kindergartens UPSERT (is_favorite=true)` | UPSERT |
+| #47 | `set_partner_favorite_remove.php` | `favorite_kindergartens UPDATE (is_favorite=false)` | UPDATE |
+| #48 | `set_user_favorite_add.php` | `favorite_pets UPSERT (is_favorite=true)` | UPSERT |
+| #49 | `set_user_favorite_remove.php` | `favorite_pets UPDATE (is_favorite=false)` | UPDATE |
 
-### 4-3. API #48. set_user_favorite_add.php → favorite_pets UPSERT
-
-<!-- 참조: APP_MIGRATION_CODE.md #48 -->
-
-### 4-4. API #49. set_user_favorite_remove.php → favorite_pets UPDATE
-
-<!-- 참조: APP_MIGRATION_CODE.md #49 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #46~#49 참조 (R6에서 코드 작성 예정)
 
 ---
 
@@ -808,17 +847,19 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **Supabase 테이블**: `fcm_tokens`, `notifications`
 > **관련 파일**: `hooks/useFcmToken.ts`, `hooks/useNotification.ts`
 
-### 5-1. API #50. fcm_token.php → fcm_tokens UPSERT
+### 5-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #50 -->
+FCM 토큰 저장과 알림 CRUD는 기존 PHP와 구조가 거의 동일합니다. MariaDB의 `fcm_token` → Supabase `fcm_tokens`, `notification` → `notifications`로 테이블명만 변경됩니다.
 
-### 5-2. API #51. get_notification.php → notifications SELECT
+**핵심 변경**: `mb_id` → `member_id` (UUID). FCM 토큰 저장 시 기기별 중복 체크를 위해 `device_id` 컬럼이 추가되었습니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #51 -->
+| # | PHP API | Supabase 대응 | 비고 |
+|---|---------|--------------|------|
+| #50 | `fcm_token.php` | `fcm_tokens UPSERT` | `member_id` + `device_id` 기준 UPSERT |
+| #51 | `get_notification.php` | `notifications SELECT` | 최신순 정렬 |
+| #52 | `delete_notification.php` | `notifications DELETE` | 단건 or 전체 삭제 |
 
-### 5-3. API #52. delete_notification.php → notifications DELETE
-
-<!-- 참조: APP_MIGRATION_CODE.md #52 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #50~#52 참조 (R6에서 코드 작성 예정)
 
 ---
 
@@ -828,25 +869,23 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **관련 API**: #53~#57 (5개)
 > **Supabase 테이블**: `banners`, `notices`, `faqs`, `terms`
 
-### 6-1. API #53. get_banner.php → banners SELECT
+### 6-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #53 -->
+콘텐츠 조회(배너, 공지사항, FAQ, 약관)는 모두 **공개 읽기** 패턴입니다. 인증 없이도 조회 가능하며, RLS에서 `FOR SELECT TO authenticated` 또는 `FOR SELECT TO anon` 정책이 적용되어 있습니다.
 
-### 6-2. API #54. get_notice.php → notices SELECT
+기존 MariaDB의 `g5_write_notice` (40컬럼), `g5_write_faq` (40컬럼)이 Supabase에서는 `notices` (10컬럼), `faqs` (8컬럼)으로 대폭 축소되었습니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #54 -->
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #53 | `get_banner.php` | `banners SELECT WHERE visible=true` | 정렬: `sort_order` |
+| #54 | `get_notice.php` | `notices SELECT WHERE visible=true` | 최신순, 페이지네이션 |
+| #55 | `get_notice_detail.php` | `notices SELECT WHERE id=? .single()` | **`.single()` 필수** (단건 조회) |
+| #56 | `get_faq.php` | `faqs SELECT` | 검색: `.ilike('question', '%keyword%')` |
+| #57 | `get_policy.php` | `terms SELECT WHERE category=?` | 카테고리 필터 |
 
-### 6-3. API #55. get_notice_detail.php → notices SELECT (단건)
+**주의**: 단건 조회(#55)에서는 반드시 `.single()`을 사용해야 합니다. 빠뜨리면 배열(`[]`)로 반환되어 앱에서 `data.title` 등 접근 시 크래시가 발생합니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #55 -->
-
-### 6-4. API #56. get_faq.php → faqs SELECT
-
-<!-- 참조: APP_MIGRATION_CODE.md #56 -->
-
-### 6-5. API #57. get_policy.php → terms SELECT
-
-<!-- 참조: APP_MIGRATION_CODE.md #57 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #53~#57 참조 (R6에서 코드 작성 예정)
 
 ---
 
@@ -857,17 +896,19 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **Supabase 테이블**: `member_blocks`
 > **관련 파일**: `hooks/useBlock.ts`
 
-### 7-1. API #58. set_block_user.php → member_blocks INSERT/DELETE (토글)
+### 7-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #58 -->
+기존 PHP에서는 `set_block_user_add.php` + `set_block_user_remove.php`가 별도였으나, 앱에서는 `set_block_user.php` 하나로 통합 호출합니다. Supabase에서는 `member_blocks` 테이블 (이미 존재)을 사용합니다.
 
-### 7-2. API #59. get_block_user.php → member_blocks SELECT
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #58 | `set_block_user.php` | `member_blocks INSERT/DELETE` (토글) | 차단 여부에 따라 INSERT 또는 DELETE |
+| #59 | `get_block_user.php` | `member_blocks SELECT` | `blocker_id` + `blocked_id` 조합 확인 |
+| #60 | `get_blocked_list.php` | `member_blocks SELECT + members JOIN` | 임베디드 JOIN으로 차단 대상 프로필 포함 |
 
-<!-- 참조: APP_MIGRATION_CODE.md #59 -->
+**차단 토글 패턴** (#58): 차단 상태를 먼저 확인 → 이미 차단이면 DELETE(해제), 미차단이면 INSERT(차단). 또는 앱 UI에서 차단/해제 버튼을 분리하여 각각 호출합니다.
 
-### 7-3. API #60. get_blocked_list.php → member_blocks SELECT + members JOIN
-
-<!-- 참조: APP_MIGRATION_CODE.md #60 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #58~#60 참조 (R6에서 코드 작성 예정)
 
 ---
 
@@ -877,21 +918,30 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **관련 API**: #30~#33 (4개, #30 get + #31 insert + #32 update + #33 delete)
 > **Supabase 테이블**: `chat_templates`
 
-### 8-1. API #30. get_message_template.php → chat_templates SELECT
+### 8-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #30 -->
+기존에는 `message_template` + `g5_write_chat_partner_guide` + `g5_write_chat_user_guide` 3개 테이블이 Supabase에서 `chat_templates` 1개로 통합되었습니다. `type` 컬럼으로 구분합니다:
 
-### 8-2. API #31. set_message_template.php → chat_templates INSERT
+| type | 용도 | 소유자 |
+|------|------|--------|
+| `custom` | 개인 상용문구 (사용자 등록) | `member_id` (FK) |
+| `guide_guardian` | 보호자 가이드 문구 (관리자 등록) | NULL |
+| `guide_kindergarten` | 유치원 가이드 문구 (관리자 등록) | NULL |
 
-<!-- 참조: APP_MIGRATION_CODE.md #31 -->
+앱에서 #30~#33은 **`type='custom'` 개인 상용문구만** CRUD합니다. 가이드 문구는 관리자 페이지에서 관리합니다.
 
-### 8-3. API #32. update_message_template.php → chat_templates UPDATE
+### 8-2. API 목록 (4개)
 
-<!-- 참조: APP_MIGRATION_CODE.md #32 -->
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #30 | `get_message_template.php` | `chat_templates SELECT WHERE type='custom'` | `type='custom'` 필터 필수 |
+| #31 | `set_message_template.php` | `chat_templates INSERT (type='custom')` | `type`, `member_id` 명시 |
+| #32 | `update_message_template.php` | `chat_templates UPDATE` | `.eq('member_id', user.id)` RLS 보조 |
+| #33 | `delete_message_template.php` | `chat_templates DELETE` | hard delete (복구 불필요) |
 
-### 8-4. API #33. delete_message_template.php → chat_templates DELETE
+4개 API 모두 단순 CRUD 패턴이며, `member_id`로 본인 데이터만 접근합니다 (RLS 자동 적용).
 
-<!-- 참조: APP_MIGRATION_CODE.md #33 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #30, #31, #32, #33 참조
 
 ---
 
@@ -902,29 +952,41 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **Supabase 테이블**: `members`, `kindergartens`
 > **관련 파일**: `utils/updateJoin.ts`, 프로필/주소 관련 화면
 
-### 9-1. API #4. set_member_leave.php → RPC `app_withdraw_member`
+### 9-1. 아키텍처 변경 요약
 
-<!-- 참조: APP_MIGRATION_CODE.md #4 -->
+이 장의 API들은 회원 프로필, 주소 인증, 모드 전환, 회원 탈퇴, 유치원 프로필 등 **회원 관리 전반**을 다룹니다. #4~#8은 R1에서 코드가 작성되었으며, #21은 R2에서 추가됩니다.
 
-### 9-2. API #5. set_mypage_mode_update.php → members UPDATE
+| # | PHP API | 전환 방식 | Supabase 대응 | 코드 작성 라운드 |
+|---|---------|----------|--------------|---------------|
+| #4 | `set_member_leave.php` | **RPC** | `app_withdraw_member` — soft delete | R1 ✅ |
+| #5 | `set_mypage_mode_update.php` | 자동 API | `members UPDATE (current_mode)` | R1 ✅ |
+| #6 | `set_profile_update.php` | 자동 API + Storage | `members UPDATE + profile-images` | R1 ✅ |
+| #7 | `set_address_verification.php` | 자동 API + Storage | `members UPDATE + address-docs` | R1 ✅ |
+| #8 | `kakao-address.php` | 앱 직접 호출 | 카카오 REST API 직접 호출 | R1 ✅ |
+| #21 | `set_partner_update.php` | 자동 API + Storage | `kindergartens UPDATE + kindergarten-images` | **R2** |
 
-<!-- 참조: APP_MIGRATION_CODE.md #5 -->
+### 9-2. API #4~#8 — R1에서 작성 완료
 
-### 9-3. API #6. set_profile_update.php → members UPDATE + Storage
+#4~#8의 설명은 §1 인증 전환, §2 apiClient 교체에서 다루었습니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #6 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #4, #5, #6, #7, #8 참조
 
-### 9-4. API #7. set_address_verification.php → members UPDATE + Storage
+### 9-3. API #21. set_partner_update.php → kindergartens UPDATE + Storage
 
-<!-- 참조: APP_MIGRATION_CODE.md #7 -->
+**전환 방식**: 자동 API + Storage | **난이도**: 중
 
-### 9-5. API #8. kakao-address.php → 앱 직접 호출 (서버 불필요)
+기존 `set_partner_update.php`는 유치원 정보 등록/수정을 FormData로 처리합니다. 전환 후에는 `kindergartens` 테이블을 직접 UPDATE합니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #8 -->
+**핵심 변경**:
+- **가격 구조 전면 변경**: 기존 `wr_2` 컬럼에 파이프(`|`) 구분으로 저장된 가격 문자열(`'10000|12000|...'`)이 12개 개별 integer 컬럼으로 분리됨:
+  - 소형: `price_small_1h`, `price_small_24h`, `price_small_walk`, `price_small_pickup`
+  - 중형: `price_medium_1h`, `price_medium_24h`, `price_medium_walk`, `price_medium_pickup`
+  - 대형: `price_large_1h`, `price_large_24h`, `price_large_walk`, `price_large_pickup`
+- **이미지**: `partner_img1~10` → Storage `kindergarten-images` 버킷 + `photo_urls` (text[])
+- **주소 컬럼**: `mb_addr1` → `address_road`, `mb_4` → `address_complex` 등 (§0-1 용어 매핑표 참조)
+- **이름/소개**: `wr_subject` → `name`, `wr_content` → `description`
 
-### 9-6. API #21. set_partner_update.php → kindergartens UPDATE + Storage
-
-<!-- 참조: APP_MIGRATION_CODE.md #21 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #21 참조
 
 ---
 
@@ -933,63 +995,51 @@ if (handleSupabaseError(error, '반려동물 조회')) return
 > **작성 라운드**: 3-2 / R2
 > **관련 API**: #24, #26~#29, #40, #42~#43, #45, #62~#65 (12개)
 
-### 10-1. 채팅 관련 자동 API
+### 10-1. 채팅 관련 자동 API (5개)
 
-#### API #24. chat.php → get_messages → chat_messages SELECT
+채팅 시스템(§14)의 전체 Realtime 전환은 R4에서 다루지만, 채팅 관련 API 중 **자동 API로 처리 가능한 5개**는 이 장에서 다룹니다. 이 API들은 채팅 Realtime 전환과 독립적으로 작업할 수 있습니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #24 -->
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #24 | `chat.php (get_messages)` | `chat_messages SELECT` | `room_id` → `chat_room_id`, `.range()` 페이지네이션 |
+| #26 | `chat.php (get_images)` | `chat_messages SELECT WHERE image_urls IS NOT NULL` | `file_path` → `image_urls` (jsonb 배열), `.flatMap()` 평탄화 |
+| #27 | `chat.php (leave_room)` | `chat_rooms UPDATE (status='비활성')` | `deleted_at` → `status` 컬럼 |
+| #28 | `chat.php (muted)` | `chat_room_members UPDATE (is_muted)` | `'Y'`/`'N'` → boolean |
+| #29 | `read_chat.php` | `chat_room_members UPDATE (last_read_message_id)` | 에러 무시 패턴 유지 |
 
-#### API #26. chat.php → get_images → chat_messages SELECT (image)
+**기존 `chat.php` 라우터 패턴**: PHP에서는 `chat.php` 하나의 파일이 `method` 파라미터로 여러 기능을 분기했습니다. Supabase에서는 각 기능이 별도 테이블의 개별 쿼리로 분리됩니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #26 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #24, #26, #27, #28, #29 참조
 
-#### API #27. chat.php → leave_room → chat_rooms UPDATE
+### 10-2. 돌봄/정산/리뷰 관련 자동 API (4개)
 
-<!-- 참조: APP_MIGRATION_CODE.md #27 -->
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #40 | `set_care_review.php` | `guardian_reviews/kindergarten_reviews INSERT` | `type` 파라미터 → 테이블 분리, `tags` → `selected_tags` (jsonb) |
+| #42 | `get_settlement_info.php` | `settlement_infos SELECT` | `.maybeSingle()` (미등록 시 null) |
+| #43 | `set_settlement_info.php` | `settlement_infos UPSERT` | `onConflict: 'member_id'`, 주민번호 마스킹 방식 변경 |
+| #45 | `set_review.php` | `guardian_reviews/kindergarten_reviews INSERT + Storage` | 이미지: Storage `review-images` 버킷 |
 
-#### API #28. chat.php → muted → chat_room_members UPDATE
+**리뷰 테이블 분리** (#40, #45): 기존 PHP는 `type='pet'`/`type='partner'` 파라미터로 한 테이블에 저장했으나, Supabase에서는 `guardian_reviews` (보호자→유치원 후기)와 `kindergarten_reviews` (유치원→보호자 후기) 2개 테이블로 분리되었습니다. 앱에서 후기 타입에 따라 다른 테이블에 INSERT합니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #28 -->
+**정산 정보 주민번호** (#43): 기존 PHP에서 `rrn_front_enc` + `rrn_back_enc` (암호화 저장) → Supabase에서는 `operator_ssn_masked` (마스킹: `'960315-*******'`)로 변경. 주민번호 뒷자리 전문은 앱 클라이언트에서 저장하지 않습니다.
 
-#### API #29. read_chat.php → chat_room_members UPDATE
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #40, #42, #43, #45 참조
 
-<!-- 참조: APP_MIGRATION_CODE.md #29 -->
+### 10-3. 기타 자동 API (4개)
 
-### 10-2. 돌봄/정산/리뷰 관련 자동 API
+| # | PHP API | Supabase 대응 | 핵심 변경 |
+|---|---------|--------------|----------|
+| #62 | `set_solved.php` | `education_completions INSERT` | 중복 INSERT 시 `23505` 에러 → 무시 처리 |
+| #63 | `get_bank_list.php` | `banks SELECT WHERE is_active=true` | 마스터 데이터 조회 (인증 불필요) |
+| #64 | `get_favorite_animal_list.php` | `favorite_pets SELECT + pets JOIN` | **임베디드 JOIN** — `pet:pets(...)` |
+| #65 | `get_favorite_partner_list.php` | `favorite_kindergartens SELECT + kindergartens JOIN` | **임베디드 JOIN** — `kindergarten:kindergartens(...)` |
 
-#### API #40. set_care_review.php → guardian_reviews / kindergarten_reviews INSERT
+**임베디드 JOIN 패턴** (#64, #65): Supabase PostgREST는 FK 관계가 있는 테이블을 `.select()` 안에서 중첩 조회할 수 있습니다. `favorite_pets.pet:pets(id, name, breed, ...)` 구문으로 별도 쿼리 없이 반려동물 정보를 함께 가져옵니다. 응답은 `data[].pet.name` 형태의 중첩 객체입니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #40 -->
+**교육 이수 중복 체크** (#62): `education_completions` 테이블에 `(member_id, topic_id)` UNIQUE 제약이 있으므로, 이미 이수한 교육에 INSERT하면 PostgreSQL 에러 `23505` (unique_violation)가 발생합니다. 앱에서 이 에러를 무시 처리합니다.
 
-#### API #42. get_settlement_info.php → settlement_infos SELECT
-
-<!-- 참조: APP_MIGRATION_CODE.md #42 -->
-
-#### API #43. set_settlement_info.php → settlement_infos UPSERT
-
-<!-- 참조: APP_MIGRATION_CODE.md #43 -->
-
-#### API #45. set_review.php → guardian_reviews / kindergarten_reviews INSERT + Storage
-
-<!-- 참조: APP_MIGRATION_CODE.md #45 -->
-
-### 10-3. 기타
-
-#### API #62. set_solved.php → education_completions INSERT
-
-<!-- 참조: APP_MIGRATION_CODE.md #62 -->
-
-#### API #63. get_bank_list.php → banks SELECT
-
-<!-- 참조: APP_MIGRATION_CODE.md #63 -->
-
-#### API #64. get_favorite_animal_list.php → favorite_pets SELECT + pets JOIN
-
-<!-- 참조: APP_MIGRATION_CODE.md #64 -->
-
-#### API #65. get_favorite_partner_list.php → favorite_kindergartens SELECT + kindergartens JOIN
-
-<!-- 참조: APP_MIGRATION_CODE.md #65 -->
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #62, #63, #64, #65 참조
 
 ---
 
@@ -1277,3 +1327,5 @@ const { data, error } = await supabase.functions.invoke('function-name', {
 | 2026-04-17 | 리뷰 반영 — Issue 1~4 (16-8 번호 명시, 9장/10장 API 재배치, 13장 #16 제거, 12장 #5b 명확화) + R1~R3,R5,R6 (쿼리 규칙, 응답 매핑 규칙, 문서 역할 분담, MMKV 어댑터, 코드 블록 렌더링) |
 | 2026-04-17 | **R1 본문 작성** — §1 인증 전환 (1-1~1-6: 인증 흐름 다이어그램, API #1~#3 설명, userAtom 변경, 영향 범위) + §2 apiClient 교체 (2-1~2-5: 5패턴 비교, 점진적 전환, 에러 처리, 삭제 체크리스트) |
 | 2026-04-17 | **R1 리뷰 반영 (Issue 2~8)** — §2-2 Auth API 수량 보충 설명 추가(Issue 2), §0-5 Phase A에 #4 RPC 예외 주석 추가(Issue 8). CODE.md의 Issue 3~6은 해당 문서 변경 이력 참조 |
+| 2026-04-17 | **R2 본문 작성** — §3 반려동물 CRUD (아키텍처 변경, PetType 매핑표, 8개 API 설명), §4 즐겨찾기 (UPSERT+is_favorite 패턴), §5 알림/FCM (구조 요약), §6 콘텐츠 (공개 읽기 패턴, .single() 주의), §7 차단 (토글 패턴), §8 채팅 템플릿 (chat_templates 통합 구조, 4개 CRUD), §9 주소/프로필/회원 (#21 유치원 프로필 — 가격 구조 변경, Storage), §10 기타 자동 API (채팅 자동 5개, 돌봄/정산/리뷰 4개, 기타 4개 — 임베디드 JOIN, 중복 체크 패턴) |
+| 2026-04-17 | **R2 리뷰 반영 (Issue 1~3)** — Issue 1: §9-3 가격 컬럼명 12개 정확 기재 (소형/중형/대형 × 1h/24h/walk/pickup), Issue 2: CODE #11 RLS 안내 정비 (본인 전용 + RPC 안내), Issue 3: CODE #10 inner JOIN → 별도 조회 교정 |
