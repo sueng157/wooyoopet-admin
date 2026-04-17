@@ -230,7 +230,7 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 
 | 라운드 | 세부작업 | Phase | 대상 | GUIDE 장 | CODE 섹션 | TODO 수 | 핵심 내용 | 주요 참조 |
 |--------|----------|-------|------|----------|-----------|---------|-----------|-----------|
-| **R1** | 3-1 | A (기반) | 인증 + apiClient 교체 | 1, 2장 | §1 인증/회원, §2 주소 | ~20개 | Supabase Auth 흐름, apiClient→supabase 4패턴, MMKV 세션, mb_id 제거 | MOBILE_APP_ANALYSIS.md §인증, DB_MAPPING_REFERENCE.md members |
+| **R1** | 3-1 | A (기반) | 인증 + apiClient 교체 | 1, 2장 | §1 인증/회원, §2 주소 | ~20개 | Supabase Auth 흐름, apiClient→supabase 5패턴, MMKV 세션, mb_id 제거 | MOBILE_APP_ANALYSIS.md §인증, DB_MAPPING_REFERENCE.md members |
 | **R2** | 3-2 | A (CRUD) | 단순 CRUD 핵심 | 3~10장 | §3 반려동물, §4 유치원/보호자 | ~16개 | 44개 자동 API 패턴, wr_1~wr_11 컬럼 매핑, Storage 업로드 | MOBILE_APP_ANALYSIS.md §API, DB_MAPPING_REFERENCE.md 전체 |
 | **R3** | 3-3 | B | RPC 조회 | 11~13장 | §7 정산, §8 리뷰, §13 기타 | ~14개 | supabase.rpc() 호출, 파라미터·응답 매핑, 보호자/유치원 분기 | RPC_PHP_MAPPING.md, sql/44_01~44_12 |
 | **R4** | 3-4 | C | 채팅 Realtime | 14장 | §5 채팅 | ~19개 | WebSocket→Realtime 전환, 채팅방 구독, 메시지 CRUD, 파일 전송 | MOBILE_APP_ANALYSIS.md §채팅 |
