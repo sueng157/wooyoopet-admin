@@ -115,7 +115,7 @@
 | 2.5-0a | DDL ALTER (pets.deleted + kindergartens CHECK) | ✅ 완료 | sql/44_00a_ddl_alter_tables.sql |
 | 2.5-1 | 앱용 RPC 함수 SQL 작성 (13개) | ✅ 13/13 완료 | sql/44_01~44_12 + 44_05b — PR #133(4개), #135(6개), #136(2개+리팩터링), #137(1개+DDL) |
 | 2.5-1a | 외주개발자 PHP 용도 확인 | ✅ 확인 완료 | `RPC_PHP_MAPPING.md` 전달 → 확인 완료 (2026-04-17). 확인 항목: ① 앱 화면 매핑 정확성 ✅, ② #3·#4 보호자 상세/목록 실제 호출 위치 ✅, ③ #2 지도 클러스터링 처리 주체 ✅ |
-| 2.5-2 | 사장님이 Supabase에서 SQL 실행 | ⬜ 예정 | 15개 SQL 파일 (VIEW 1 + DDL 1 + RPC 13) 실행 필요 |
+| 2.5-2 | 사장님이 Supabase에서 SQL 실행 | ✅ 완료 | 15개 SQL 파일 (VIEW 1 + DDL 1 + RPC 13) 실행 완료 |
 
 #### 공통 RLS 충돌 해결 — 방안 A (VIEW 방식) ✅ 확정
 
