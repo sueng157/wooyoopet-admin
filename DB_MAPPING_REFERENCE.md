@@ -1,6 +1,6 @@
 # 기존 DB ↔ 신규 DB 전체 매핑 대조표
 
-> 최종 업데이트: 2026-04-13 (테이블·컬럼명 전수 교정 + 매니저 검토 반영 완료)
+> 최종 업데이트: 2026-04-17 (Step 2.5 완료 반영 — pets.deleted 컬럼 추가, kindergartens.registration_status CHECK 변경)
 > 목적: MariaDB(기존 PHP 서버) → Supabase(신규) 테이블/컬럼 1:1 대조
 > 사용법: Step 2 SQL 작성 전, 매니저와 함께 검토하여 빠진 것/잘못된 것 확인
 
@@ -14,7 +14,7 @@
 |---|---------------------|---------------------|------|------|
 | 1 | g5_member (82컬럼) | **members** | 회원 (보호자+유치원) | 82→31컬럼으로 축소 + 신규 10컬럼 추가 예정 |
 | 2 | g5_write_partner (63컬럼) | **kindergartens** | 유치원(돌봄 파트너) 정보 | 63→35컬럼으로 축소 + 신규 3컬럼 추가 예정 |
-| 3 | g5_write_animal (55컬럼) | **pets** | 반려동물 | 55→14컬럼으로 축소 |
+| 3 | g5_write_animal (55컬럼) | **pets** | 반려동물 | 55→14컬럼으로 축소 + deleted 컬럼 추가(Step 2.5) |
 | 4 | payment_request (23컬럼) | **reservations** | 돌봄 예약(결제요청) | 컬럼명 변경, 기존 21컬럼 + 신규 4컬럼 추가 예정 |
 | 5 | inicis_payments (18컬럼) | **payments** | 결제 정보 | 구조 변경됨 (Supabase가 더 상세) |
 | 6 | (payment_request.penalty 필드) | **refunds** | 환불/위약금 | MariaDB에는 별도 테이블 없었음 → Supabase에서 신규 생성 |
@@ -183,7 +183,7 @@
 | 24 | — | created_at | timestamptz | ✅ 존재 | |
 | 25 | mb_9 | latitude | numeric | 🆕 추가 | 유치원 위도 |
 | 26 | mb_10 | longitude | numeric | 🆕 추가 | 유치원 경도 |
-| 27 | wr_6 | registration_status | text | 🆕 추가 | 등록 상태 (temp=임시저장) |
+| 27 | wr_6 | registration_status | text | 🆕 추가 | 등록 상태 (temp=임시저장, withdrawn=탈퇴). CHECK 제약에 'withdrawn' 추가 (Step 2.5, sql/44_00a) |
 
 **검토 결과 불필요로 판단된 매핑:**
 - wr_1 (`has_own_pet`) → `kindergarten_resident_pets` 테이블로 판단 가능
@@ -199,7 +199,7 @@
 
 ---
 
-### 2-3. 반려동물 — g5_write_animal (55컬럼) → pets (16컬럼)
+### 2-3. 반려동물 — g5_write_animal (55컬럼) → pets (17컬럼)
 
 | # | MariaDB 컬럼 | MariaDB 용도 (확인) | Supabase 컬럼 | 상태 | 비고 |
 |---|-------------|------|--------------|------|------|
@@ -220,7 +220,7 @@
 | 15 | wr_11 | 믹스 체크 여부 | — | — | breed='믹스견'으로 처리, 별도 컬럼 불필요 |
 | 16 | animal_kind_mix | 믹스 여부 | — | — | breed에 포함 (위 wr_11과 동일 역할) |
 | 17 | firstYN | 대표 동물 | is_representative | ✅ 존재 | bool |
-| 18 | deleteYN | 삭제 여부 | — | — | soft delete 방식 |
+| 18 | deleteYN | 삭제 여부 | deleted | 🆕 추가 | boolean DEFAULT false (Step 2.5, sql/44_00a). soft delete 방식. internal.pets_public_info VIEW에서 WHERE deleted=false 필터 적용 |
 | 19 | animal_img1~10 | 이미지 10개 | photo_urls | ✅ 존재 | text[] 배열 |
 | 20 | — | — | size_class | ✅ 존재 | 소형/중형/대형 (트리거 자동 계산) |
 

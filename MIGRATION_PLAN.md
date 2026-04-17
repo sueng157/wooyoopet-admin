@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-15 (Step 2.5 진행 — 공개 VIEW 3개 + RPC 12개(리뷰 분리) + RLS 충돌 해결 방안 A(VIEW) 확정, 방안 B(SECURITY DEFINER) 제외)
+> 최종 업데이트: 2026-04-17 (Step 2.5 완료 — 앱용 RPC 13/13 + VIEW 3개 + DDL ALTER 1개, 총 15개 SQL 파일. PR #133~#137 merge 완료. Step 3 진행 예정)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -103,7 +103,7 @@
 | 2-3 | 앱 사용자용 RLS + Storage 정책 | ✅ 완료 | sql/43_01 (RLS 79개) + sql/43_02 (Storage 버킷 6개 + 정책 20개) |
 | 2-4 | 사장님이 Supabase에서 SQL 실행 | ✅ 완료 | 17개 파일 전체 실행 확인 (PR #123) |
 
-### Step 2.5: 앱용 RPC 함수 생성 ⏸️ 일시 중단 (외주개발자 확인 대기)
+### Step 2.5: 앱용 RPC 함수 생성 ✅ 완료
 
 > **추가 배경**: Step 2 완료 후 전수조사에서 Supabase에 존재하는 RPC 함수가 **관리자 페이지 전용(`get_dashboard_*`, `get_admin_*` 등)**뿐이며, **모바일 앱이 호출할 RPC 함수가 하나도 없음**을 확인했다. 섹션 5 API 매핑표에서 `RPC`로 분류된 API(유치원 상세, 보호자 목록, 예약 조회 등)가 실제로 동작하려면 앱용 RPC 함수를 먼저 생성해야 한다. 따라서 Step 3(앱 전환 가이드) 작업 전에 Step 2.5를 선행한다.
 
@@ -112,9 +112,10 @@
 | # | 세부 작업 | 상태 | 산출물 |
 |---|----------|------|--------|
 | 2.5-0 | 공개 VIEW 3개 생성 (RLS 충돌 해결) | ✅ 완료 | sql/44_00_app_public_views.sql |
-| 2.5-1 | 앱용 RPC 함수 SQL 작성 (13개) | 🔄 10/13 완료 | sql/44_01, 44_02, 44_08, 44_11 (PR #133) + sql/44_05, 44_05b, 44_06, 44_09, 44_10, 44_12 완료. 미완료: #3, #4, #7 |
-| 2.5-1a | 외주개발자 PHP 용도 확인 | ⏳ 대기 중 | `RPC_PHP_MAPPING.md` 전달 → 확인 응답 대기. 확인 항목: ① 앱 화면 매핑 정확성, ② #3·#4 보호자 상세/목록 실제 호출 위치, ③ #2 지도 클러스터링 처리 주체 |
-| 2.5-2 | 사장님이 Supabase에서 SQL 실행 | ⬜ 예정 | 3개 VIEW + 13개 RPC 함수 생성 확인 |
+| 2.5-0a | DDL ALTER (pets.deleted + kindergartens CHECK) | ✅ 완료 | sql/44_00a_ddl_alter_tables.sql |
+| 2.5-1 | 앱용 RPC 함수 SQL 작성 (13개) | ✅ 13/13 완료 | sql/44_01~44_12 + 44_05b — PR #133(4개), #135(6개), #136(2개+리팩터링), #137(1개+DDL) |
+| 2.5-1a | 외주개발자 PHP 용도 확인 | ✅ 확인 완료 | `RPC_PHP_MAPPING.md` 전달 → 확인 완료 (2026-04-17). 확인 항목: ① 앱 화면 매핑 정확성 ✅, ② #3·#4 보호자 상세/목록 실제 호출 위치 ✅, ③ #2 지도 클러스터링 처리 주체 ✅ |
+| 2.5-2 | 사장님이 Supabase에서 SQL 실행 | ⬜ 예정 | 15개 SQL 파일 (VIEW 1 + DDL 1 + RPC 13) 실행 필요 |
 
 #### 공통 RLS 충돌 해결 — 방안 A (VIEW 방식) ✅ 확정
 
@@ -129,13 +130,13 @@
 
 | VIEW 이름 | 스키마 | 기저 테이블 | 노출 컬럼 수 | 제외 항목 | SQL 파일 |
 |-----------|--------|-----------|------------|----------|---------|
-| `internal.members_public_profile` | internal | members | 11 | 전화번호, 상세주소, 생년월일, 성별, 통신사, 본인인증, 노쇼제재, 정지/탈퇴 사유, 알림설정, 앱설정 | sql/44_00 |
+| `internal.members_public_profile` | internal | members | 9 (id, nickname, profile_image, current_mode, address_complex, address_building_dong, latitude, longitude, status) | 전화번호, 상세주소(ho), 생년월일, 성별, 통신사, 본인인증, 노쇼제재, 정지/탈퇴 사유, 알림설정, 앱설정, name, nickname_tag, created_at | sql/44_00 |
 | `internal.pets_public_info` | internal | pets | 15 (+ `WHERE deleted=false`) | deleted, created_at, updated_at | sql/44_00 |
 | `internal.settlement_infos_public` | internal | settlement_infos | 4 (id, member_id, kindergarten_id, inicis_status) | 사업자정보, 계좌정보, 주민번호, 개인정보 전체 | sql/44_00 |
 
 #### RPC 함수 설계 규칙
 
-- 파일명: `sql/44_00_app_public_views.sql` (VIEW) + `sql/44_01_app_rpc_[함수명].sql` ~ `sql/44_12_app_rpc_[함수명].sql` (+ `sql/44_05b_*`)
+- 파일명: `sql/44_00_app_public_views.sql` (VIEW) + `sql/44_00a_ddl_alter_tables.sql` (DDL) + `sql/44_01_app_rpc_[함수명].sql` ~ `sql/44_12_app_rpc_[함수명].sql` (+ `sql/44_05b_*`)
 - 함수명: `app_` 접두어 (관리자용 `get_admin_*`/`get_dashboard_*`와 구분)
 - 보안: `SECURITY INVOKER` + `SET search_path = public` (RLS 자동 적용)
 - 타 회원 데이터 JOIN: 원본 테이블 대신 **internal 스키마 VIEW** 사용 (`internal.members_public_profile`, `internal.pets_public_info`, `internal.settlement_infos_public`)
@@ -159,12 +160,12 @@
 |---|---------|--------|---------|------|----------|----------|------|
 | 1 | sql/44_01 | `app_get_kindergarten_detail` | get_partner.php | 유치원 상세 | kindergartens + members + favorite + settlement_infos + pets JOIN | ✅ 3개 모두 | ✅ 완료 |
 | 2 | sql/44_02 | `app_get_kindergartens` | get_partner_list.php | 유치원 목록 | kindergartens + review COUNT + Haversine 거리 정렬 + p_limit safety cap | ✅ members | ✅ 완료 |
-| 3 | sql/44_03 | `app_get_guardian_detail` | get_protector.php | 보호자 상세 | members + pets + favorite JOIN | ✅ members, pets | ⬜ |
-| 4 | sql/44_04 | `app_get_guardians` | get_protector_list.php | 보호자 목록 | members + pets JOIN + 페이지네이션 | ✅ members, pets | ⬜ |
+| 3 | sql/44_03 | `app_get_guardian_detail` | get_protector.php | 보호자 상세 | members + pets + favorite JOIN | ✅ members, pets | ✅ 완료 |
+| 4 | sql/44_04 | `app_get_guardians` | get_protector_list.php | 보호자 목록 | members + pets JOIN + 페이지네이션 | ✅ members, pets | ✅ 완료 |
 | 5 | sql/44_05 | `app_get_reservations` | get_payment_request.php | 예약 목록 (보호자) | reservations + pets + kindergartens + members JOIN + 상태 필터 | ✅ members, pets | ✅ 완료 |
 | 5b | sql/44_05b | `app_get_reservations_kindergarten` | get_payment_request.php | 예약 목록 (유치원) | reservations + pets + members JOIN + 유치원 운영자 시점 | ✅ members, pets | ✅ 완료 |
 | 6 | sql/44_06 | `app_get_reservation_detail` | get_payment_request_by_id.php | 예약 상세 | reservations + payments + refunds + pets + kindergartens + members JOIN | ✅ members, pets | ✅ 완료 |
-| 7 | sql/44_07 | `app_withdraw_member` | set_member_leave.php | 회원 탈퇴 | members UPDATE (soft delete) + 관련 데이터 정리 (Auth 삭제는 Edge Function) | ❌ | ⬜ |
+| 7 | sql/44_07 | `app_withdraw_member` | set_member_leave.php | 회원 탈퇴 | members UPDATE (soft delete: status→'탈퇴') + pets.deleted=true + kindergartens.registration_status='withdrawn'. Auth 삭제는 Edge Function | ❌ | ✅ 완료 |
 | 8 | sql/44_08 | `app_set_representative_pet` | set_first_animal_set.php | 대표 반려동물 지정 | pets BATCH UPDATE (is_representative) | ❌ | ✅ 완료 |
 | 9 | sql/44_09 | `app_get_guardian_reviews` | get_review.php (type=pet) | 보호자 후기 | guardian_reviews + 태그 집계(7 positive) + pets + members JOIN | ✅ members, pets | ✅ 완료 |
 | 10 | sql/44_10 | `app_get_settlement_summary` | get_settlement.php + get_settlement_list.php | 정산 요약 | settlements 집계 (정산완료/예정/보류) + 기간별 period_summary + details 페이지네이션 | ✅ members | ✅ 완료 |
@@ -187,11 +188,11 @@
 | 7 | 9 | `app_get_guardian_reviews` | ★★★ | ✅ | ✅ 완료 — 태그 집계(7 positive), json_agg ORDER BY ord |
 | 8 | 12 | `app_get_kindergarten_reviews` | ★★★ | ✅ | ✅ 완료 — is_guardian_only 필터, 태그 집계(7 positive) |
 | 9 | 10 | `app_get_settlement_summary` | ★★☆ | ✅ | ✅ 완료 — 정산 집계 + period_summary + RLS 보강 |
-| 10 | 3 | `app_get_guardian_detail` | ★★☆ | ❌ | PHP 소스 없음, 구조 추론 |
-| 11 | 4 | `app_get_guardians` | ★★☆ | ❌ | PHP 소스 없음, 목록 버전 |
-| 12 | 7 | `app_withdraw_member` | ★★★ | ✅ | soft delete + 데이터 정리, 마지막 |
+| 10 | 3 | `app_get_guardian_detail` | ★★☆ | ❌ | ✅ 완료 — PHP 소스 없음, 구조 추론 → 외주개발자 확인 완료 |
+| 11 | 4 | `app_get_guardians` | ★★☆ | ❌ | ✅ 완료 — PHP 소스 없음, 목록 버전 |
+| 12 | 7 | `app_withdraw_member` | ★★★ | ✅ | ✅ 완료 — soft delete + DDL ALTER + 데이터 정리 |
 
-### Step 3: 앱 API 전환 가이드 작성 ⬜ 진행 예정 (Step 2.5 완료 후)
+### Step 3: 앱 API 전환 가이드 작성 🔜 진행 예정 (Step 2.5 완료 → 전제조건 충족)
 
 **목표**: 외주 개발자가 모바일 앱 코드를 수정할 수 있도록 66개 API별 전환 지침서를 작성한다.
 
@@ -907,3 +908,4 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-14 | **앱 API 전수조사 + Step 2.5 설계** — React Native 소스에서 실제 호출 PHP API 60개 grep 추출, 기존 매핑 85개와 대조: 미사용 19개 제거 + 누락 3개(kakao-address, delete_message_template, update_message_template) 추가. Supabase RPC 함수가 관리자 전용뿐임을 확인 → Step 2.5(앱용 RPC 11개) 신규 삽입. Edge Functions 8→7개(address-proxy 삭제, create-reservation 이름변경). 섹션 2-2 지리 데이터 테이블 마이그레이션 불필요 확정. toss_payment.php 앱 레거시 호출 확인. Secrets 3개(JUSO/NAVER) 미사용 표기 |
 | 2026-04-15 | **Step 2.5 진행 시작** — 공개 VIEW 3개(members_public_profile, pets_public_info, settlement_infos_public) 생성(sql/44_00), RPC #8 app_set_representative_pet 완료(sql/44_08). RLS 충돌 해결 방안 A(VIEW) 확정, 방안 B(SECURITY DEFINER) 제외. 리뷰 RPC 2개 분리(app_get_guardian_reviews + app_get_kindergarten_reviews) → 총 RPC 11→12개 |
 | 2026-04-16 | **Step 2.5 RPC 대량 완성 (10/13)** — #5 app_get_reservations(보호자 예약목록), #5b app_get_reservations_kindergarten(유치원 예약목록, 신규 분리), #6 app_get_reservation_detail(예약상세 + payments + refunds), #9 app_get_guardian_reviews(보호자 후기 + 태그 집계 7개), #12 app_get_kindergarten_reviews(유치원 후기 + is_guardian_only 필터 + 태그 집계 7개), #10 app_get_settlement_summary(정산 요약 + period_summary + details) 완료. settlements RLS 보강(kindergarten_id 운영자 조건 추가, sql/43_01). #10은 get_settlement_list.php 기능 흡수. 총 RPC 12→13개(#5b 추가). 미완료 3개: #3, #4, #7 |
+| 2026-04-17 | **Step 2.5 완료 (13/13)** — #3 app_get_guardian_detail + #4 app_get_guardians 완료(VIEW/RPC 일괄 리팩터링: members_public_profile 11→9컬럼, owner→operator 키 변경, PR #136). #7 app_withdraw_member 완료(soft delete: members.status→'탈퇴', pets.deleted=true, kindergartens.registration_status='withdrawn', DDL ALTER sql/44_00a, PR #137). 외주개발자 RPC_PHP_MAPPING.md 확인 완료 반영. 문서 일괄 업데이트(RPC_PHP_MAPPING, DB_FUNCTIONS, MIGRATION_PLAN, HANDOVER, DB_MAPPING_REFERENCE) |

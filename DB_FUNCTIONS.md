@@ -1,6 +1,6 @@
 # 우유펫(WOOYOOPET) DB 함수 목록
 
-> 최종 업데이트: 2026-04-07
+> 최종 업데이트: 2026-04-17 (Step 2.5 앱용 RPC 13개 + VIEW 3개 + DDL 추가)
 
 ---
 
@@ -90,6 +90,49 @@
 
 ---
 
+## 6. 앱용 RPC 함수 (Step 2.5 — 13개)
+
+> **추가 (2026-04-15~17)**: 모바일 앱에서 복잡한 JOIN/집계가 필요한 조회를 처리하기 위해 `app_` 접두어로 13개 RPC 함수를 생성.
+> 보안 규칙: `SECURITY INVOKER` + `SET search_path = public` (RLS 자동 적용). 타 회원 데이터는 internal 스키마 VIEW를 통해 접근.
+
+| # | 함수명 | 용도 | 반환타입 | 핵심 JOIN/로직 | SQL 파일 | 비고 |
+|---|--------|------|----------|---------------|---------|------|
+| 1 | `app_get_kindergarten_detail` | 유치원 상세 조회 | `json` | kindergartens + internal.members_public_profile + internal.settlement_infos_public + internal.pets_public_info + favorite_kindergartens | `sql/44_01` | 찜여부, 정산상태, 상주 반려동물 포함 |
+| 2 | `app_get_kindergartens` | 유치원 목록 (지도/목록) | `json` | kindergartens + internal.members_public_profile + guardian_reviews COUNT + Haversine 거리계산 + p_limit safety cap | `sql/44_02` | 페이지네이션 없음, 거리정렬 |
+| 3 | `app_get_guardian_detail` | 보호자 상세 조회 | `json` | internal.members_public_profile + internal.pets_public_info + favorite_pets | `sql/44_03` | PHP 소스 없음(역추론), 외주개발자 확인 완료 |
+| 4 | `app_get_guardians` | 보호자 목록 | `json` | internal.members_public_profile + internal.pets_public_info + 페이지네이션 | `sql/44_04` | PHP 소스 없음(역추론), 외주개발자 확인 완료 |
+| 5 | `app_get_reservations` | 예약 목록 (보호자용) | `json` | reservations + internal.pets_public_info + kindergartens + payments + 상태 필터 | `sql/44_05` | 보호자 시점 리턴 필드 |
+| 5b | `app_get_reservations_kindergarten` | 예약 목록 (유치원용) | `json` | reservations + internal.pets_public_info + internal.members_public_profile + payments | `sql/44_05b` | 유치원 운영자 시점, #5에서 분리 |
+| 6 | `app_get_reservation_detail` | 예약 상세 (단건) | `json` | reservations + payments + refunds + internal.pets_public_info + kindergartens + internal.members_public_profile | `sql/44_06` | 결제/환불 정보 포함 |
+| 7 | `app_withdraw_member` | 회원 탈퇴 (soft delete) | `json` | members UPDATE (status→'탈퇴') + pets.deleted=true + kindergartens.registration_status='withdrawn' | `sql/44_07` | Auth 삭제는 Edge Function에서 후속 처리 |
+| 8 | `app_set_representative_pet` | 대표 반려동물 지정 | `json` | pets BATCH UPDATE (is_representative) | `sql/44_08` | RLS 충돌 없음 |
+| 9 | `app_get_guardian_reviews` | 보호자(반려동물) 후기 | `json` | guardian_reviews + 7개 기본태그 COUNT(CTE) + internal.pets_public_info + internal.members_public_profile | `sql/44_09` | json_agg ORDER BY ord |
+| 10 | `app_get_settlement_summary` | 정산 요약/내역 | `json` | settlements 집계(완료/예정/보류) + next_settlement + period_summary + details(페이지네이션 + 보호자 정보) | `sql/44_10` | get_settlement_list.php 기능 흡수 |
+| 11 | `app_get_education_with_progress` | 교육 + 이수현황 | `json` | education_topics + education_quizzes(JSON) + education_completions LEFT JOIN | `sql/44_11` | RLS 충돌 없음 |
+| 12 | `app_get_kindergarten_reviews` | 유치원 후기 | `json` | kindergarten_reviews + is_guardian_only 필터 + 7개 기본태그 COUNT(CTE) + internal.pets_public_info + internal.members_public_profile + kindergartens | `sql/44_12` | json_agg ORDER BY ord |
+
+## 7. 공개 VIEW (Step 2.5 — internal 스키마, 3개)
+
+> **추가 (2026-04-15)**: 앱용 RPC 함수에서 타 회원 데이터를 안전하게 JOIN하기 위한 VIEW.
+> `internal` 스키마에 생성하여 PostgREST REST API endpoint 노출 방지. `security_invoker = false` (SECURITY DEFINER)로 기저 테이블 RLS 우회.
+
+| VIEW 이름 | 기저 테이블 | 노출 컬럼 수 | 제외된 주요 항목 | SQL 파일 |
+|-----------|-----------|------------|----------------|---------|
+| `internal.members_public_profile` | members | 9 (id, nickname, profile_image, current_mode, address_complex, address_building_dong, latitude, longitude, status) | 전화번호, 상세주소(호), 생년월일, 성별, 통신사, 본인인증, 노쇼제재, 정지/탈퇴 사유, 알림설정 | `sql/44_00` |
+| `internal.pets_public_info` | pets | 15 + `WHERE deleted=false` | deleted, created_at, updated_at | `sql/44_00` |
+| `internal.settlement_infos_public` | settlement_infos | 4 (id, member_id, kindergarten_id, inicis_status) | 사업자정보, 계좌정보, 주민번호, 개인정보 전체 | `sql/44_00` |
+
+## 8. DDL 변경 (Step 2.5)
+
+> **추가 (2026-04-17)**: 회원 탈퇴(soft delete) RPC 구현을 위한 DDL ALTER.
+
+| 변경 대상 | 내용 | SQL 파일 |
+|----------|------|---------|
+| `pets` 테이블 | `deleted` boolean DEFAULT false 컬럼 추가 — soft delete 지원. VIEW에서 `WHERE deleted=false` 필터 적용 | `sql/44_00a` |
+| `kindergartens` 테이블 | `registration_status` CHECK 제약조건에 `'withdrawn'` 값 추가 — 탈퇴 회원의 유치원 상태 표시 | `sql/44_00a` |
+
+---
+
 ## 변경 이력
 
 | 날짜 | 내용 | 관련 SQL 파일 |
@@ -108,3 +151,6 @@
 | 2026-04-04 | `search_kindergarten_reviews` 함수 추가 — 유치원 후기 통합 검색 RPC (작성일/만족도/보호자전용/검색어 필터 + 페이지네이션). 이미지 기능 없음. LEFT JOIN pets | `sql/33_search_kindergarten_reviews.sql` |
 | 2026-04-07 | 콘텐츠관리 배너 탭 DB 연결 (PR #104) — 배너는 단일 테이블(banners) 조회이므로 **RPC 미사용** (Supabase 자동 API로 처리). `banner-images` Storage 버킷 추가 (관리자 전용 RLS). 노출상태는 JS에서 is_public+start_date+end_date 기반 동적 계산 | — |
 | 2026-04-07 | `reorder_faq_display_order`, `delete_faq_and_reorder` 함수 추가 — FAQ 노출순서 재정렬 RPC 2개. plpgsql 단일 트랜잭션으로 reorder + update/delete 원자성 보장 | `sql/40_faq_reorder_functions.sql` |
+| 2026-04-15 | **Step 2.5 시작** — internal 스키마 공개 VIEW 3개 생성 (`members_public_profile`, `pets_public_info`, `settlement_infos_public`). RPC #8 `app_set_representative_pet`, #11 `app_get_education_with_progress`, #1 `app_get_kindergarten_detail`, #2 `app_get_kindergartens` 완료 (PR #133) | `sql/44_00`, `sql/44_01`, `sql/44_02`, `sql/44_08`, `sql/44_11` |
+| 2026-04-16 | Step 2.5 RPC 대량 완성 (10/13) — #5 `app_get_reservations`, #5b `app_get_reservations_kindergarten`(신규 분리), #6 `app_get_reservation_detail`, #9 `app_get_guardian_reviews`(태그 집계 7개), #10 `app_get_settlement_summary`(get_settlement_list.php 흡수), #12 `app_get_kindergarten_reviews`(is_guardian_only 필터) 완료. settlements RLS 보강 (PR #135) | `sql/44_05`, `sql/44_05b`, `sql/44_06`, `sql/44_09`, `sql/44_10`, `sql/44_12`, `sql/43_01` |
+| 2026-04-17 | **Step 2.5 완료 (13/13)** — #3 `app_get_guardian_detail`, #4 `app_get_guardians`, #7 `app_withdraw_member` 완료. DDL ALTER: pets.deleted 컬럼 추가, kindergartens.registration_status CHECK 제약에 'withdrawn' 추가 (PR #136, #137) | `sql/44_03`, `sql/44_04`, `sql/44_07`, `sql/44_00a` |

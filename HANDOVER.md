@@ -31,7 +31,8 @@
   - 전수 분석 & 마이그레이션 설계 완료 → MIGRATION_PLAN.md (Step 1 완료)
   - 교차 검증 완료 → DB_MAPPING_REFERENCE.md (PR #118~#121)
   - Step 2 SQL 실행 완료 → 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개 (PR #123)
-  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 62개 + Edge Functions 8개
+  - Step 2.5 앱용 RPC 완료 → RPC 13개 + VIEW 3개 + DDL ALTER 1개, 총 15개 SQL 파일 (PR #133~#137)
+  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 66개 + Edge Functions 7개 + 앱용 RPC 13개
   ↓
 [예정] Phase 6: 기존 서버 해지 및 정리
 ```
@@ -42,7 +43,7 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~2 완료, PR #118~#123)
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~2 완료, Step 2.5 완료, PR #118~#137)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
 - **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
@@ -531,6 +532,37 @@ USING (bucket_id = 'notice-attachments');
 | `43_02_app_storage_policies.sql` | 318 | Storage 버킷 6개 생성 + 정책 20개, education-images 정책 admin 전용 전환 |
 
 > 총 17개 SQL 파일, 약 2,200줄. 전체 Supabase SQL Editor에서 실행 완료.
+
+### 5-26. Phase 5 Step 2.5 SQL 파일 목록 (PR #133~#137)
+
+> **앱용 RPC 함수 13개 + 공개 VIEW 3개 + DDL ALTER 1개** — 총 15개 SQL 파일
+
+**Step 2.5-A: 공개 VIEW + DDL** (sql/44_00, 44_00a)
+
+| SQL 파일 | 내용 | PR |
+|---------|------|-----|
+| `44_00_app_public_views.sql` | internal 스키마 VIEW 3개 (members_public_profile 9컬럼, pets_public_info 15컬럼+WHERE deleted=false, settlement_infos_public 4컬럼) | #133 |
+| `44_00a_ddl_alter_tables.sql` | DDL ALTER — pets.deleted boolean DEFAULT false 추가, kindergartens.registration_status CHECK에 'withdrawn' 추가 | #137 |
+
+**Step 2.5-B: 앱용 RPC 함수 13개** (sql/44_01~44_12 + 44_05b)
+
+| SQL 파일 | RPC 함수명 | 용도 | PR |
+|---------|-----------|------|-----|
+| `44_01_app_rpc_get_kindergarten_detail.sql` | `app_get_kindergarten_detail` | 유치원 상세 | #133 |
+| `44_02_app_rpc_get_kindergartens.sql` | `app_get_kindergartens` | 유치원 목록 | #133 |
+| `44_03_app_rpc_get_guardian_detail.sql` | `app_get_guardian_detail` | 보호자 상세 | #136 |
+| `44_04_app_rpc_get_guardians.sql` | `app_get_guardians` | 보호자 목록 | #136 |
+| `44_05_app_rpc_get_reservations.sql` | `app_get_reservations` | 예약 목록 (보호자) | #135 |
+| `44_05b_app_rpc_get_reservations_kindergarten.sql` | `app_get_reservations_kindergarten` | 예약 목록 (유치원) | #135 |
+| `44_06_app_rpc_get_reservation_detail.sql` | `app_get_reservation_detail` | 예약 상세 | #135 |
+| `44_07_app_rpc_withdraw_member.sql` | `app_withdraw_member` | 회원 탈퇴 (soft delete) | #137 |
+| `44_08_app_rpc_set_representative_pet.sql` | `app_set_representative_pet` | 대표 반려동물 지정 | #133 |
+| `44_09_app_rpc_get_guardian_reviews.sql` | `app_get_guardian_reviews` | 보호자 후기 | #135 |
+| `44_10_app_rpc_get_settlement_summary.sql` | `app_get_settlement_summary` | 정산 요약/내역 | #135 |
+| `44_11_app_rpc_get_education_with_progress.sql` | `app_get_education_with_progress` | 교육 + 이수현황 | #133 |
+| `44_12_app_rpc_get_kindergarten_reviews.sql` | `app_get_kindergarten_reviews` | 유치원 후기 | #135 |
+
+> 총 15개 SQL 파일. Supabase SQL Editor에서 실행 예정 (Step 2.5-2).
 
 ### 5-11. 설정(11번 메뉴) 규칙
 
@@ -1115,8 +1147,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 13개 설계 삽입 (리뷰 2분리 + 예약목록 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
-| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | 🔄 10/13 완료 | sql/44_00 (공개 VIEW 3개) + sql/44_01~44_12 + sql/44_05b — 앱용 RPC 함수 13개 중 10개 완료 (#1,#2,#5,#5b,#6,#8,#9,#10,#11,#12). RLS 충돌 해결: VIEW 방식(방안 A) 확정. settlements RLS 보강(sql/43_01). **PR #133 merge 완료(초기 4개)**. 미완료: #3, #4, #7 |
-| 5-7a | 외주개발자 PHP 용도 확인 | ⏳ 대기 중 | RPC_PHP_MAPPING.md 전달 → 외주개발자 확인 응답 대기 중. 확인 후 나머지 3개 (#3,#4,#7) RPC 작업 재개 |
+| 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ✅ 13/13 완료 | sql/44_00 (VIEW 3개) + sql/44_00a (DDL ALTER) + sql/44_01~44_12 + sql/44_05b — 앱용 RPC 13개 전체 완료. PR #133(초기 4개), #135(추가 6개), #136(#3,#4 + 리팩터링), #137(#7 + DDL). RLS 충돌 해결: VIEW 방식(방안 A) 확정. settlements RLS 보강(sql/43_01) |
+| 5-7a | 외주개발자 PHP 용도 확인 | ✅ 확인 완료 | RPC_PHP_MAPPING.md 전달 → 확인 완료 (2026-04-17). 확인 내용 대로 Step 2.5 작업 반영 완료 |
 | 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ⬜ 예정 | 66개 API별 전환 지침서 (외주 개발자용), Step 2.5 완료 후 진행 |
 | 5-9 | Edge Functions 구현 (Step 4) | ⬜ 예정 | 7개: inicis-callback, send-chat-message, create-reservation, complete-care, send-alimtalk, send-push, scheduler |
 | 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
@@ -1125,8 +1157,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-13 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
 
 > 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조.
-> **Step 2.5 현황 (2026-04-16)**: 공개 VIEW 3개 완료(sql/44_00), RPC 10/13개 완료(sql/44_01, 44_02, 44_05, 44_05b, 44_06, 44_08, 44_09, 44_10, 44_11, 44_12). settlements RLS 보강(sql/43_01). PR #133 merge 완료(초기 4개) + genspark_ai_developer 브랜치(추가 6개).
-> **미완료 3개**: #3(`app_get_guardian_detail`), #4(`app_get_guardians`), #7(`app_withdraw_member`). #3·#4는 PHP 소스 없음(역추론). 외주개발자 `RPC_PHP_MAPPING.md` 확인 응답 대기 중.
+> **Step 2.5 완료 (2026-04-17)**: 앱용 RPC 13/13 전체 완료. VIEW 3개(sql/44_00) + DDL ALTER(sql/44_00a) + RPC 13개(sql/44_01~44_12 + 44_05b). settlements RLS 보강(sql/43_01). 외주개발자 RPC_PHP_MAPPING.md 확인 완료.
+> PR #133(4개) + PR #135(6개) + PR #136(2개 + VIEW/RPC 리팩터링) + PR #137(1개 + DDL ALTER) → 전체 merge 완료.
 
 #### Phase 5 진행 이력
 
@@ -1142,7 +1174,9 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #128 | MIGRATION_PLAN | **Step 2.5 설계 + API 전수조사 교정** — 앱용 RPC 함수 11개 설계 삽입, API 매핑 85→66개 교정 (미사용 19개 제거, 누락 3개 추가), Edge Functions 8→7개 (address-proxy 삭제, create-reservation 이름변경), Phase A~D 전환 순서 추가 |
 | #130 | MIGRATION_PLAN | PR#129 merge 시 PR#128 변경사항 소실 복구 |
 | #133 | SQL 5개 파일 | **Step 2.5 초기 4개 RPC** — sql/44_00(VIEW 3개), sql/44_01(유치원 상세), sql/44_02(유치원 목록), sql/44_08(대표 반려동물), sql/44_11(교육 이수현황) |
-| (pending) | SQL 7개 + RLS 보강 + 문서 3개 | **Step 2.5 추가 6개 RPC + 문서 갱신** — sql/44_05(예약목록 보호자), sql/44_05b(예약목록 유치원, 신규 분리), sql/44_06(예약상세 + refunds), sql/44_09(보호자 후기 + 태그집계), sql/44_10(정산요약, get_settlement_list.php 흡수), sql/44_12(유치원 후기 + is_guardian_only). sql/43_01 settlements RLS 보강. MIGRATION_PLAN·RPC_PHP_MAPPING·HANDOVER 문서 동기화. 총 RPC 12→13개(#5b 추가), 10/13 완료 |
+| #135 | SQL 7개 + RLS 보강 + 문서 3개 | **Step 2.5 추가 6개 RPC + 문서 갱신** — sql/44_05(예약목록 보호자), sql/44_05b(예약목록 유치원, 신규 분리), sql/44_06(예약상세 + refunds), sql/44_09(보호자 후기 + 태그집계), sql/44_10(정산요약, get_settlement_list.php 흡수), sql/44_12(유치원 후기 + is_guardian_only). sql/43_01 settlements RLS 보강. 총 RPC 12→13개(#5b 추가), 10/13 완료 |
+| #136 | SQL 3개 + VIEW 리팩터링 | **Step 2.5 #3 보호자 상세 + #4 보호자 목록 + VIEW/RPC 일괄 리팩터링** — sql/44_03, sql/44_04 생성. members_public_profile VIEW 11→9컬럼(name, nickname_tag, created_at 제거, address_building_dong 추가). 기존 RPC 6개에서 owner→operator JSON 키 변경, 불필요 컬럼 제거 |
+| #137 | SQL 2개 | **Step 2.5 #7 회원 탈퇴 + DDL ALTER** — sql/44_07 app_withdraw_member(soft delete: status→'탈퇴', pets.deleted=true, kindergartens.registration_status='withdrawn'). sql/44_00a DDL ALTER(pets.deleted 컬럼 추가, kindergartens CHECK 제약 변경). **Step 2.5 RPC 13/13 전체 완료** |
 
 ---
 
