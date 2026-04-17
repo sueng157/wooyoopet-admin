@@ -214,9 +214,7 @@ BEGIN
   -- ──────────────────────────────────────────────────────
   SELECT json_build_object(
     'id', mp.id,
-    'name', mp.name,
     'nickname', mp.nickname,
-    'nickname_tag', mp.nickname_tag,
     'profile_image', mp.profile_image,
     'address_complex', mp.address_complex,
     'current_mode', mp.current_mode

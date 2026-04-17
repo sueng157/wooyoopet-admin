@@ -50,18 +50,22 @@ COMMENT ON SCHEMA internal IS
 -- 사용처: 유치원 상세(운영자 프로필), 보호자 상세/목록, 예약 상대방 정보,
 --         리뷰 작성자 정보, 채팅 상대방 정보
 --
--- [포함 컬럼과 근거]
---   id              — 회원 식별자 (JOIN 키)
---   name            — 유치원 운영자 이름 표시 (get_partner.php: member.mb_name)
---   nickname        — 프로필 닉네임 표시 (보호자 목록 등)
---   nickname_tag    — 닉네임 태그 (#1001 형태, 동명이인 구분)
---   profile_image   — 프로필 사진 URL
---   current_mode    — 현재 역할 (보호자/유치원 구분 필터링)
---   address_complex — 아파트/단지명 (유치원 주소가 아닌 회원 주소 단지명, 같은 단지 표시)
---   latitude        — 위도 (거리 기반 보호자 목록 정렬)
---   longitude       — 경도
---   status          — 계정 상태 (탈퇴/정지 회원 필터링)
---   created_at      — 가입일 (신규 회원 표시)
+-- [포함 컬럼과 근거] (9 컬럼)
+--   id                    — 회원 식별자 (JOIN 키)
+--   nickname              — 프로필 닉네임 표시 (보호자 목록 등)
+--   profile_image         — 프로필 사진 URL
+--   current_mode          — 현재 역할 (보호자/유치원 구분 필터링)
+--   address_complex       — 아파트/단지명 (유치원 주소가 아닌 회원 주소 단지명, 같은 단지 표시)
+--   address_building_dong — 동 (보호자 목록에서 "단지+동" 표시용)
+--   latitude              — 위도 (거리 기반 보호자 목록 정렬)
+--   longitude             — 경도
+--   status                — 계정 상태 (탈퇴/정지 회원 필터링)
+--
+-- [제외 컬럼과 사유]
+-- [제거된 컬럼 (이전 VIEW에서 포함되었으나 삭제)]
+--   name            — 유치원 운영자 이름 → nickname으로 통합 (앱에서 미사용)
+--   nickname_tag    — 닉네임 태그 (#1001) → 앱에서 미사용, RPC에서 불필요
+--   created_at      — 가입일 → 앱에서 미사용, RPC에서 불필요
 --
 -- [제외 컬럼과 사유]
 --   phone             — 개인정보: 전화번호
@@ -69,7 +73,6 @@ COMMENT ON SCHEMA internal IS
 --   gender            — 개인정보: 성별
 --   carrier           — 개인정보: 통신사
 --   address_road      — 개인정보: 도로명주소 (상세 주소)
---   address_building_dong — 개인정보: 동
 --   address_building_ho   — 개인정보: 호수
 --   address_direct    — 개인정보: 직접입력 주소
 --   address_doc_urls  — 개인정보: 주소 인증 서류
@@ -92,20 +95,21 @@ CREATE VIEW internal.members_public_profile
 AS
 SELECT
   id,
-  name,
   nickname,
-  nickname_tag,
   profile_image,
   current_mode,
   address_complex,
+  address_building_dong,
   latitude,
   longitude,
-  status,
-  created_at
+  status
 FROM public.members;
 
 COMMENT ON VIEW internal.members_public_profile IS
-  '타 회원 프로필 VIEW — 개인정보(전화번호, 상세주소, 생년월일 등) 제외. '
+  '타 회원 프로필 VIEW (9 컬럼) — 개인정보(전화번호, 상세주소, 생년월일 등) 제외. '
+  '컬럼: id, nickname, profile_image, current_mode, address_complex, address_building_dong, latitude, longitude, status. '
+  '제거: name(→nickname 통합), nickname_tag(앱 미사용), created_at(앱 미사용). '
+  '추가: address_building_dong(보호자 목록 "단지+동" 표시). '
   'internal 스키마: PostgREST API endpoint 미노출 → RPC 내부에서만 접근 가능. '
   'RPC에서 internal.members_public_profile로 참조. '
   '원본: MIGRATION_PLAN.md 섹션 2.5 공통 RLS 충돌 해결 방안 A';
@@ -252,7 +256,7 @@ BEGIN
     );
 
   RAISE NOTICE '[44-0] internal 스키마 VIEW % 개 생성 완료 (기대값: 3)', v_view_count;
-  RAISE NOTICE '  - internal.members_public_profile:    타 회원 프로필 (11 컬럼)';
+  RAISE NOTICE '  - internal.members_public_profile:    타 회원 프로필 (9 컬럼: id, nickname, profile_image, current_mode, address_complex, address_building_dong, latitude, longitude, status)';
   RAISE NOTICE '  - internal.pets_public_info:          타 회원 반려동물 (15 컬럼, deleted=false만)';
   RAISE NOTICE '  - internal.settlement_infos_public:   정산 활성화 상태 (4 컬럼)';
   RAISE NOTICE '  ※ 원본 테이블 RLS 정책은 변경 없음';

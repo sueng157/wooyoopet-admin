@@ -72,7 +72,7 @@
 --      정책: members_select_app — USING (id = auth.uid()) — 본인만
 --      통과: ❌ 차단 (타인=운영자 프로필 조회 불가)
 --      해결: ✅ internal.members_public_profile VIEW 사용
---            (SECURITY DEFINER, 11 안전 컬럼만 노출)
+--            (SECURITY DEFINER, 9 안전 컬럼만 노출)
 --
 --   ③ favorite_kindergartens
 --      정책: favorite_kindergartens_select_app — USING (member_id = auth.uid())
@@ -195,7 +195,7 @@ BEGIN
       json_build_object(
         'nickname', mp.nickname,
         'profile_image', mp.profile_image
-      ) AS owner
+      ) AS operator
     FROM kindergartens kg
     -- 운영자 프로필 (internal VIEW — RLS 차단 우회)
     LEFT JOIN internal.members_public_profile mp
@@ -230,7 +230,7 @@ BEGIN
       'price_small_24h', kl.price_small_24h,
       'review_count', kl.review_count,
       'is_favorite', kl.is_favorite,
-      'owner', kl.owner
+      'operator', kl.operator
     )
     -- 정렬: 좌표 있으면 거리순, 없으면 최신순 (id DESC)
     ORDER BY

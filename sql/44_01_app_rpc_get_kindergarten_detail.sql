@@ -62,7 +62,7 @@
 --      정책: members_select_app — USING (id = auth.uid()) — 본인만
 --      통과: ❌ 차단 (타인=운영자 프로필 조회 불가)
 --      해결: ✅ internal.members_public_profile VIEW 사용
---            (SECURITY DEFINER, 11 안전 컬럼만 노출)
+--            (SECURITY DEFINER, 9 안전 컬럼만 노출)
 --
 --   ③ pets (→ internal.pets_public_info VIEW)
 --      정책: pets_select_app — USING (member_id = auth.uid()) — 본인만
@@ -112,7 +112,7 @@ AS $$
 DECLARE
   v_current_uid      uuid;
   v_kg               record;
-  v_owner_json       json;
+  v_operator_json    json;
   v_animals_json     json;
   v_resident_pets_json json;
   v_review_count     int;
@@ -182,18 +182,16 @@ BEGIN
   END IF;
 
   -- ──────────────────────────────────────────────────────
-  -- 3. 운영자 프로필 (internal VIEW — RLS 우회)
+  -- 3. 운영자(operator) 프로필 (internal VIEW — RLS 우회)
   --    members 직접 조회 시 RLS(id = auth.uid()) 차단
+  --    VIEW 변경: name, nickname_tag, status 제거 (앱 미사용)
   -- ──────────────────────────────────────────────────────
   SELECT json_build_object(
     'id', mp.id,
-    'name', mp.name,
     'nickname', mp.nickname,
-    'nickname_tag', mp.nickname_tag,
-    'profile_image', mp.profile_image,
-    'status', mp.status
+    'profile_image', mp.profile_image
   )
-  INTO v_owner_json
+  INTO v_operator_json
   FROM internal.members_public_profile mp
   WHERE mp.id = v_kg.member_id;
 
@@ -313,7 +311,7 @@ BEGIN
         'longitude', v_kg.longitude,
         'created_at', v_kg.created_at
       ),
-      'owner', COALESCE(v_owner_json, '{}'::json),
+      'operator', COALESCE(v_operator_json, '{}'::json),
       'resident_pets', COALESCE(v_resident_pets_json, '[]'::json),
       'review_count', v_review_count,
       'inicis_status', v_inicis_status,
@@ -348,7 +346,7 @@ REVOKE EXECUTE ON FUNCTION public.app_get_kindergarten_detail(uuid)
 -- 함수 코멘트
 -- ============================================================
 COMMENT ON FUNCTION public.app_get_kindergarten_detail(uuid) IS
-  '유치원 상세 정보 통합 조회 — 프로필 + 운영자 + 상주동물 + 리뷰수 + 찜여부 + 정산상태. '
+  '유치원 상세 정보 통합 조회 — 프로필 + operator(운영자) + 상주동물 + 리뷰수 + 찜여부 + 정산상태. '
   '원본: get_partner.php. '
   'SECURITY INVOKER: kindergartens/favorite_kindergartens/reviews는 RLS 직접 통과, '
   'members/pets/settlement_infos는 internal VIEW로 안전 조회. '
@@ -363,9 +361,9 @@ DO $$
 BEGIN
   RAISE NOTICE '[44-1] app_get_kindergarten_detail 함수 생성 완료';
   RAISE NOTICE '  - 인자: p_kindergarten_id uuid';
-  RAISE NOTICE '  - 반환: json {success, data: {kindergarten, owner, resident_pets, review_count, inicis_status, is_favorite}}';
+  RAISE NOTICE '  - 반환: json {success, data: {kindergarten, operator, resident_pets, review_count, inicis_status, is_favorite}}';
   RAISE NOTICE '  - 보안: SECURITY INVOKER + internal VIEW 3개 사용';
-  RAISE NOTICE '  - internal.members_public_profile: 운영자 프로필 (이름, 닉네임, 프로필 이미지)';
+  RAISE NOTICE '  - internal.members_public_profile: 운영자 프로필 (닉네임, 프로필 이미지) — name,nickname_tag,status 제거';
   RAISE NOTICE '  - internal.pets_public_info: 상주 반려동물 (kindergarten_resident_pets JOIN)';
   RAISE NOTICE '  - internal.settlement_infos_public: 정산 상태 (inicis_status)';
   RAISE NOTICE '  - 호수(address_building_ho) 비공개, review_count만 반환';

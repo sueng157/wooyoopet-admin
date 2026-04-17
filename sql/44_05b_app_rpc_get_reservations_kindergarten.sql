@@ -199,9 +199,7 @@ BEGIN
       --   보호자: address_complex만 노출 (개인정보 최소화, 동/호 비공개)
       'member', json_build_object(
         'id', mp.id,
-        'name', mp.name,
         'nickname', mp.nickname,
-        'nickname_tag', mp.nickname_tag,
         'profile_image', mp.profile_image,
         'address_complex', mp.address_complex,
         'current_mode', mp.current_mode

@@ -218,7 +218,6 @@ BEGIN
         'member', json_build_object(
           'id', mp.id,
           'nickname', mp.nickname,
-          'nickname_tag', mp.nickname_tag,
           'profile_image', mp.profile_image
         )
       ) AS row_data
