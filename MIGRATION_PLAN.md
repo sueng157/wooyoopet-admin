@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R4 리뷰 Issue 1~4 반영 완료, R5부터 다음 라운드 예정)
+> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R5 완료, R6부터 다음 라운드 예정)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -220,7 +220,7 @@
 | 3-2 | R2 | 단순 CRUD 핵심 (반려동물·유치원·보호자·주소·회원·채팅템플릿) | ✅ 완료 | GUIDE §3~10 + CODE §3~4 |
 | 3-3 | R3 | RPC 조회 (10개) | ✅ 완료 | GUIDE §11~13 + CODE §4,§6~8,§13 |
 | 3-4 | R4 | 채팅 Realtime (WebSocket → Realtime) | ✅ 완료 | GUIDE §14 + CODE §5 |
-| 3-5 | R5 | 결제/예약 + Edge Functions (7개 EF 인터페이스 포함) | ⬜ 예정 | GUIDE §15~16 + CODE §6 |
+| 3-5 | R5 | 결제/예약 + Edge Functions (7개 EF 인터페이스 포함) | ✅ 완료 | GUIDE §15~16 + CODE §6 |
 | 3-6 | R6 | 나머지 CRUD + 부록 + 교차검증 (즐겨찾기·알림·콘텐츠·차단·기타) | ⬜ 예정 | CODE §9~12, 부록 A·B |
 
 #### 본문 작성 계획 — 6라운드
@@ -253,7 +253,7 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 > ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청 시에만)
 > ```
 >
-> **현재 진행 상황**: R1 + R2 + R3 + R4 완료. GUIDE §1~14 + CODE §1~§5(채팅 3개 API) 확정. R5부터 다음 라운드 시작 예정.
+> **현재 진행 상황**: R1 + R2 + R3 + R4 + R5 완료. GUIDE §1~16 + CODE §1~§6(결제 4개 API) + §13(#66) 확정. R6부터 다음 라운드 시작 예정.
 
 #### 전환 권장 순서 (외주 개발자 실제 작업 순서)
 
@@ -967,3 +967,4 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-18 | **Step 3 R3 리뷰 완료 (Issue 1~2 반영)** — 10개 API 전수 PASS. Issue 1: RPC #5 함수명 `app_get_reservations` → `app_get_reservations_guardian` 동기화 (RPC_PHP_MAPPING.md + MIGRATION_PLAN.md 전체 5개소). Issue 2: 리뷰 태그 수 교정 `6개 기본 태그` → `7개 긍정 태그` (RPC_PHP_MAPPING.md #9, #12) |
 | 2026-04-18 | **Step 3 R4 본문 작성 완료** — GUIDE §14 (채팅 전환 10개 하위 섹션) + CODE §5 (#22, #23, #25 — 3개 API) 완성. 대상: 채팅방 생성 RPC(#22: SECURITY DEFINER, 중복 방지, 방 복원), 채팅방 목록 RPC(#23: 미읽음 서브쿼리, 상대방 프로필 JOIN), 메시지 전송 Edge Function(#25: Storage+Realtime+FCM 복합, Realtime postgres_changes 구독/해제, WebSocket 코드 전면 교체). 아키텍처 가이드(WebSocket↔Realtime 비교 다이어그램, useChat.ts 리팩터링 가이드, Storage chat-files 연동, 읽음 처리 미읽음 카운트, ChatRoomType/MessageType 변경 요약). CODE #28/#29 FK 교정(room_id → chat_room_id, sql/41_08 스키마 동기화) |
 | 2026-04-18 | **Step 3 R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (R4 작성 시 선행 반영). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 동기화). Issue 3: §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 상세 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요 → SECURITY DEFINER + auth.uid() 수동 검증). Issue 4: GUIDE §14-8 미읽음 카운트 SQL `cm.id >` → `cm.created_at >` 타임스탬프 서브쿼리 비교 교정 + UUID v4 경고 노트, Step 4 표에 채팅 RPC 2행(4-8 app_create_chat_room, 4-9 app_get_chat_rooms) ⬜ 예정 추가 |
+| 2026-04-18 | **Step 3 R5 본문 작성 완료** — GUIDE §15 결제/예약 전환 (15-1~15-7: 현재↔전환 후 결제 흐름 비교 다이어그램, #34 WebView P_RETURN_URL 변경, #35 inicis-callback 내부 흡수·앱 호출 삭제, #36 create-reservation EF 생성/업데이트 모드, #39 complete-care EF 양측 하원 확인, WebView 콜백 URL 상세, 테스트/상용 MID 전환) + §16 Edge Function 인터페이스 (16-1~16-8: 7개 EF 입출력 스펙·앱 호출/서버 전용 분류·공통 호출 패턴·에러 코드·pg_cron 설정). CODE §6 결제/돌봄 (#34, #35, #36, #39 — 4개 API Before/After + 응답 매핑) + §13 기타 (#66 변환 포인트). 총 4개 API 코드 완성, 1개 변환 포인트 완성, 7개 EF 인터페이스 확정 |

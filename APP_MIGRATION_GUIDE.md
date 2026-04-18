@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 가이드
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 1~4 반영 — §14-8 미읽음 카운트 UUID→timestamp 교정, SECURITY DEFINER 사유 등)
+> **최종 업데이트**: 2026-04-18 (R5 본문 작성 — §15 결제/예약 전환, §16 Edge Function 인터페이스 7개 완성)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **전제 조건**: Supabase 프로젝트 설정 완료, Step 2.5 RPC 13개 배포 완료
 > **관련 문서**: `MIGRATION_PLAN.md` (설계서), `APP_MIGRATION_CODE.md` (코드 예시), `RPC_PHP_MAPPING.md` (RPC 매핑), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
@@ -212,8 +212,8 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 | 12 | 예약 조회 RPC | 3-3 / R3 | 2개 (#37, #38) | ✅ 완료 |
 | 13 | 리뷰/정산/교육 RPC | 3-3 / R3 | 4개 (#41, #44, #44b, #61) | ✅ 완료 |
 | 14 | 채팅 전환 (WebSocket → Realtime) | 3-4 / R4 | 9개 (#22~#30) | ✅ 완료 |
-| 15 | 결제/예약 전환 | 3-5 / R5 | 5개 (#34~#38) | ⬜ 예정 |
-| 16 | Edge Function 인터페이스 | 3-5 / R5 | 7개 (#25, #34~#36, #39, #1, #66) | ⬜ 예정 |
+| 15 | 결제/예약 전환 | 3-5 / R5 | 5개 (#34~#38) | ✅ 완료 |
+| 16 | Edge Function 인터페이스 | 3-5 / R5 | 7개 (#25, #34~#36, #39, #1, #66) | ✅ 완료 |
 | A | 부록: 타입 정의 변경 총정리 | 3-6 / R6 | — | ⬜ 예정 |
 | B | 부록: 환경 변수 / 패키지 체크리스트 | 3-6 / R6 | — | ⬜ 예정 |
 
@@ -1728,32 +1728,294 @@ WHERE cm.chat_room_id = crm.chat_room_id
 
 ### 15-1. 현재 결제 흐름 vs 전환 후 흐름
 
-<!-- TODO: 현재 흐름 (WebView → PHP callback → DB) -->
-<!-- TODO: 전환 후 흐름 (WebView → Edge Function callback → DB) -->
+**현재 흐름 (WebView → PHP callback → MariaDB)**:
+
+```
+┌──────────┐                ┌────────────────┐                ┌───────────────┐
+│  앱 화면   │   ① 결제 정보    │  WebView        │   ④ PG 콜백     │  PHP 서버       │
+│ (request │ → 입력 + 결제  → │ (inicisPayment │ ←──────────── │  inicis_      │
+│  .tsx)   │   버튼 터치      │  .tsx)         │   POST 직접     │  payment.php  │
+│          │                │               │   호출          │               │
+│          │   ② WebView     │ ─────────────→│               │  ⑤ DB 저장     │
+│          │   이니시스 결제창  │ mobile.inicis  │               │  inicis_      │
+│          │   로드          │ .com/smart/    │               │  payments     │
+│          │                │ payment/       │               │  INSERT       │
+│          │   ③ 사용자 결제   │               │               │               │
+│          │   완료          │ 이니시스 서버 →  │               │  ⑥ HTML 반환   │
+│          │                │ P_RETURN_URL   │               │  → WebView    │
+│          │                │ 콜백 호출       │               │               │
+│          │   ⑦ WebView     │ ←──────────── │               │               │
+│          │   결과 수신      │ postMessage    │               │               │
+│          │                │ (결제 결과)     │               │               │
+│          │   ⑧ 승인 저장    │               │               │               │
+│          │ ──────────────→│               │  ⑨ POST       │  set_inicis_  │
+│          │ apiClient.post │               │ ─────────────→│  approval.php │
+│          │ (FormData)     │               │               │  payments     │
+│          │                │               │               │  UPSERT       │
+│          │   ⑩ 예약 생성    │               │               │               │
+│          │ ──────────────→│               │  ⑪ POST       │  set_payment_ │
+│          │ apiClient.post │               │ ─────────────→│  request.php  │
+│          │ (FormData)     │               │               │  payment_     │
+│          │                │               │               │  request      │
+│          │   ⑫ 완료 화면    │               │               │  INSERT       │
+└──────────┘                └────────────────┘                └───────────────┘
+
+⚠️ 문제점:
+  - ④~⑥ PHP 콜백: 스마일서브 서버 의존 (해지 예정)
+  - ⑧~⑪ 앱에서 3번 순차 API 호출 (승인 저장 → 예약 생성 → 채팅 시스템 메시지)
+  - 결제 성공 후 ⑨/⑩/⑪ 중 하나라도 실패하면 데이터 불일치 위험
+  - 콜백 URL이 PHP 서버 고정 → 서버 이전 시 PG사 설정 변경 필요
+```
+
+**전환 후 흐름 (WebView → Edge Function callback → Supabase)**:
+
+```
+┌──────────┐                ┌────────────────┐                ┌────────────────────┐
+│  앱 화면   │   ① 결제 정보    │  WebView        │   ④ PG 콜백     │  Supabase          │
+│ (request │ → 입력 + 결제  → │ (inicisPayment │ ←──────────── │  Edge Function     │
+│  .tsx)   │   버튼 터치      │  .tsx)         │   POST 직접     │  inicis-callback   │
+│          │                │               │   호출          │                    │
+│          │   ② WebView     │ ─────────────→│               │  ⑤ 원자적 처리      │
+│          │   이니시스 결제창  │ mobile.inicis  │               │  a. payments       │
+│          │   로드          │ .com/smart/    │               │     UPSERT         │
+│          │                │ payment/       │               │  b. raw_response   │
+│          │   ③ 사용자 결제   │               │               │     전체 저장       │
+│          │   완료          │ 이니시스 서버 →  │               │                    │
+│          │                │ P_RETURN_URL   │               │  ⑥ HTML 반환       │
+│          │                │ (EF 엔드포인트)  │               │  → WebView         │
+│          │   ⑦ WebView     │ ←──────────── │               │   postMessage      │
+│          │   결과 수신      │ postMessage    │               │                    │
+│          │                │ (결제 결과 +    │               │                    │
+│          │                │  payment_id)   │               │                    │
+│          │   ⑧ 예약 생성    │               │               │                    │
+│          │ ──────────────→│               │               │  Edge Function     │
+│          │ supabase.      │               │               │  create-reservation│
+│          │ functions.     │               │               │  a. reservations   │
+│          │ invoke()       │               │               │     INSERT         │
+│          │                │               │               │  b. chat 시스템 메시지│
+│          │                │               │               │  c. FCM 푸시       │
+│          │   ⑨ 완료 화면    │               │               │                    │
+└──────────┘                └────────────────┘                └────────────────────┘
+
+✅ 개선사항:
+  - ④~⑥ Edge Function: Supabase 인프라 (서버 이전 불필요)
+  - ⑤ inicis-callback이 payments 저장을 원자적으로 처리 → 앱에서 set_inicis_approval 별도 호출 제거
+  - ⑧ create-reservation 한 번 호출로 예약 생성 + 채팅 메시지 + FCM 푸시 원자적 처리
+  - 앱에서 API 호출: 3번 → 1번 (create-reservation만)
+  - 콜백 URL = Supabase Edge Function URL → 서버 의존성 제거
+```
+
+**핵심 차이 요약**:
+
+| 항목 | 기존 (PHP) | 전환 후 (Supabase) |
+|------|----------|------------------|
+| PG 콜백 수신 | `inicis_payment.php` (PHP 서버) | `inicis-callback` (Edge Function) |
+| 승인 정보 저장 | 앱 → `set_inicis_approval.php` (별도 호출) | `inicis-callback` 내부 자동 처리 |
+| 예약 생성 | 앱 → `set_payment_request.php` (별도 호출) | 앱 → `create-reservation` (EF, 1번 호출) |
+| 예약 생성 부가 처리 | 앱에서 채팅 메시지 별도 전송 | EF 내부에서 채팅 + FCM 원자적 처리 |
+| 앱 순차 API 호출 | 3번 (승인→예약→채팅) | 1번 (예약 생성 EF) |
+| 데이터 일관성 | 3번 중 실패 시 불일치 위험 | EF 내부 트랜잭션으로 보장 |
+| 콜백 URL | `https://woo1020.iwinv.net/api/inicis_payment.php` | `https://<project-ref>.supabase.co/functions/v1/inicis-callback` |
 
 ### 15-2. API #34. inicis_payment.php → Edge Function `inicis-callback`
 
-<!-- 참조: APP_MIGRATION_CODE.md #34 -->
+**전환 방식**: Edge Function | **난이도**: 상
 
-### 15-3. API #35. set_inicis_approval.php → Edge Function (inicis-callback 내부)
+기존 `inicis_payment.php`는 이니시스 PG사가 결제 완료 후 **직접 POST 호출하는 서버 콜백** URL입니다. 앱에서 직접 호출하는 API가 아니며, WebView의 `P_RETURN_URL`에 지정된 서버 엔드포인트입니다.
 
-<!-- 참조: APP_MIGRATION_CODE.md #35 -->
+**전환 후에는 Edge Function `inicis-callback`이 이 콜백을 수신합니다.** 앱 코드에서 변경해야 하는 것은 **WebView에서 이니시스 결제창을 로드할 때 전달하는 `P_RETURN_URL`**뿐입니다.
+
+**변환 포인트**:
+- `P_RETURN_URL` 변경: PHP URL → Edge Function URL (§15-6 참조)
+- `P_NOTI` JSON 파싱: 기존과 동일한 JSON 구조 유지 (앱에서 `P_NOTI`에 담는 데이터 형식 변경 없음)
+- 앱에서 `apiClient.post('api/inicis_payment.php')` 호출하는 코드는 없음 (PG사가 직접 호출)
+- Edge Function 결과: HTML 페이지 반환 → WebView의 `onMessage` 이벤트로 결제 결과 수신 (기존과 동일)
+- `inicis-callback` 내부에서 `payments` UPSERT + `raw_response` 저장을 자동 처리 → 기존 `set_inicis_approval.php` 별도 호출 불필요
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #34 참조
+
+### 15-3. API #35. set_inicis_approval.php → Edge Function (inicis-callback 내부 흡수)
+
+**전환 방식**: Edge Function (inicis-callback 내부) | **난이도**: 중
+
+기존 `set_inicis_approval.php`는 WebView에서 결제 완료 후 **앱이 직접 호출하여** 승인 정보를 DB에 저장하는 API입니다. 전환 후에는 **이 역할이 `inicis-callback` Edge Function 내부로 흡수**됩니다.
+
+**흡수 과정**:
+1. 기존: 이니시스 콜백(#34) → HTML 반환 → 앱이 결과 파싱 → 앱이 `set_inicis_approval.php`(#35) 호출 → DB 저장
+2. 전환 후: 이니시스 콜백(inicis-callback EF) → **EF 내부에서 바로 DB 저장** → HTML 반환 → 앱이 결과 파싱 (DB 저장은 이미 완료)
+
+**변환 포인트**:
+- 앱에서 `apiClient.post('api/set_inicis_approval.php', inicisPayload)` 호출 코드 **삭제**
+- WebView `onMessage` 콜백에서 결제 결과를 받으면, **DB 저장 API를 호출하지 않고** 바로 다음 단계(예약 생성)로 진행
+- `inicis-callback`이 반환하는 HTML `postMessage`에 `payment_id` (UUID)가 포함됨 → 예약 생성 시 이 ID를 전달
+- 기존 `inicis_payments` 테이블 → Supabase `payments` 테이블로 매핑 (DB_MAPPING_REFERENCE §2-5 참조)
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #35 참조
 
 ### 15-4. API #36. set_payment_request.php → Edge Function `create-reservation`
 
-<!-- 참조: APP_MIGRATION_CODE.md #36 -->
+**전환 방식**: Edge Function | **난이도**: 상
+
+기존 `set_payment_request.php`는 돌봄 예약을 **생성/수정/상태변경**하는 통합 API입니다. 전환 후에는 Edge Function `create-reservation`으로 대체됩니다.
+
+**Edge Function이 필요한 이유**: 예약 생성 시 단순 INSERT 외에 다음 부가 처리가 필요합니다:
+1. `reservations` INSERT (예약 생성)
+2. `payments` 연결 (`payment_id` ← `inicis-callback`에서 생성된 결제 레코드)
+3. 채팅방 존재 확인 → 없으면 자동 생성 (`app_create_chat_room` RPC 내부 호출)
+4. `chat_room_reservations` INSERT (채팅방↔예약 연결)
+5. `chat_messages` INSERT (`message_type='payment_request'` 시스템 메시지)
+6. 상대방 FCM 푸시 발송 (`send-push` 내부 호출)
+7. `notifications` INSERT
+
+이 모든 처리를 앱에서 순차 호출하면 실패 시 데이터 불일치 위험이 있으므로, **Edge Function 내부에서 원자적으로 처리**합니다.
+
+**입력 필드**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `kindergarten_id` | UUID | ✅ | 유치원 ID |
+| `pet_id` | UUID | ✅ | 반려동물 ID |
+| `checkin_scheduled` | timestamptz | ✅ | 등원 예정 일시 |
+| `checkout_scheduled` | timestamptz | ✅ | 하원 예정 일시 |
+| `walk_count` | integer | ✅ | 산책 횟수 |
+| `pickup_requested` | boolean | ✅ | 픽드랍 요청 여부 |
+| `payment_id` | UUID | ✅ | 결제 ID (`inicis-callback`에서 반환) |
+| `room_id` | UUID | ❌ | 기존 채팅방 ID (없으면 자동 생성) |
+
+**출력 필드**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.reservation_id` | UUID | 생성된 예약 ID |
+| `data.room_id` | UUID | 채팅방 ID (생성 또는 기존) |
+| `error` | string | 에러 메시지 (실패 시) |
+
+**업데이트 모드**: `reservation_id`를 추가로 전달하면 UPDATE 모드로 동작합니다.
+- `status='거절'` → `reject_reason`, `reject_detail` 설정 + 시스템 메시지 + FCM
+- `status='취소'` → 위약금 계산 + `refunds` INSERT + 시스템 메시지 + FCM
+- `status='예약확정'` → 시스템 메시지 + FCM
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #36 참조
 
 ### 15-5. API #39. set_care_complete.php → Edge Function `complete-care`
 
-<!-- 참조: APP_MIGRATION_CODE.md #39 -->
+**전환 방식**: Edge Function | **난이도**: 상
+
+기존 `set_care_complete.php`는 돌봄 완료 처리 API입니다. 하원 확인 + 상태 변경 + 시스템 메시지 + FCM 발송이 결합되어 있으므로 Edge Function으로 전환합니다.
+
+**처리 흐름**:
+1. `reservations` UPDATE (`status='돌봄완료'`, `checkout_actual=NOW()`)
+2. 하원 확인 플래그 설정 (`guardian_checkout_confirmed`/`kg_checkout_confirmed`)
+3. `chat_messages` INSERT (`message_type='care_end'`) — 돌봄 종료 시스템 메시지
+4. `chat_messages` INSERT (`message_type='review'`) — 후기 작성 유도 메시지
+5. 상대방 FCM 푸시 발송
+6. `notifications` INSERT
+7. `auto_complete_scheduled_at` 설정 (양측 모두 미확인 시 자동 완료 예정 시각)
+
+**양측 하원 확인 로직**:
+- 보호자가 하원 확인 → `guardian_checkout_confirmed=true` + `guardian_checkout_confirmed_at=NOW()`
+- 유치원이 하원 확인 → `kg_checkout_confirmed=true` + `kg_checkout_confirmed_at=NOW()`
+- **양측 모두 확인** 시에만 `status='돌봄완료'`로 최종 변경
+- 한쪽만 확인 시: 확인 플래그만 업데이트, 상대방에게 FCM 알림 발송
+- 양측 미확인 + `auto_complete_scheduled_at` 도달 시: `scheduler` EF가 자동 완료 처리
+
+**입력 필드**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `reservation_id` | UUID | ✅ | 예약 ID |
+
+> `auth.uid()`로 호출자를 자동 식별하여, 보호자/유치원 중 누가 하원 확인했는지 판별합니다.
+
+**출력 필드**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.status` | string | 갱신된 예약 상태 (`'돌봄완료'` 또는 기존 상태 유지) |
+| `data.both_confirmed` | boolean | 양측 모두 하원 확인 여부 |
+| `error` | string | 에러 메시지 (실패 시) |
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #39 참조
 
 ### 15-6. WebView 콜백 URL 변경
 
-<!-- TODO: INICIS_PAYMENT_URL 변경, 콜백 URL을 Edge Function 엔드포인트로 교체 -->
+이니시스 모바일 결제에서 가장 중요한 변경은 **`P_RETURN_URL`** (PG 콜백 URL)입니다. WebView에서 이니시스 결제창을 로드할 때, 결제 완료 후 결과를 수신할 서버 URL을 지정합니다.
+
+**콜백 URL 변경**:
+
+| 항목 | 기존 | 전환 후 |
+|------|------|--------|
+| `P_RETURN_URL` | `https://woo1020.iwinv.net/api/inicis_payment.php` | `https://<project-ref>.supabase.co/functions/v1/inicis-callback` |
+| `P_NEXT_URL` | PHP 서버 URL (성공/실패 분기) | Edge Function URL (동일) |
+
+**앱 코드 변경 위치**: `app/payment/inicisPayment.tsx`
+
+```typescript
+// 기존
+const INICIS_RETURN_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/inicis_payment.php`
+
+// 전환 후
+const INICIS_RETURN_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/inicis-callback`
+```
+
+**P_NOTI 파라미터**: 앱에서 이니시스 결제 요청 시 `P_NOTI` 파라미터에 JSON 문자열로 추가 데이터를 전달합니다. Edge Function에서 이를 파싱하여 `payments` 레코드에 연결합니다.
+
+```typescript
+// P_NOTI에 담는 데이터 (기존과 동일 구조 유지)
+const pNoti = JSON.stringify({
+  mode: user.current_mode,        // '보호자' | '유치원'
+  roomId: chatRoomId ?? null,     // 채팅방 ID (있으면)
+  kindergartenId: kindergartenId, // 유치원 ID
+  petId: petId,                   // 반려동물 ID
+  memberId: user.id,              // 결제자 UUID (기존 mb_id 대체)
+})
+```
+
+**WebView `onMessage` 처리**: Edge Function이 반환하는 HTML에서 `ReactNativeWebView.postMessage()`로 결과를 전달합니다. 전환 후 결과 JSON에 `payment_id`(UUID)가 추가됩니다.
+
+```typescript
+// 기존 WebView onMessage
+const onMessage = (event: WebViewMessageEvent) => {
+  const data = JSON.parse(event.nativeEvent.data)
+  // data: { result: 'Y'|'N', P_OID, P_TID, P_AMT, ... }
+}
+
+// 전환 후 WebView onMessage
+const onMessage = (event: WebViewMessageEvent) => {
+  const data = JSON.parse(event.nativeEvent.data)
+  // data: { result: 'Y'|'N', payment_id, pg_transaction_id, amount, ... }
+  //        ↑ payment_id가 추가됨 (create-reservation에 전달)
+}
+```
 
 ### 15-7. 테스트 MID / 상용 MID 전환
 
-<!-- TODO: INIpayTest → wooyoope79 전환 가이드 -->
+현재 앱은 이니시스 **테스트 MID** (`INIpayTest`)를 사용 중입니다. 상용 전환 시 아래 항목을 변경합니다.
+
+| 항목 | 테스트 환경 | 상용 환경 |
+|------|----------|---------|
+| MID | `INIpayTest` | `wooyoope79` |
+| 결제 모듈 URL | `https://mobile.inicis.com/smart/payment/` | 동일 (INIpay Mobile은 URL 동일) |
+| `P_MID` 파라미터 | `INIpayTest` | `wooyoope79` |
+| Edge Function Secret | `INICIS_MID=INIpayTest` | `INICIS_MID=wooyoope79` |
+
+**전환 순서**:
+1. Edge Function `inicis-callback` 배포 + 테스트 MID로 검증 완료
+2. 이니시스 관리자 페이지에서 상용 MID의 `P_RETURN_URL`을 Edge Function URL로 등록
+3. Supabase Secret `INICIS_MID` 값을 `wooyoope79`로 변경
+4. 앱의 `P_MID` 파라미터를 환경변수로 관리 → `.env`에서 전환
+
+```
+// .env (테스트)
+EXPO_PUBLIC_INICIS_MID=INIpayTest
+
+// .env.production (상용)
+EXPO_PUBLIC_INICIS_MID=wooyoope79
+```
+
+> ⚠️ **주의**: 테스트 MID에서 실결제는 발생하지 않습니다. 상용 MID 전환 전에 반드시 테스트 시나리오(§15-1 전체 흐름)를 완료하세요.
 
 ---
 
@@ -1765,42 +2027,350 @@ WHERE cm.chat_room_id = crm.chat_room_id
 
 ### 16-1. Edge Function 호출 공통 패턴
 
+**앱에서 직접 호출하는 EF**와 **서버에서만 호출하는 EF**로 나뉩니다.
+
+| EF | 앱 호출 | 호출 방식 | 앱 코드 변경 |
+|----|---------|---------|------------|
+| `inicis-callback` | ❌ | PG사 POST | WebView `P_RETURN_URL`만 변경 |
+| `send-chat-message` | ✅ | `supabase.functions.invoke()` | R4 §14-5 참조 (작성 완료) |
+| `create-reservation` | ✅ | `supabase.functions.invoke()` | 예약 생성 흐름 교체 |
+| `complete-care` | ✅ | `supabase.functions.invoke()` | 돌봄 완료 호출 교체 |
+| `send-alimtalk` | ❌ | Supabase Auth SMS 훅 | R1 §1-2 참조 (앱 코드 없음) |
+| `send-push` | ❌ | 다른 EF 내부 호출 | 앱 코드 변경 없음 |
+| `scheduler` | ❌ | pg_cron / 외부 cron | 앱 코드 변경 없음 |
+
+**앱에서 호출하는 공통 패턴**:
+
 ```typescript
-// 공통 호출 패턴
+// 패턴 1: JSON body 전송 (일반)
 const { data, error } = await supabase.functions.invoke('function-name', {
   body: { key: value },
 })
+
+if (error) {
+  Alert.alert('오류', error.message)
+  return
+}
+// data: Edge Function이 반환하는 JSON
 ```
+
+```typescript
+// 패턴 2: FormData 전송 (파일 포함 — send-chat-message에서 사용)
+const formData = new FormData()
+formData.append('room_id', roomId)
+formData.append('content', content)
+formData.append('message_type', 'image')
+formData.append('file', {
+  uri: fileUri,
+  name: 'image.jpg',
+  type: 'image/jpeg',
+} as any)
+
+const { data, error } = await supabase.functions.invoke('send-chat-message', {
+  body: formData,
+})
+```
+
+**공통 에러 처리**: Edge Function은 HTTP 상태 코드로 에러를 구분합니다.
+
+| HTTP 상태 | 의미 | 앱 처리 |
+|-----------|------|--------|
+| 200 | 성공 | `data` 사용 |
+| 400 | 잘못된 요청 (파라미터 오류) | `error.message` 표시 |
+| 401 | 인증 실패 (JWT 만료/누락) | 재로그인 유도 |
+| 403 | 권한 없음 (본인 데이터 아님) | 접근 거부 안내 |
+| 500 | 서버 내부 오류 | 재시도 안내 |
 
 ### 16-2. inicis-callback (결제 콜백)
 
-<!-- TODO: 입력 스펙, 출력 스펙, 호출 시점, 에러 처리 -->
-<!-- 이 함수는 PG사가 직접 호출 → 앱에서 직접 호출하지 않음. WebView 콜백 URL만 변경 -->
+**호출 주체**: 이니시스 PG사 서버 (앱에서 직접 호출하지 않음)
+**트리거**: 사용자가 WebView에서 결제 완료 후, 이니시스가 `P_RETURN_URL`로 POST 요청
+
+**입력 스펙** (이니시스 PG사 POST 파라미터):
+
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `P_STATUS` | string | 결제 상태 (`'00'`=성공) |
+| `P_OID` | string | 주문번호 (Order ID) |
+| `P_TID` | string | 거래번호 (Transaction ID) |
+| `P_AMT` | string | 결제 금액 |
+| `P_RMESG1` | string | 결과 메시지 |
+| `P_NOTI` | string | 앱에서 전달한 JSON 문자열 (§15-6 참조) |
+| `P_AUTH_DT` | string | 승인 일시 |
+| `P_AUTH_NO` | string | 승인 번호 |
+| `P_CARD_NUM` | string | 카드 번호 (마스킹) |
+| `P_CARD_ISSUER_NAME` | string | 카드사명 |
+| `P_TYPE` | string | 결제 수단 (`CARD`, `BANK`, `VBANK`) |
+
+**EF 내부 처리**:
+1. `P_NOTI` JSON 파싱 → `memberId`, `kindergartenId`, `petId` 추출
+2. `P_OID` 빈 값 시 `P_TID`로 대체 (이니시스 간헐적 이슈 대응)
+3. `payments` UPSERT (`pg_transaction_id` 기준): 결제 정보 저장
+4. `raw_response` jsonb 컬럼에 PG 응답 전체 저장 (감사 추적용)
+5. 결제 성공/실패 판단 후 HTML 반환 → WebView에서 `postMessage`로 앱에 결과 전달
+
+**출력**: HTML 페이지 (앱 WebView에서 실행)
+
+```html
+<script>
+  // 앱 WebView의 onMessage 이벤트로 결과 전달
+  window.ReactNativeWebView.postMessage(JSON.stringify({
+    result: 'Y',           // 'Y'=성공, 'N'=실패
+    payment_id: '...',     // payments 테이블 UUID (신규 추가)
+    pg_transaction_id: '...', // PG 거래번호
+    amount: 50000,         // 결제 금액
+    message: '결제가 완료되었습니다'
+  }))
+</script>
+```
+
+**앱 코드 변경**: §15-6 WebView 콜백 URL 변경만 필요. `inicis-callback` 자체는 서버 사이드 코드.
+
+**Secrets 사용**: `INICIS_MID` (이니시스 상점 ID) — 응답 검증 시 MID 일치 확인
 
 ### 16-3. send-chat-message (채팅 메시지 전송)
 
-<!-- TODO: 입력 (room_id, content, message_type, file?), 출력, 에러 -->
+**호출 주체**: 앱 (채팅 메시지 전송 시)
+**가이드 참조**: §14-5 (R4에서 상세 설명 완료)
+
+**입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `room_id` | UUID | ✅ | 채팅방 ID |
+| `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
+| `image_files` | File[] | ❌ | 이미지 파일 배열 (FormData로 전송) |
+
+**EF 내부 처리**:
+1. JWT에서 `sender_id` 추출
+2. `chat_room_members` 검증 (참여자인지)
+3. 파일 있으면 → `chat-files` Storage 업로드 → URL 획득
+4. `chat_messages` INSERT
+5. `chat_rooms` UPDATE (`last_message`, `last_message_at`, `total_message_count +1`)
+6. 상대방 `is_muted` 체크
+7. `is_muted=false`면 → `send-push` 내부 호출 (FCM 발송)
+8. `notifications` INSERT
+
+**출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.message_id` | UUID | 생성된 메시지 ID |
+| `data.image_urls` | string[] | 업로드된 이미지 URL 배열 |
+| `error` | string | 에러 메시지 (실패 시) |
+
+**Secrets 사용**: `FIREBASE_SERVICE_ACCOUNT_JSON` (FCM 발송)
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #25 참조 (R4에서 작성 완료)
 
 ### 16-4. create-reservation (예약 생성)
 
-<!-- TODO: 입력 (kindergarten_id, pet_id, dates, price, payment_id, room_id?), 출력, 에러 -->
+**호출 주체**: 앱 (결제 완료 후 예약 생성 시)
+**가이드 참조**: §15-4
+
+**입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `kindergarten_id` | UUID | ✅ | 유치원 ID |
+| `pet_id` | UUID | ✅ | 반려동물 ID |
+| `checkin_scheduled` | string (ISO 8601) | ✅ | 등원 예정 (`'2026-04-20T09:00:00+09:00'`) |
+| `checkout_scheduled` | string (ISO 8601) | ✅ | 하원 예정 |
+| `walk_count` | integer | ✅ | 산책 횟수 (0~N) |
+| `pickup_requested` | boolean | ✅ | 픽드랍 요청 |
+| `payment_id` | UUID | ✅ | 결제 ID (inicis-callback에서 반환) |
+| `room_id` | UUID | ❌ | 기존 채팅방 (없으면 자동 생성) |
+
+**업데이트 모드** (추가 필드):
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `reservation_id` | UUID | ✅ (업데이트 시) | 기존 예약 ID |
+| `status` | string | ✅ (업데이트 시) | 변경할 상태 |
+| `reject_reason` | string | 조건부 | 거절 사유 (status='거절' 시) |
+| `reject_detail` | string | ❌ | 거절 상세 |
+| `cancel_reason` | string | 조건부 | 취소 사유 (status='취소' 시) |
+
+**EF 내부 처리** (생성 모드):
+1. `reservations` INSERT (`status='수락대기'`, `requested_at=NOW()`)
+2. `payments.reservation_id` UPDATE (결제↔예약 연결)
+3. `room_id` 없으면 `app_create_chat_room` RPC 호출 → 채팅방 자동 생성
+4. `chat_room_reservations` INSERT (채팅방↔예약 연결)
+5. `chat_messages` INSERT (`message_type='payment_request'`, 시스템 메시지)
+6. Realtime `postgres_changes` 자동 전파 (chat_messages INSERT)
+7. 상대방 `send-push` 호출 (FCM)
+8. `notifications` INSERT
+
+**EF 내부 처리** (업데이트 모드):
+- `status='예약확정'`: 예약 확정 시스템 메시지 + FCM
+- `status='거절'`: `reject_reason`/`reject_detail` 기록, 시스템 메시지 + FCM
+- `status='취소'`: 위약금 계산(policy에 따라), `refunds` INSERT, 시스템 메시지 + FCM
+
+**출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.reservation_id` | UUID | 생성/갱신된 예약 ID |
+| `data.room_id` | UUID | 채팅방 ID |
+| `data.status` | string | 현재 예약 상태 |
+| `error` | string | 에러 메시지 (실패 시) |
+
+**Secrets 사용**: `FIREBASE_SERVICE_ACCOUNT_JSON` (FCM 발송)
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #36 참조
 
 ### 16-5. complete-care (돌봄 완료)
 
-<!-- TODO: 입력 (reservation_id), 출력, 에러 -->
+**호출 주체**: 앱 (돌봄 완료 확인 시)
+**가이드 참조**: §15-5
+
+**입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `reservation_id` | UUID | ✅ | 예약 ID |
+
+> `auth.uid()`로 호출자 자동 식별 (보호자/유치원 판별)
+
+**EF 내부 처리**:
+1. `reservations` 조회 → 당사자 여부 검증
+2. 호출자가 보호자면 `guardian_checkout_confirmed=true`, 유치원이면 `kg_checkout_confirmed=true`
+3. 양측 모두 확인 시: `status='돌봄완료'`, `checkout_actual=NOW()`
+4. `chat_messages` INSERT (`message_type='care_end'`) — 돌봄 종료 시스템 메시지
+5. `chat_messages` INSERT (`message_type='review'`) — 후기 작성 유도 메시지
+6. 상대방 `send-push` 호출 (FCM)
+7. `notifications` INSERT
+8. 한쪽만 확인 시: `auto_complete_scheduled_at` 설정 (예: 24시간 후)
+
+**출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.status` | string | 갱신된 예약 상태 |
+| `data.both_confirmed` | boolean | 양측 모두 하원 확인 완료 여부 |
+| `data.guardian_checkout_confirmed` | boolean | 보호자 확인 여부 |
+| `data.kg_checkout_confirmed` | boolean | 유치원 확인 여부 |
+| `error` | string | 에러 메시지 (실패 시) |
+
+**Secrets 사용**: `FIREBASE_SERVICE_ACCOUNT_JSON` (FCM 발송)
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #39 참조
 
 ### 16-6. send-alimtalk (카카오 알림톡)
 
-<!-- TODO: 입력 (phone, template_code, variables), 출력, 에러 -->
+**호출 주체**: Supabase Auth SMS 훅 (앱에서 직접 호출하지 않음)
+**가이드 참조**: §1-2 (R1에서 설명 완료)
+
+**트리거**: Supabase Auth `signInWithOtp({ phone })` 호출 시, Supabase Auth가 **커스텀 SMS 훅**으로 이 Edge Function을 자동 호출합니다.
+
+**입력 스펙** (Supabase Auth가 전달):
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `phone` | string | 수신 전화번호 (`+821012345678` 국제 형식) |
+| `otp` | string | Supabase가 생성한 OTP 코드 (6자리) |
+
+**EF 내부 처리**:
+1. `phone`에서 국가번호 제거 → `01012345678` 형식 변환
+2. 루나소프트 API 호출 (카카오 알림톡 템플릿으로 OTP 발송)
+3. 발송 결과 로깅
+
+**Secrets 사용**: `KAKAO_ALIMTALK_API_KEY`, `KAKAO_ALIMTALK_USER_ID`
+
+**앱 코드 변경**: 없음. `supabase.auth.signInWithOtp({ phone })` 한 줄이면 자동으로 이 Edge Function이 호출됩니다.
 
 ### 16-7. send-push (FCM 푸시)
 
-<!-- TODO: 입력 (member_id/member_ids, title, body, data?), 출력, 에러 -->
-<!-- 이 함수는 다른 Edge Function에서 내부 호출 → 앱에서 직접 호출하지 않음 -->
+**호출 주체**: 다른 Edge Function 내부 (앱에서 직접 호출하지 않음)
+**사용처**: `send-chat-message`, `create-reservation`, `complete-care`, `scheduler`에서 내부 호출
+
+**입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `member_id` | UUID | 조건부 | 단건 발송 대상 |
+| `member_ids` | UUID[] | 조건부 | 다건 발송 대상 |
+| `title` | string | ✅ | 푸시 알림 제목 |
+| `body` | string | ✅ | 푸시 알림 본문 |
+| `data` | object | ❌ | 추가 데이터 (`screen`, `reservation_id` 등 — 앱에서 딥링크용) |
+
+> `member_id`와 `member_ids` 중 하나 필수. 양쪽 모두 없으면 에러.
+
+**EF 내부 처리**:
+1. `fcm_tokens`에서 대상 회원의 FCM 토큰 조회 (복수 기기 가능)
+2. Firebase Admin SDK로 멀티캐스트 발송
+3. 만료/무효 토큰 → `fcm_tokens`에서 자동 삭제 (cleanup)
+4. 발송 결과 반환 (성공/실패 수)
+
+**출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.sent_count` | number | 발송 성공 수 |
+| `data.failed_count` | number | 발송 실패 수 |
+| `data.cleaned_tokens` | number | 삭제된 무효 토큰 수 |
+
+**Secrets 사용**: `FIREBASE_SERVICE_ACCOUNT_JSON`
+
+**앱 코드 변경**: 없음. 이 Edge Function은 다른 EF에서만 호출합니다.
 
 ### 16-8. API #66. scheduler.php → Edge Function `scheduler`
 
-<!-- TODO: pg_cron 또는 외부 cron 트리거 → 앱에서 직접 호출하지 않음 -->
+**호출 주체**: pg_cron 또는 외부 cron (앱에서 직접 호출하지 않음)
+**실행 주기**: 5분 간격
+
+기존 `scheduler.php`는 PHP cron job으로 실행되며, 예약 상태 자동 변경 + 알림 발송을 담당합니다. 전환 후에는 Edge Function `scheduler`가 동일 역할을 수행합니다.
+
+**처리 항목** (5분마다 실행):
+
+| # | 처리 | 대상 조건 | 동작 |
+|---|------|---------|------|
+| 1 | 등원 30분 전 알림 | `checkin_scheduled - 30min ≤ NOW()` AND `reminder_start_sent_at IS NULL` AND `status='예약확정'` | FCM 발송 + `reminder_start_sent_at=NOW()` |
+| 2 | 하원 30분 전 알림 | `checkout_scheduled - 30min ≤ NOW()` AND `reminder_end_sent_at IS NULL` AND `status='돌봄진행중'` | FCM 발송 + `reminder_end_sent_at=NOW()` |
+| 3 | 돌봄 시작 자동 처리 | `checkin_scheduled ≤ NOW()` AND `care_start_sent_at IS NULL` AND `status='예약확정'` | `status='돌봄진행중'` + 시스템 메시지(`care_start`) + FCM + `care_start_sent_at=NOW()` |
+| 4 | 돌봄 종료 자동 처리 | `checkout_scheduled ≤ NOW()` AND `care_end_sent_at IS NULL` AND `status='돌봄진행중'` | 시스템 메시지(`care_end` + `review`) + FCM + `care_end_sent_at=NOW()` |
+| 5 | 자동 완료 | `auto_complete_scheduled_at ≤ NOW()` AND `status='돌봄진행중'` | `status='돌봄완료'` + `checkout_actual=NOW()` (양측 미확인 자동 완료) |
+
+**알림 중복 방지**: 각 처리 항목에 `*_sent_at` 타임스탬프 컬럼이 있으며, `IS NULL` 조건으로 미발송 건만 대상으로 합니다. 한 번 발송 후 `sent_at` 값이 기록되면 다음 실행 시 스킵됩니다.
+
+**cron 설정 방법** (2가지):
+
+```sql
+-- 방법 1: Supabase pg_cron 확장 (권장)
+SELECT cron.schedule(
+  'scheduler-every-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url := current_setting('app.settings.supabase_url') || '/functions/v1/scheduler',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+```bash
+# 방법 2: 외부 cron (pg_cron 미사용 시)
+# 5분마다 Edge Function 호출
+*/5 * * * * curl -X POST \
+  https://<project-ref>.supabase.co/functions/v1/scheduler \
+  -H "Authorization: Bearer <service_role_key>" \
+  -H "Content-Type: application/json"
+```
+
+**Secrets 사용**: `FIREBASE_SERVICE_ACCOUNT_JSON` (FCM 발송)
+
+**앱 코드 변경**: 없음. 서버 설정(pg_cron 또는 외부 cron)만 필요합니다.
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #66 참조
 
 ---
 
@@ -1881,3 +2451,4 @@ const { data, error } = await supabase.functions.invoke('function-name', {
 | 2026-04-18 | **R3 본문 작성** — §11 유치원/보호자 RPC (아키텍처 변경 요약, #17~#20 API 설명 4개, KindergartenDetailType/GuardianDetailType 매핑표), §12 예약 조회 RPC (보호자/유치원 분리 설명, #37~#38 API 설명 2개, PaymentRequestType→ReservationType 매핑표), §13 리뷰/정산/교육 RPC (#41 정산 2개 PHP 통합 설명 + 4파트 구조, #44/#44b 리뷰 태그 집계 + is_guardian_only 분기, #61 교육 이수현황 통합 조회). 총 10개 API TODO 해소 |
 | 2026-04-18 | **R4 본문 작성** — §14 채팅 전환 (14-1~14-10: WebSocket↔Realtime 아키텍처 비교 다이어그램, useChat.ts 리팩터링 가이드 — 제거 대상/전환 후 구조/R2 완료 항목 정리, #22 create_room RPC — SECURITY DEFINER 이유·중복 방지·방 복원, #23 get_rooms RPC — 미읽음 서브쿼리·상대방 프로필 JOIN, #25 send_message Edge Function — 처리 흐름 8단계·입출력 스펙, Realtime postgres_changes 구독 패턴 — RLS 연동·broadcast 차이, Storage chat-files 버킷 연동 — private 버킷·signed URL, 읽음 처리 미읽음 카운트 계산 공식, R2 자동 API 교차 참조 6개, ChatRoomType/MessageType 변경 요약 + WebSocket↔Realtime 비교표). CODE #28/#29 FK 교정 (room_id → chat_room_id) |
 | 2026-04-18 | **R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (선행 반영 완료). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 스키마 동기화). Issue 3: MIGRATION_PLAN.md §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요). Issue 4: §14-8 미읽음 카운트 SQL `cm.id >` UUID v4 비교 → `cm.created_at >` 타임스탬프 서브쿼리 비교로 교정 + UUID v4 순서 미보장 경고 노트 추가, MIGRATION_PLAN Step 4 표에 채팅 RPC 2행(4-8, 4-9) 추가 |
+| 2026-04-18 | **R5 본문 작성** — §15 결제/예약 전환 (15-1~15-7: 현재↔전환 후 결제 흐름 비교 다이어그램, #34 inicis-callback — WebView P_RETURN_URL 변경·P_NOTI 파라미터·앱 호출 삭제, #35 set_inicis_approval 삭제 — inicis-callback 내부 흡수·앱 3단계→1단계, #36 create-reservation EF — 예약 생성+채팅방 자동 생성+FCM 원자적 처리·생성/업데이트 통합, #39 complete-care EF — 양측 하원 확인 로직·auto_complete, WebView 콜백 URL 변경 상세·P_MID 환경변수 분리, 테스트/상용 MID 전환 가이드). §16 Edge Function 인터페이스 (16-1~16-8: 앱 호출/서버 전용 EF 분류표, 공통 호출 패턴 2종 — JSON body·FormData, HTTP 에러 코드 매핑표, inicis-callback 입력 11필드+HTML 출력 스펙, send-chat-message 8단계 처리 흐름, create-reservation 생성 8단계+업데이트 모드 3분기, complete-care 8단계 처리+auto_complete, send-alimtalk Auth SMS 훅 연동, send-push 범용 FCM — 멀티캐스트+토큰 cleanup, scheduler 5개 처리 항목+알림 중복 방지+pg_cron 설정 예시). 총 4개 API TODO 해소 + 7개 EF 인터페이스 확정 |

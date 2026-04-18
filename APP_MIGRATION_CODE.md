@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 4 반영 — #23 미읽음 서브쿼리 UUID→timestamp 비교 교정)
+> **최종 업데이트**: 2026-04-18 (R5 본문 작성 — §6 결제/돌봄 #34~#36,#39 Before/After 코드 + §13 #66 변환 포인트)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -3279,37 +3279,177 @@ const deleteTemplate = async (templateId: string) => {
 
 **Before**:
 ```typescript
-// TODO: WebView 콜백 URL 변경 (PHP → Edge Function)
+// 파일: app/payment/inicisPayment.tsx
+// WebView에서 이니시스 결제창 로드 시 콜백 URL 설정
+const INICIS_RETURN_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/inicis_payment.php`
+
+// WebView로 이니시스 모바일 결제창 호출
+const inicisPaymentHtml = `
+  <form name="mobileweb" method="post" action="https://mobile.inicis.com/smart/payment/">
+    <input type="hidden" name="P_INI_PAYMENT" value="CARD">
+    <input type="hidden" name="P_MID" value="INIpayTest">
+    <input type="hidden" name="P_OID" value="${orderId}">
+    <input type="hidden" name="P_AMT" value="${amount}">
+    <input type="hidden" name="P_GOODS" value="${goodsName}">
+    <input type="hidden" name="P_UNAME" value="${userName}">
+    <input type="hidden" name="P_NEXT_URL" value="${INICIS_RETURN_URL}">
+    <input type="hidden" name="P_RETURN_URL" value="${INICIS_RETURN_URL}">
+    <input type="hidden" name="P_NOTI" value='${JSON.stringify({
+      mode: user.mb_5,              // '1'=보호자, '2'=유치원
+      roomId: chatRoomId ?? '',
+      paymentRequestId: '',         // 아직 미생성
+    })}'>
+  </form>
+  <script>document.mobileweb.submit()</script>
+`
+
+// WebView에서 결과 수신
+const onMessage = (event: WebViewMessageEvent) => {
+  const data = JSON.parse(event.nativeEvent.data)
+  // data: { P_STATUS, P_OID, P_TID, P_AMT, P_RMESG1, ... }
+  if (data.P_STATUS === '00') {
+    // 결제 성공 → set_inicis_approval.php 호출 (#35)
+    saveInicisApproval(data)
+  } else {
+    Alert.alert('결제 실패', data.P_RMESG1 ?? '결제에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: 콜백 URL을 Supabase Edge Function 엔드포인트로 교체
+// 파일: app/payment/inicisPayment.tsx (수정)
+// 콜백 URL → Edge Function 엔드포인트로 교체
+const INICIS_RETURN_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/inicis-callback`
+
+// WebView로 이니시스 모바일 결제창 호출 (P_MID를 환경변수로 관리)
+const inicisPaymentHtml = `
+  <form name="mobileweb" method="post" action="https://mobile.inicis.com/smart/payment/">
+    <input type="hidden" name="P_INI_PAYMENT" value="CARD">
+    <input type="hidden" name="P_MID" value="${process.env.EXPO_PUBLIC_INICIS_MID}">
+    <input type="hidden" name="P_OID" value="${orderId}">
+    <input type="hidden" name="P_AMT" value="${amount}">
+    <input type="hidden" name="P_GOODS" value="${goodsName}">
+    <input type="hidden" name="P_UNAME" value="${userName}">
+    <input type="hidden" name="P_NEXT_URL" value="${INICIS_RETURN_URL}">
+    <input type="hidden" name="P_RETURN_URL" value="${INICIS_RETURN_URL}">
+    <input type="hidden" name="P_NOTI" value='${JSON.stringify({
+      mode: user.current_mode,              // '보호자' | '유치원'
+      roomId: chatRoomId ?? null,
+      kindergartenId: kindergartenId,        // 유치원 UUID
+      petId: petId,                         // 반려동물 UUID
+      memberId: user.id,                    // 결제자 UUID
+    })}'>
+  </form>
+  <script>document.mobileweb.submit()</script>
+`
+
+// WebView에서 결과 수신
+// ※ inicis-callback EF가 payments 저장을 이미 완료 → 별도 승인 저장 API 호출 불필요
+const onMessage = (event: WebViewMessageEvent) => {
+  const data = JSON.parse(event.nativeEvent.data)
+  // data: { result, payment_id, pg_transaction_id, amount, message }
+  if (data.result === 'Y') {
+    // 결제 성공 → 예약 생성 EF 호출 (#36) — #35 승인 저장은 불필요 (EF 내부 처리)
+    createReservation(data.payment_id)
+  } else {
+    Alert.alert('결제 실패', data.message ?? '결제에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `P_RETURN_URL` / `P_NEXT_URL`: PHP 서버 URL → Edge Function URL. 이 변경이 **유일한 앱 코드 수정**
+- `P_MID`: 하드코딩 `'INIpayTest'` → 환경변수 `EXPO_PUBLIC_INICIS_MID`로 변경 (테스트/상용 분리)
+- `P_NOTI` JSON 필드: `mode` 값 `'1'`/`'2'` → `'보호자'`/`'유치원'`, `paymentRequestId` → `kindergartenId` + `petId` + `memberId` 추가 (EF에서 payments 레코드에 연결)
+- WebView `onMessage` 응답: `P_STATUS`/`P_OID` 등 이니시스 원시 필드 → `result`/`payment_id` 등 정규화된 필드. **`payment_id`(UUID)가 핵심 추가 필드** — 예약 생성(#36)에 전달
+- 결제 성공 후: 기존 `saveInicisApproval(data)` (#35) → 삭제. 바로 `createReservation(data.payment_id)` (#36) 호출
+- Edge Function `inicis-callback`은 앱에서 직접 호출하지 않음 — PG사가 POST로 직접 호출
+
+**응답 매핑**:
+
+| PHP 콜백 결과 (WebView) | Supabase EF 결과 (WebView) | 변환 필요 |
+|---|---|---|
+| `P_STATUS` (`'00'`=성공) | `result` (`'Y'`/`'N'`) | 예 — 값 형식 변경 |
+| `P_OID` (주문번호) | `pg_transaction_id` | 예 — 키 이름 변경 |
+| `P_TID` (거래번호) | (미노출, DB에만 저장) | — |
+| `P_AMT` (금액 문자열) | `amount` (숫자) | 예 — `string` → `number` |
+| — | `payment_id` (UUID) | 신규 — 예약 생성 시 전달 |
+| `P_RMESG1` (결과 메시지) | `message` | 예 — 키 이름 변경 |
 
 ---
 
-### API #35. set_inicis_approval.php → Edge Function (inicis-callback 내부)
+### API #35. set_inicis_approval.php → Edge Function (inicis-callback 내부 흡수)
 
-**전환 방식**: Edge Function | **난이도**: 중
+**전환 방식**: Edge Function (inicis-callback 내부) | **난이도**: 중
 **관련 파일**: `app/payment/inicisApproval.tsx`
-**Supabase 대응**: `inicis-callback` Edge Function 내부에서 처리 (별도 앱 호출 불필요)
+**Supabase 대응**: `inicis-callback` Edge Function 내부에서 자동 처리 (별도 앱 호출 **삭제**)
 
 **Before**:
 ```typescript
-// TODO: apiClient.post('/api/set_inicis_approval.php', inicisPayload)
+// 파일: app/payment/inicisApproval.tsx
+// WebView 결제 완료 후 → 승인 정보를 DB에 저장
+const saveInicisApproval = async (inicisResult: any) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('oid', inicisResult.P_OID ?? inicisResult.P_TID)
+    formData.append('tid', inicisResult.P_TID)
+    formData.append('amount', inicisResult.P_AMT)
+    formData.append('status', inicisResult.P_STATUS)
+    formData.append('pay_type', inicisResult.P_TYPE ?? 'CARD')
+    formData.append('auth_dt', inicisResult.P_AUTH_DT ?? '')
+    formData.append('auth_no', inicisResult.P_AUTH_NO ?? '')
+    formData.append('card_num', inicisResult.P_CARD_NUM ?? '')
+    formData.append('card_name', inicisResult.P_CARD_ISSUER_NAME ?? '')
+
+    const response = await apiClient.post('api/set_inicis_approval.php', formData)
+    if (response.result === 'Y') {
+      // 승인 저장 성공 → 예약 생성 (#36)
+      createPaymentRequest(response.data.payment_id)
+    } else {
+      Alert.alert('오류', '결제 정보 저장에 실패했습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: Edge Function이 자동 처리 → 앱에서는 WebView 결과만 수신
+// 파일: app/payment/inicisApproval.tsx (수정)
+//
+// ※ saveInicisApproval 함수 전체 삭제
+//
+// 전환 후에는 inicis-callback Edge Function이 PG 콜백 수신 시점에
+// payments 테이블에 결제 정보를 자동 저장합니다.
+// 앱에서 별도로 승인 정보를 DB에 저장하는 API를 호출할 필요가 없습니다.
+//
+// WebView onMessage에서 받은 payment_id를 바로 create-reservation (#36)에 전달:
+//
+// const onMessage = (event: WebViewMessageEvent) => {
+//   const data = JSON.parse(event.nativeEvent.data)
+//   if (data.result === 'Y') {
+//     createReservation(data.payment_id)  // → #36 Edge Function 호출
+//   }
+// }
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- **`saveInicisApproval` 함수 전체 삭제**: 이 API는 전환 후 **완전히 제거**됩니다
+- 기존 흐름: WebView 결과 수신 → `set_inicis_approval.php` 호출 → `set_payment_request.php` 호출 (3단계)
+- 전환 흐름: WebView 결과 수신 → `create-reservation` EF 호출 (1단계). 승인 정보는 `inicis-callback` 내부에서 이미 저장됨
+- `app/payment/inicisApproval.tsx` 파일 자체는 결제 완료 화면으로 남을 수 있으나, `saveInicisApproval` 호출 코드는 제거
+- `formData.append('mb_id', ...)` 패턴 제거 — JWT 기반 인증으로 전환
+- `inicis_payments` 테이블 → `payments` 테이블 매핑은 `inicis-callback` EF가 내부 처리
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 대응 | 변환 필요 |
+|---|---|---|
+| `response.result` (`'Y'`/`'N'`) | — (별도 호출 없음) | API 자체 삭제 |
+| `response.data.payment_id` (정수) | WebView `onMessage`의 `data.payment_id` (UUID) | 예 — 출처 변경 (PHP 응답 → WebView 이벤트) |
 
 ---
 
@@ -3321,16 +3461,157 @@ const deleteTemplate = async (templateId: string) => {
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/payment/inicisApproval.tsx 또는 request.tsx
+// 돌봄 예약(결제요청) 생성
+const createPaymentRequest = async (paymentApprovalId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)                // 보호자 폰번호
+    formData.append('to_mb_id', partnerMbId)             // 유치원 운영자 폰번호
+    formData.append('pet_id', selectedPetId)             // 반려동물 ID (정수)
+    formData.append('start_date', startDate)             // '2026-04-20'
+    formData.append('start_time', startTime)             // '09:00'
+    formData.append('end_date', endDate)                 // '2026-04-20'
+    formData.append('end_time', endTime)                 // '18:00'
+    formData.append('walk_count', walkCount.toString())  // 산책 횟수
+    formData.append('pickup_dropoff', pickupDropoff)     // '1' or '0'
+    formData.append('price', totalPrice.toString())      // 결제 금액
+    formData.append('payment_approval_id', paymentApprovalId)
+    formData.append('room_id', chatRoomId ?? '')         // 채팅방 ID (있으면)
+
+    const response = await apiClient.post('api/set_payment_request.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('예약 완료', '돌봄 예약이 생성되었습니다')
+      navigation.navigate('PaymentHistory')
+    } else {
+      Alert.alert('오류', response.message ?? '예약 생성에 실패했습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
+
+// 예약 상태 변경 (수락/거절/취소 등)
+const updatePaymentRequest = async (
+  requestId: string,
+  status: string,
+  rejectReason?: string
+) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    formData.append('id', requestId)
+    formData.append('status', status)
+    if (rejectReason) formData.append('reject_reason', rejectReason)
+
+    const response = await apiClient.post('api/set_payment_request.php', formData)
+    if (response.result === 'Y') {
+      // 상태 변경 성공
+      fetchPaymentRequestList()
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/payment/request.tsx 또는 hooks/useReservation.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 돌봄 예약 생성 (결제 완료 후)
+const createReservation = async (paymentId: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-reservation', {
+      body: {
+        kindergarten_id: kindergartenId,      // 유치원 UUID
+        pet_id: selectedPetId,                // 반려동물 UUID
+        checkin_scheduled: `${startDate}T${startTime}:00+09:00`,  // ISO 8601
+        checkout_scheduled: `${endDate}T${endTime}:00+09:00`,
+        walk_count: walkCount,                // 산책 횟수 (number)
+        pickup_requested: pickupDropoff,      // boolean
+        payment_id: paymentId,                // inicis-callback에서 반환된 UUID
+        room_id: chatRoomId ?? null,          // 기존 채팅방 (없으면 자동 생성)
+      },
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '예약 생성에 실패했습니다')
+      return
+    }
+
+    // data: { success: true, data: { reservation_id, room_id, status } }
+    Alert.alert('예약 완료', '돌봄 예약이 생성되었습니다')
+    navigation.navigate('PaymentHistory')
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
+
+// 예약 상태 변경 (수락/거절/취소 등) — 동일 EF의 업데이트 모드
+const updateReservation = async (
+  reservationId: string,
+  status: string,
+  options?: {
+    reject_reason?: string
+    reject_detail?: string
+    cancel_reason?: string
+  }
+) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-reservation', {
+      body: {
+        reservation_id: reservationId,  // 기존 예약 UUID → 업데이트 모드
+        status: status,                 // '예약확정', '거절', '취소' 등
+        ...options,                     // reject_reason, cancel_reason 등
+      },
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '상태 변경에 실패했습니다')
+      return
+    }
+
+    // data: { success: true, data: { reservation_id, room_id, status } }
+    // 상태 변경 성공 → 목록 새로고침
+    fetchReservationList()
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- **FormData → JSON body**: `formData.append()` 반복 → `supabase.functions.invoke()` JSON body 1회. `apiClient.post` 제거
+- **`mb_id`/`to_mb_id` 제거**: JWT `auth.uid()`로 자동 식별. `to_mb_id`(유치원 운영자 폰번호) → `kindergarten_id`(유치원 UUID)
+- **날짜 형식 통합**: `start_date`(`'2026-04-20'`) + `start_time`(`'09:00'`) 2개 필드 → `checkin_scheduled`(`'2026-04-20T09:00:00+09:00'`) ISO 8601 1개 필드
+- **`pickup_dropoff`**: `'1'`/`'0'` 문자열 → `true`/`false` boolean
+- **`price` 제거**: 결제 금액은 `payments` 테이블에 이미 저장됨 (`payment_id`로 연결). 앱에서 금액을 파라미터로 전달하지 않음 (변조 방지)
+- **`payment_approval_id` → `payment_id`**: 정수 ID → UUID. `inicis-callback` EF에서 반환된 값 사용
+- **부가 처리 원자적 통합**: 기존에는 예약 생성 후 앱에서 채팅 시스템 메시지를 별도 전송했으나, 전환 후에는 EF 내부에서 채팅방 자동 생성 + 시스템 메시지 + FCM 푸시를 원자적으로 처리
+- **상태 변경도 같은 EF**: `reservation_id`를 추가로 전달하면 업데이트 모드. 생성과 변경이 하나의 Edge Function으로 통합
+- `response.result` 비교 제거 → `data?.success` 또는 `error` 체크
+
+**응답 매핑** (생성 모드):
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `response.result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 — 타입 변경 |
+| `response.data.id` (정수) | `data.data.reservation_id` (UUID) | 예 — 정수→UUID, 경로 변경 |
+| — | `data.data.room_id` (UUID) | 신규 — 채팅방 ID (자동 생성 시 유용) |
+| — | `data.data.status` (string) | 신규 — 현재 예약 상태 |
+| `response.message` | `data.error` (실패 시) | 예 — 키 이름 변경 |
 
 ---
 
@@ -3566,21 +3847,103 @@ const fetchReservationDetail = async (reservationId: string) => {
 ### API #39. set_care_complete.php → Edge Function `complete-care`
 
 **전환 방식**: Edge Function | **난이도**: 상
-**관련 파일**: 돌봄 완료 화면
+**관련 파일**: `app/(tabs)/paymentHistory.tsx`, 돌봄 상세 화면
 **Supabase 대응**: `supabase.functions.invoke('complete-care', { body: { reservation_id } })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/(tabs)/paymentHistory.tsx 또는 돌봄 상세 화면
+// 돌봄 완료 (하원 확인) 처리
+const completeCare = async (requestId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)          // 본인 폰번호
+    formData.append('id', requestId)               // 예약 ID (정수)
+    formData.append('type', 'complete')            // 완료 타입
+
+    const response = await apiClient.post('api/set_care_complete.php', formData)
+    if (response.result === 'Y') {
+      Alert.alert('완료', '돌봄이 완료되었습니다')
+      fetchPaymentRequestList()   // 목록 새로고침
+    } else {
+      Alert.alert('오류', response.message ?? '돌봄 완료 처리에 실패했습니다')
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/(tabs)/paymentHistory.tsx 또는 돌봄 상세 화면 (수정)
+import { supabase } from '@/lib/supabase'
+
+// 돌봄 완료 (하원 확인) 처리
+// → auth.uid()로 호출자를 자동 식별하여 보호자/유치원 중 누가 확인했는지 판별
+const completeCare = async (reservationId: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('complete-care', {
+      body: {
+        reservation_id: reservationId,  // 예약 UUID
+      },
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '돌봄 완료 처리에 실패했습니다')
+      return
+    }
+
+    // data: {
+    //   success: true,
+    //   data: {
+    //     status: '돌봄완료' | '돌봄진행중',  ← 양측 모두 확인 시만 '돌봄완료'
+    //     both_confirmed: true | false,
+    //     guardian_checkout_confirmed: true | false,
+    //     kg_checkout_confirmed: true | false,
+    //   }
+    // }
+
+    if (data.data.both_confirmed) {
+      Alert.alert('완료', '양측 모두 하원을 확인했습니다. 돌봄이 완료되었습니다.')
+    } else {
+      // 한쪽만 확인 — 상대방 확인 대기 안내
+      const confirmed = data.data.guardian_checkout_confirmed
+        ? '보호자' : '유치원'
+      Alert.alert('확인 완료', `${confirmed} 하원 확인 완료. 상대방 확인을 기다리고 있습니다.`)
+    }
+
+    fetchReservationList()   // 목록 새로고침
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- **FormData → JSON body**: `formData.append()` → `supabase.functions.invoke()` JSON body
+- **`mb_id` 제거**: JWT `auth.uid()`로 자동 식별. EF 내부에서 보호자/유치원 판별
+- **`id` (정수) → `reservation_id` (UUID)**: PK 타입 변경
+- **`type` 파라미터 제거**: 기존 `type='complete'` → EF가 단일 목적 (돌봄 완료 전용)
+- **양측 하원 확인**: 기존 PHP는 한 번 호출로 즉시 완료. 전환 후에는 **보호자/유치원 각각 확인** 필요, 양측 모두 확인 시 `status='돌봄완료'`
+- **결과 상세화**: `result: 'Y'` 단순 성공 → `both_confirmed`, `guardian_checkout_confirmed`, `kg_checkout_confirmed`로 상세 상태 반환
+- EF 내부 부가 처리: 시스템 메시지(`care_end`, `review`) INSERT + 상대방 FCM 푸시 + notifications INSERT (앱에서 별도 호출 불필요)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `response.result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 — 타입 변경 |
+| — | `data.data.status` (`'돌봄완료'`/`'돌봄진행중'`) | 신규 — 현재 상태 |
+| — | `data.data.both_confirmed` (boolean) | 신규 — 양측 모두 확인 여부 |
+| — | `data.data.guardian_checkout_confirmed` (boolean) | 신규 — 보호자 확인 상태 |
+| — | `data.data.kg_checkout_confirmed` (boolean) | 신규 — 유치원 확인 상태 |
+| `response.message` | `data.error` (실패 시) | 예 — 키 이름 변경 |
 
 ---
 
@@ -5060,16 +5423,47 @@ const fetchFavoriteKindergartens = async () => {
 
 **Before**:
 ```
-PHP cron job → scheduler.php
+# 기존: 서버 crontab에 등록된 PHP 스크립트
+*/5 * * * * php /var/www/html/api/scheduler.php
+# → MariaDB의 payment_request 테이블에서 상태 변경 대상 조회
+# → 등원/하원 30분 전 알림, 돌봄 시작/종료 자동 처리
+# → FCM 푸시 발송 (PHP Firebase Admin SDK)
 ```
 
 **After**:
+```sql
+-- 방법 1: Supabase pg_cron (권장)
+SELECT cron.schedule(
+  'scheduler-every-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url := current_setting('app.settings.supabase_url') || '/functions/v1/scheduler',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
 ```
-pg_cron 또는 외부 cron → supabase.functions.invoke('scheduler')
+
+```bash
+# 방법 2: 외부 cron (pg_cron 미사용 시)
+*/5 * * * * curl -X POST \
+  https://<project-ref>.supabase.co/functions/v1/scheduler \
+  -H "Authorization: Bearer <service_role_key>" \
+  -H "Content-Type: application/json"
 ```
 
 **변환 포인트**:
-<!-- TODO: 앱 코드 변경 없음 — 서버 설정만 필요 -->
+- **앱 코드 변경 없음**: `scheduler`는 서버 측에서만 실행되므로 앱 코드 수정이 필요 없습니다
+- **PHP cron → pg_cron/외부 cron**: 서버 crontab 설정 → Supabase pg_cron 또는 외부 cron 서비스로 변경
+- **테이블명 변경**: `payment_request` → `reservations`, `inicis_payments` → `payments`
+- **알림 중복 방지**: `reminder_start_sent_at`, `reminder_end_sent_at`, `care_start_sent_at`, `care_end_sent_at` 타임스탬프 컬럼으로 발송 이력 관리 (IS NULL 조건 → 미발송 건만 대상)
+- **FCM 발송**: PHP Firebase Admin SDK → `send-push` Edge Function 내부 호출
+- **시스템 메시지**: PHP에서 MariaDB INSERT → Supabase `chat_messages` INSERT + Realtime 자동 전파
+- **자동 완료**: `auto_complete_scheduled_at` 컬럼 도달 시 양측 미확인 예약 자동 완료 (`status='돌봄완료'`)
 
 ---
 
@@ -5166,3 +5560,4 @@ export const uploadImages = async (
 | 2026-04-18 | **R3 본문 작성** — §4 유치원/보호자 RPC (#17~#20) 4개 API Before/After 코드 + 응답 매핑 (유치원 상세: prices 중첩객체·review_count 실제값·금융정보 제외, 유치원 목록: 거리순+safety cap, 보호자 상세: 반려동물별 찜·주소 비대칭, 보호자 목록: pet_thumbnails), §6 예약 RPC (#37~#38) 2개 API (보호자/유치원 2개 RPC 분기·LATERAL JOIN 결제·refunds 분리), §7 정산 RPC (#41) 1개 API (2개 PHP 통합·4파트 구조·날짜 검증), §8 리뷰 RPC (#44, #44b) 2개 API (태그 집계 7개·is_guardian_only 분기), §13 교육 RPC (#61) 1개 API (topics+quiz+completion 통합·기본값 자동). 총 R3에서 10개 API 코드 완성 |
 | 2026-04-18 | **R4 본문 작성** — §5 채팅 (#22 create_room RPC: SECURITY DEFINER·중복방지·방복원, #23 get_rooms RPC: 미읽음 서브쿼리·상대방 프로필·ChatRoom 인터페이스, #25 send_message Edge Function: 텍스트/이미지 전송·Realtime 구독/해제·postgres_changes 콜백·WebSocket 코드 제거). #28·#29 FK 교정 (room_id → chat_room_id, sql/41_08 스키마와 동기화). 총 R4에서 3개 API 코드 완성 + 2개 기존 코드 교정 |
 | 2026-04-18 | **R4 리뷰 반영 (Issue 4)** — #23 변환 포인트의 미읽음 서브쿼리 설명 교정: `id > last_read_message_id` UUID 비교 → `created_at > (서브쿼리)` 타임스탬프 비교로 변경 + UUID v4 순서 미보장 경고 추가 |
+| 2026-04-18 | **R5 본문 작성** — §6 결제/돌봄 (#34 inicis-callback: WebView P_RETURN_URL 변경·P_NOTI 파라미터 매핑·onMessage 응답 정규화·payment_id 추가, #35 set_inicis_approval 삭제: saveInicisApproval 함수 전체 제거·inicis-callback 내부 흡수·3단계→1단계 축소, #36 create-reservation: FormData→JSON body·날짜 ISO 8601 통합·price 파라미터 제거(변조 방지)·생성/업데이트 모드 통합·부가처리 원자적 통합, #39 complete-care: 양측 하원 확인 로직·both_confirmed 상세 응답·EF 내부 시스템 메시지+FCM), §13 기타 (#66 scheduler: PHP cron→pg_cron 전환·테이블명 변경·알림 중복 방지 컬럼 설명·자동 완료 로직). 총 R5에서 4개 API 코드 완성 + 1개 변환 포인트 완성 |
