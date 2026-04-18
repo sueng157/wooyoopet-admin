@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-17 (Step 3 진행 중 — R2 리뷰 반영 완료, R3부터 다음 라운드 예정)
+> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R3 리뷰 완료·이슈 반영, R4부터 다음 라운드 예정)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -152,8 +152,8 @@
 > **변경 (2026-04-15)**: 기존 #9 `app_get_reviews` (guardian + kindergarten 통합)를 2개로 분리.
 > → #9 `app_get_guardian_reviews`, #12 `app_get_kindergarten_reviews`
 >
-> **변경 (2026-04-16)**: #5 `app_get_reservations`를 보호자/유치원 2개로 분리.
-> → #5 `app_get_reservations` (보호자용), #5b `app_get_reservations_kindergarten` (유치원용)
+> **변경 (2026-04-16)**: #5 `app_get_reservations_guardian`를 보호자/유치원 2개로 분리.
+> → #5 `app_get_reservations_guardian` (보호자용), #5b `app_get_reservations_kindergarten` (유치원용)
 > 총 RPC 12→13개.
 
 | # | SQL 파일 | 함수명 | 원본 PHP | 용도 | 핵심 로직 | VIEW 사용 | 상태 |
@@ -162,7 +162,7 @@
 | 2 | sql/44_02 | `app_get_kindergartens` | get_partner_list.php | 유치원 목록 | kindergartens + review COUNT + Haversine 거리 정렬 + p_limit safety cap | ✅ members | ✅ 완료 |
 | 3 | sql/44_03 | `app_get_guardian_detail` | get_protector.php | 보호자 상세 | members + pets + favorite JOIN | ✅ members, pets | ✅ 완료 |
 | 4 | sql/44_04 | `app_get_guardians` | get_protector_list.php | 보호자 목록 | members + pets JOIN + 페이지네이션 | ✅ members, pets | ✅ 완료 |
-| 5 | sql/44_05 | `app_get_reservations` | get_payment_request.php | 예약 목록 (보호자) | reservations + pets + kindergartens + members JOIN + 상태 필터 | ✅ members, pets | ✅ 완료 |
+| 5 | sql/44_05 | `app_get_reservations_guardian` | get_payment_request.php | 예약 목록 (보호자) | reservations + pets + kindergartens + members JOIN + 상태 필터 | ✅ members, pets | ✅ 완료 |
 | 5b | sql/44_05b | `app_get_reservations_kindergarten` | get_payment_request.php | 예약 목록 (유치원) | reservations + pets + members JOIN + 유치원 운영자 시점 | ✅ members, pets | ✅ 완료 |
 | 6 | sql/44_06 | `app_get_reservation_detail` | get_payment_request_by_id.php | 예약 상세 | reservations + payments + refunds + pets + kindergartens + members JOIN | ✅ members, pets | ✅ 완료 |
 | 7 | sql/44_07 | `app_withdraw_member` | set_member_leave.php | 회원 탈퇴 | members UPDATE (soft delete: status→'탈퇴') + pets.deleted=true + kindergartens.registration_status='withdrawn'. Auth 삭제는 Edge Function | ❌ | ✅ 완료 |
@@ -182,7 +182,7 @@
 | 2 | 11 | `app_get_education_with_progress` | ★★☆ | ✅ | ✅ 완료 — education 테이블만, RLS 충돌 없음 |
 | 3 | 1 | `app_get_kindergarten_detail` | ★★★ | ✅ | ✅ 완료 — 7테이블/VIEW, internal VIEW 3개 모두 사용 |
 | 4 | 2 | `app_get_kindergartens` | ★★★ | ✅ | ✅ 완료 — 목록, Haversine 거리, p_limit safety cap, settlement_infos VIEW 불필요 |
-| 5 | 5 | `app_get_reservations` | ★★★ | ✅ | ✅ 완료 — 보호자용, 4테이블 JOIN, 상태 필터 |
+| 5 | 5 | `app_get_reservations_guardian` | ★★★ | ✅ | ✅ 완료 — 보호자용, 4테이블 JOIN, 상태 필터 |
 | 5b | 5b | `app_get_reservations_kindergarten` | ★★★ | ✅ | ✅ 완료 — 유치원용, #5에서 분리 (보호자/유치원 비대칭) |
 | 6 | 6 | `app_get_reservation_detail` | ★★★ | ✅ | ✅ 완료 — 단건 + payments + refunds JOIN |
 | 7 | 9 | `app_get_guardian_reviews` | ★★★ | ✅ | ✅ 완료 — 태그 집계(7 positive), json_agg ORDER BY ord |
@@ -218,7 +218,7 @@
 | 3-0 | — | 문서 뼈대 초안 (§0 규칙, 전체 목차, API 번호 부여, placeholder) | ✅ 완료 | GUIDE.md + CODE.md (PR #139) |
 | 3-1 | R1 | 인증 + apiClient 교체 (mb_id → Supabase Auth, FormData → Supabase JS) | ✅ 완료 | GUIDE §1~2 + CODE §1~2 |
 | 3-2 | R2 | 단순 CRUD 핵심 (반려동물·유치원·보호자·주소·회원·채팅템플릿) | ✅ 완료 | GUIDE §3~10 + CODE §3~4 |
-| 3-3 | R3 | RPC 조회 (13개 + 5b) | ⬜ 예정 | GUIDE §11~13 + CODE §7~8,§13 |
+| 3-3 | R3 | RPC 조회 (10개) | ✅ 완료 | GUIDE §11~13 + CODE §4,§6~8,§13 |
 | 3-4 | R4 | 채팅 Realtime (WebSocket → Realtime) | ⬜ 예정 | GUIDE §14 + CODE §5 |
 | 3-5 | R5 | 결제/예약 + Edge Functions (7개 EF 인터페이스 포함) | ⬜ 예정 | GUIDE §15~16 + CODE §6 |
 | 3-6 | R6 | 나머지 CRUD + 부록 + 교차검증 (즐겨찾기·알림·콘텐츠·차단·기타) | ⬜ 예정 | CODE §9~12, 부록 A·B |
@@ -250,11 +250,10 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 >   2. MIGRATION_PLAN.md의 Step 3 "본문 작성 계획" 표에서 R{N}의 대상 범위를 확인할 것.
 >
 > ■ 참조 문서: MIGRATION_PLAN.md, MOBILE_APP_ANALYSIS.md, DB_MAPPING_REFERENCE.md, RPC_PHP_MAPPING.md
-> ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청할 때에만 develop 브랜치로)
-> ■ 작업 방식 : 매 작업이 끝나면 genspark_ai_developer 브랜치에 커밋 푸시하여 검토할 수 있게 할 것 
+> ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청 시에만)
 > ```
 >
-> **현재 진행 상황**: R1 + R2 완료 (리뷰 반영 포함). GUIDE §1~10 + CODE §1~§13(R2 대상 26개 API) 확정. R2 리뷰 Issue 1~3 수정 완료. R3부터 다음 라운드 시작 예정.
+> **현재 진행 상황**: R1 + R2 + R3 완료 (리뷰 PASS + Issue 2건 반영 완료). GUIDE §1~13 + CODE §1~§13(R3 대상 10개 API) 확정. R4부터 다음 라운드 시작 예정.
 
 #### 전환 권장 순서 (외주 개발자 실제 작업 순서)
 
@@ -608,7 +607,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 | 34 | inicis_payment.php | Edge Function | PG사 콜백 수신 → set_inicis_approval 호출 → WebView 결과 반환 | 상 |
 | 35 | set_inicis_approval.php | Edge Function | payments UPSERT (oid 기준) + raw_response 저장 | 중 |
 | 36 | set_payment_request.php | Edge Function | reservations INSERT/UPDATE + payments 연결 + chat_messages INSERT (system) + Realtime + FCM | 상 |
-| 37 | get_payment_request.php | RPC | `app_get_reservations` — reservations + pets + kindergartens + members JOIN (목록) | 중 |
+| 37 | get_payment_request.php | RPC | `app_get_reservations_guardian` — reservations + pets + kindergartens + members JOIN (목록) | 중 |
 | 38 | get_payment_request_by_id.php | RPC | `app_get_reservation_detail` — reservations (단건) + approval_info + pets + kindergartens + members | 중 |
 
 ### 5-9. 돌봄 상태 관리 (2개)
@@ -955,9 +954,11 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-14 | **Supabase Secrets 전체 등록 완료 (8개)** — JUSO_CONFM_KEY + NAVER_MAP_CLIENT_ID/SECRET + INICIS_MID 추가 등록. INICIS_SIGN_KEY는 기존 PHP에서 미사용 확인되어 불필요 판단 (모바일 결제 hashKey는 앱 클라이언트에서 생성). PEM 파일은 PC 웹결제 전용으로 보관만 |
 | 2026-04-14 | **앱 API 전수조사 + Step 2.5 설계** — React Native 소스에서 실제 호출 PHP API 60개 grep 추출, 기존 매핑 85개와 대조: 미사용 19개 제거 + 누락 3개(kakao-address, delete_message_template, update_message_template) 추가. Supabase RPC 함수가 관리자 전용뿐임을 확인 → Step 2.5(앱용 RPC 11개) 신규 삽입. Edge Functions 8→7개(address-proxy 삭제, create-reservation 이름변경). 섹션 2-2 지리 데이터 테이블 마이그레이션 불필요 확정. toss_payment.php 앱 레거시 호출 확인. Secrets 3개(JUSO/NAVER) 미사용 표기 |
 | 2026-04-15 | **Step 2.5 진행 시작** — 공개 VIEW 3개(members_public_profile, pets_public_info, settlement_infos_public) 생성(sql/44_00), RPC #8 app_set_representative_pet 완료(sql/44_08). RLS 충돌 해결 방안 A(VIEW) 확정, 방안 B(SECURITY DEFINER) 제외. 리뷰 RPC 2개 분리(app_get_guardian_reviews + app_get_kindergarten_reviews) → 총 RPC 11→12개 |
-| 2026-04-16 | **Step 2.5 RPC 대량 완성 (10/13)** — #5 app_get_reservations(보호자 예약목록), #5b app_get_reservations_kindergarten(유치원 예약목록, 신규 분리), #6 app_get_reservation_detail(예약상세 + payments + refunds), #9 app_get_guardian_reviews(보호자 후기 + 태그 집계 7개), #12 app_get_kindergarten_reviews(유치원 후기 + is_guardian_only 필터 + 태그 집계 7개), #10 app_get_settlement_summary(정산 요약 + period_summary + details) 완료. settlements RLS 보강(kindergarten_id 운영자 조건 추가, sql/43_01). #10은 get_settlement_list.php 기능 흡수. 총 RPC 12→13개(#5b 추가). 미완료 3개: #3, #4, #7 |
+| 2026-04-16 | **Step 2.5 RPC 대량 완성 (10/13)** — #5 app_get_reservations_guardian(보호자 예약목록), #5b app_get_reservations_kindergarten(유치원 예약목록, 신규 분리), #6 app_get_reservation_detail(예약상세 + payments + refunds), #9 app_get_guardian_reviews(보호자 후기 + 태그 집계 7개), #12 app_get_kindergarten_reviews(유치원 후기 + is_guardian_only 필터 + 태그 집계 7개), #10 app_get_settlement_summary(정산 요약 + period_summary + details) 완료. settlements RLS 보강(kindergarten_id 운영자 조건 추가, sql/43_01). #10은 get_settlement_list.php 기능 흡수. 총 RPC 12→13개(#5b 추가). 미완료 3개: #3, #4, #7 |
 | 2026-04-17 | **Step 2.5 완료 (13/13)** — #3 app_get_guardian_detail + #4 app_get_guardians 완료(VIEW/RPC 일괄 리팩터링: members_public_profile 11→9컬럼, owner→operator 키 변경, PR #136). #7 app_withdraw_member 완료(soft delete: members.status→'탈퇴', pets.deleted=true, kindergartens.registration_status='withdrawn', DDL ALTER sql/44_00a, PR #137). 외주개발자 RPC_PHP_MAPPING.md 확인 완료 반영. 문서 일괄 업데이트(RPC_PHP_MAPPING, DB_FUNCTIONS, MIGRATION_PLAN, HANDOVER, DB_MAPPING_REFERENCE) |
 | 2026-04-17 | **Step 3 R1 본문 작성 완료** — APP_MIGRATION_GUIDE.md §1 인증 전환 (1-1~1-6: 인증 흐름 다이어그램, API #1~#3 설명, userAtom 변경, 영향 범위) + §2 apiClient 교체 (2-1~2-5: 5패턴 비교, 점진적 전환 전략, 에러 처리 통합, 삭제 체크리스트). APP_MIGRATION_CODE.md §1 인증/회원 (#1~#6: Before/After 코드 + 응답 매핑 테이블) + §2 주소 인증 (#7~#8: Before/After 코드 + 응답 매핑 테이블). TODO 20개 해소, 8개 API 전환 코드 완성 |
 | 2026-04-17 | **Step 3 R1 리뷰 반영 (Issue 2~8)** — GUIDE: §2-2 Auth API 수량 보충 설명(Issue 2), §0-5 Phase A #4 RPC 예외 주석(Issue 8). CODE: §1 #4~#6 선행 작성 사유 노트(Issue 3), #3 convertBirthDate/convertGender 유틸 추가+CHECK 제약 명시(Issue 4,5), #8 카카오 API 키 보안 경고 강조 박스(Issue 6). 양쪽 문서 변경 이력 업데이트(Issue 7) |
 | 2026-04-17 | **Step 3 R2 본문 작성 완료** — GUIDE §3~10 (8개 장) + CODE §3~§13 (26개 API) 완성. 대상: 반려동물 CRUD(#9~#16), 유치원 프로필(#21), 채팅 자동 API(#24,#26~#29), 채팅 템플릿(#30~#33), 돌봄 후기(#40), 정산(#42~#43), 리뷰(#45), 기타(#62~#65). Storage 공통 유틸 작성 |
 | 2026-04-17 | **Step 3 R2 리뷰 반영 (Issue 1~3)** — Issue 1: CODE #21 & GUIDE §9-3 가격 컬럼 `price_*_add` 3개 → `price_*_24h` + `price_*_pickup` 6개로 교정 (총 12개 컬럼 정확 반영). Issue 2: CODE #11 RLS 안내 명확화 (본인 전용 API, 타인 반려동물은 RPC `app_get_guardian_detail` 사용 안내). Issue 3: CODE #10 `!inner` JOIN → 별도 2회 조회 패턴 교정 (찜하지 않은 반려동물 404 방지) |
+| 2026-04-18 | **Step 3 R3 본문 작성 완료** — GUIDE §11~13 (3개 장) + CODE §4,§6~8,§13 (10개 API) 완성. 대상: 유치원/보호자 RPC(#17~#20: 상세+목록, 거리순 정렬, internal VIEW, 주소 비대칭 정책), 예약 조회 RPC(#37~#38: 보호자/유치원 2개 분리, LATERAL JOIN 결제, refunds 분리), 정산 RPC(#41: 2개 PHP 통합, 4파트 구조, 날짜 검증), 리뷰 RPC(#44/#44b: 태그 집계 7개, is_guardian_only 분기), 교육 RPC(#61: topics+quiz+completion 통합, 기본값 자동) |
+| 2026-04-18 | **Step 3 R3 리뷰 완료 (Issue 1~2 반영)** — 10개 API 전수 PASS. Issue 1: RPC #5 함수명 `app_get_reservations` → `app_get_reservations_guardian` 동기화 (RPC_PHP_MAPPING.md + MIGRATION_PLAN.md 전체 5개소). Issue 2: 리뷰 태그 수 교정 `6개 기본 태그` → `7개 긍정 태그` (RPC_PHP_MAPPING.md #9, #12) |
