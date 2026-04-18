@@ -418,6 +418,27 @@
 | 품종 목록: animal_kinds + animal_kinds_x | **pet_breeds** 하나로 통합 (type 컬럼: dog/cat, 현재 dog만 운영) |
 | 채팅 가이드: chat_guides + message_templates | **chat_templates** 하나로 통합 (type 컬럼으로 구분) |
 
+#### member_blocks 컬럼 상세
+
+> Supabase에만 존재하는 테이블 (§1-3 #H). 기존 MariaDB `block_users` 대체.
+> 앱에서 차단/해제/목록 조회(#58~#60), 관리자 페이지에서 차단 관리에 사용.
+
+| 컬럼 | 타입 | 설명 | 비고 |
+|------|------|------|------|
+| `id` | uuid (PK) | 자동 생성 (`gen_random_uuid()`) | — |
+| `blocker_id` | uuid (FK → members.id) | 차단을 건 회원 | RLS 기준 필드 (`blocker_id = auth.uid()`) |
+| `blocked_id` | uuid (FK → members.id) | 차단 대상 회원 | 타인 프로필 조회 시 RLS 제약 → RPC 필요 |
+| `blocked_at` | timestamptz | 차단 시각 | `default now()` |
+| `unblocked_at` | timestamptz (nullable) | 차단 해제 시각 | `NULL`이면 현재 차단 중 |
+
+**RLS 정책** (sql/43_01_app_rls_policies.sql):
+- `member_blocks_select_app`: SELECT — `blocker_id = auth.uid()`
+- `member_blocks_insert_app`: INSERT — `blocker_id = auth.uid()`
+- `member_blocks_delete_app`: DELETE — `blocker_id = auth.uid()`
+- `member_blocks_select_admin`: SELECT — `is_admin()`
+
+**RLS 제약 사항**: 차단 목록(#60)에서 `blocked:members!blocked_id(...)` 임베디드 JOIN 시, `members` 테이블 RLS(`id = auth.uid()`)가 타인 행 접근을 차단하여 `null` 반환. → `app_get_blocked_list` RPC + `internal.members_public_profile` VIEW로 해결 (MIGRATION_PLAN.md 4-10, RPC_PHP_MAPPING.md #15 참조).
+
 ### 3-2. 앱에서 필요하여 신규 추가 확정된 컬럼 (17개)
 
 > members.address_doc_urls와 kindergartens.address_doc_urls는 이미 DB에 존재하므로 아래 목록에서 제외.

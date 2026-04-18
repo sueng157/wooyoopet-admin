@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R5 본문 작성 — §6 결제/돌봄 #34~#36,#39 Before/After 코드 + §13 #66 변환 포인트)
+> **최종 업데이트**: 2026-04-18 (R6 완료 — §9~12 즐겨찾기·알림·콘텐츠·차단 15개 API Before/After 코드 완성, 전체 66개 API 코드 확정)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -4711,20 +4711,69 @@ const submitReview = async (reviewData: {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `utils/handleFavorite.ts` → `addPartnerFavorite()`
-**Supabase 대응**: `supabase.from('favorite_kindergartens').upsert({ member_id, kindergarten_id, is_favorite: true })`
+**Supabase 테이블**: `favorite_kindergartens`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (또는 hooks/useFavorite.ts)
+const addPartnerFavorite = async (partnerId: string) => {
+  try {
+    const response = await apiClient.post('api/set_partner_favorite_add.php', {
+      mb_id: user.mb_id,        // 내 폰번호
+      partner_id: partnerId,    // 유치원 운영자 폰번호
+    })
+    if (response.result === 'Y') {
+      // 찜 추가 성공 → UI 갱신
+      setIsFavorite(true)
+    }
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 추가에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const addKindergartenFavorite = async (kindergartenId: string) => {
+  try {
+    const { error } = await supabase
+      .from('favorite_kindergartens')
+      .upsert(
+        {
+          member_id: user.id,                // UUID (auth.uid()와 동일)
+          kindergarten_id: kindergartenId,    // 유치원 UUID
+          is_favorite: true,
+        },
+        { onConflict: 'member_id,kindergarten_id' }  // UNIQUE 제약 기준 UPSERT
+      )
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    // 찜 추가 성공 → UI 갱신
+    setIsFavorite(true)
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 추가에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id`(폰번호) + `partner_id`(폰번호) → `member_id`(UUID) + `kindergarten_id`(UUID)
+- INSERT → **UPSERT**: `onConflict: 'member_id,kindergarten_id'`로 중복 행 존재 시 `is_favorite=true`로 UPDATE (이전에 해제한 찜을 다시 추가하는 케이스 처리)
+- 함수명 변경: `addPartnerFavorite` → `addKindergartenFavorite` (§0-1 용어 매핑)
+- RLS: `member_id = auth.uid()` 정책으로 본인 찜만 추가 가능
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
@@ -4732,20 +4781,62 @@ const submitReview = async (reviewData: {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `utils/handleFavorite.ts` → `removePartnerFavorite()`
-**Supabase 대응**: `supabase.from('favorite_kindergartens').update({ is_favorite: false }).eq('member_id', userId).eq('kindergarten_id', kgId)`
+**Supabase 테이블**: `favorite_kindergartens`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (또는 hooks/useFavorite.ts)
+const removePartnerFavorite = async (partnerId: string) => {
+  try {
+    const response = await apiClient.post('api/set_partner_favorite_remove.php', {
+      mb_id: user.mb_id,        // 내 폰번호
+      partner_id: partnerId,    // 유치원 운영자 폰번호
+    })
+    if (response.result === 'Y') {
+      setIsFavorite(false)
+    }
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 해제에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const removeKindergartenFavorite = async (kindergartenId: string) => {
+  try {
+    const { error } = await supabase
+      .from('favorite_kindergartens')
+      .update({ is_favorite: false })
+      .eq('member_id', user.id)
+      .eq('kindergarten_id', kindergartenId)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsFavorite(false)
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 해제에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 기존 DELETE → **UPDATE `is_favorite=false`** (행 삭제가 아닌 플래그 변경, 히스토리 보존)
+- `mb_id` + `partner_id` → `member_id` + `kindergarten_id` (UUID)
+- 함수명 변경: `removePartnerFavorite` → `removeKindergartenFavorite`
+- RLS: `member_id = auth.uid()` 정책으로 본인 찜만 해제 가능
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
@@ -4753,20 +4844,67 @@ const submitReview = async (reviewData: {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `utils/handleFavorite.ts` → `addUserFavorite()`
-**Supabase 대응**: `supabase.from('favorite_pets').upsert({ member_id, pet_id, is_favorite: true })`
+**Supabase 테이블**: `favorite_pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (또는 hooks/useFavorite.ts)
+const addUserFavorite = async (animalId: string) => {
+  try {
+    const response = await apiClient.post('api/set_user_favorite_add.php', {
+      mb_id: user.mb_id,      // 내 폰번호
+      animal_id: animalId,    // 반려동물 wr_id (정수)
+    })
+    if (response.result === 'Y') {
+      setIsFavorite(true)
+    }
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 추가에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const addPetFavorite = async (petId: string) => {
+  try {
+    const { error } = await supabase
+      .from('favorite_pets')
+      .upsert(
+        {
+          member_id: user.id,    // UUID
+          pet_id: petId,         // 반려동물 UUID
+          is_favorite: true,
+        },
+        { onConflict: 'member_id,pet_id' }  // UNIQUE 제약 기준 UPSERT
+      )
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsFavorite(true)
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 추가에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id`(폰번호) + `animal_id`(정수) → `member_id`(UUID) + `pet_id`(UUID)
+- INSERT → **UPSERT**: `onConflict: 'member_id,pet_id'`
+- 함수명·파라미터명 변경: `addUserFavorite(animalId)` → `addPetFavorite(petId)` (§0-1 용어 매핑)
+- RLS: `member_id = auth.uid()` 정책으로 본인 찜만 추가 가능
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
@@ -4774,20 +4912,62 @@ const submitReview = async (reviewData: {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `utils/handleFavorite.ts` → `removeUserFavorite()`
-**Supabase 대응**: `supabase.from('favorite_pets').update({ is_favorite: false }).eq('member_id', userId).eq('pet_id', petId)`
+**Supabase 테이블**: `favorite_pets`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (또는 hooks/useFavorite.ts)
+const removeUserFavorite = async (animalId: string) => {
+  try {
+    const response = await apiClient.post('api/set_user_favorite_remove.php', {
+      mb_id: user.mb_id,      // 내 폰번호
+      animal_id: animalId,    // 반려동물 wr_id (정수)
+    })
+    if (response.result === 'Y') {
+      setIsFavorite(false)
+    }
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 해제에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/handleFavorite.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const removePetFavorite = async (petId: string) => {
+  try {
+    const { error } = await supabase
+      .from('favorite_pets')
+      .update({ is_favorite: false })
+      .eq('member_id', user.id)
+      .eq('pet_id', petId)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsFavorite(false)
+  } catch (error) {
+    Alert.alert('오류', '즐겨찾기 해제에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 기존 DELETE → **UPDATE `is_favorite=false`** (히스토리 보존)
+- `mb_id` + `animal_id` → `member_id` + `pet_id` (UUID)
+- 함수명 변경: `removeUserFavorite(animalId)` → `removePetFavorite(petId)`
+- RLS: `member_id = auth.uid()` 정책으로 본인 찜만 해제 가능
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
@@ -4798,63 +4978,235 @@ const submitReview = async (reviewData: {
 ### API #50. fcm_token.php → fcm_tokens UPSERT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: `hooks/useFcmToken.ts` → `getFcmToken()`
-**Supabase 대응**: `supabase.from('fcm_tokens').upsert({ member_id, token, platform, device_id })`
+**관련 파일**: `hooks/useFcmToken.ts` → `saveFcmToken()`
+**Supabase 테이블**: `fcm_tokens`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useFcmToken.ts
+// 앱 시작 시 FCM 토큰을 서버에 저장
+const saveFcmToken = async (token: string) => {
+  try {
+    const response = await apiClient.post('api/fcm_token.php', {
+      mb_id: user.mb_id,    // 폰번호
+      token: token,          // Firebase FCM 토큰
+    })
+    if (response.result !== 'Y') {
+      console.warn('FCM 토큰 저장 실패')
+    }
+  } catch (error) {
+    console.warn('FCM 토큰 저장 오류:', error)
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useFcmToken.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 앱 시작 시 FCM 토큰을 Supabase에 저장 (UPSERT)
+const saveFcmToken = async (token: string) => {
+  try {
+    const { error } = await supabase
+      .from('fcm_tokens')
+      .upsert(
+        {
+          member_id: user.id,   // UUID (auth.uid()와 동일)
+          token: token,          // Firebase FCM 토큰
+        },
+        { onConflict: 'member_id,token' }  // 동일 회원+토큰 중복 방지
+      )
+
+    if (error) {
+      console.warn('FCM 토큰 저장 실패:', error.message)
+    }
+  } catch (error) {
+    console.warn('FCM 토큰 저장 오류:', error)
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id`(폰번호) → `member_id`(UUID)
+- POST → **UPSERT**: `onConflict: 'member_id,token'`으로 동일 토큰 중복 방지
+- 에러 처리: Alert 대신 `console.warn` 유지 (FCM 토큰 저장 실패는 사용자에게 노출하지 않는 패턴)
+- RLS: `member_id = auth.uid()` 정책으로 본인 토큰만 관리 가능
+- `platform`, `device_id` 컬럼은 DB에 없음 — 현재 스키마(`fcm_tokens`)에는 `id`, `member_id`, `token`, `created_at`, `updated_at`만 존재
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
 ### API #51. get_notification.php → notifications SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: `hooks/useNotification.ts` (추정)
-**Supabase 대응**: `supabase.from('notifications').select('*').eq('member_id', userId).order('created_at', { ascending: false })`
+**관련 파일**: `notification/index.tsx` (알림 목록 화면)
+**Supabase 테이블**: `notifications`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: notification/index.tsx (또는 hooks/useNotification.ts)
+const fetchNotifications = async () => {
+  try {
+    const response = await apiClient.get('api/get_notification.php', {
+      mb_id: user.mb_id,   // 폰번호
+    })
+    if (response.result === 'Y') {
+      setNotifications(response.data)  // 알림 목록 배열
+    }
+  } catch (error) {
+    Alert.alert('오류', '알림을 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: notification/index.tsx (수정) 또는 hooks/useNotification.ts
+import { supabase } from '@/lib/supabase'
+
+const fetchNotifications = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      // RLS가 member_id = auth.uid() 자동 필터 → .eq('member_id', ...) 불필요
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setNotifications(data)  // 알림 목록 배열
+  } catch (error) {
+    Alert.alert('오류', '알림을 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 **제거** — RLS `notifications_select_app` 정책이 `member_id = auth.uid()` 자동 필터
+- 정렬: `created_at DESC` (최신 알림 먼저)
+- `type` 컬럼 추가: `'chat'`, `'reservation'`, `'review'`, `'system'` 등 — 알림 유형별 아이콘/라우팅 분기에 활용
+- `data` (jsonb) 컬럼 추가: `{ room_id, reservation_id }` 등 — 알림 탭 시 해당 화면 이동 데이터
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data[].id` (정수) | `data[].id` (UUID) | 예 — `number` → `string` |
+| `data[].mb_id` (폰번호) | — (RLS 자동 필터) | 예 — 필드 삭제 |
+| `data[].title` | `data[].title` | 아니오 |
+| `data[].content` | `data[].content` | 아니오 |
+| `data[].created_at` | `data[].created_at` | 아니오 |
+| — | `data[].type` | — (신규: 알림 유형) |
+| — | `data[].data` (jsonb) | — (신규: 라우팅 데이터) |
 
 ---
 
 ### API #52. delete_notification.php → notifications DELETE
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**관련 파일**: 알림 화면
-**Supabase 대응**: `supabase.from('notifications').delete().eq('id', notificationId)` 또는 `.eq('member_id', userId)` (전체 삭제)
+**관련 파일**: `notification/index.tsx` (알림 목록 화면)
+**Supabase 테이블**: `notifications`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: notification/index.tsx
+// 단건 삭제
+const deleteNotification = async (notificationId: number) => {
+  try {
+    const response = await apiClient.post('api/delete_notification.php', {
+      mb_id: user.mb_id,
+      id: notificationId,
+    })
+    if (response.result === 'Y') {
+      setNotifications(prev => prev.filter(n => n.id !== notificationId))
+    }
+  } catch (error) {
+    Alert.alert('오류', '알림 삭제에 실패했습니다')
+  }
+}
+
+// 전체 삭제
+const deleteAllNotifications = async () => {
+  try {
+    const response = await apiClient.post('api/delete_notification.php', {
+      mb_id: user.mb_id,
+      type: 'all',
+    })
+    if (response.result === 'Y') {
+      setNotifications([])
+    }
+  } catch (error) {
+    Alert.alert('오류', '전체 삭제에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: notification/index.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 단건 삭제
+const deleteNotification = async (notificationId: string) => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
+      // RLS가 member_id = auth.uid() 자동 필터 → 타인 알림 삭제 불가
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setNotifications(prev => prev.filter(n => n.id !== notificationId))
+  } catch (error) {
+    Alert.alert('오류', '알림 삭제에 실패했습니다')
+  }
+}
+
+// 전체 삭제 — 본인 알림 전체 (RLS 자동 필터)
+const deleteAllNotifications = async () => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+      // ⚠️ Supabase는 조건 없는 DELETE를 차단함
+      // 더미 조건(.neq)으로 전체 행 대상 지정 (RLS가 본인 행만 허용)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setNotifications([])
+  } catch (error) {
+    Alert.alert('오류', '전체 삭제에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 **제거** — RLS `notifications_delete_app` 정책이 `member_id = auth.uid()` 자동 필터
+- `id` 타입: `number` → `string` (UUID)
+- **전체 삭제 주의**: Supabase PostgREST는 조건 없는 DELETE를 기본적으로 차단합니다. `.neq('id', '더미UUID')` 또는 `.gte('created_at', '1970-01-01')` 같은 항상-참 조건을 추가하여 전체 행을 대상으로 지정합니다. RLS가 본인 알림만 삭제 허용하므로 보안 문제는 없습니다.
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
@@ -4865,100 +5217,363 @@ const submitReview = async (reviewData: {
 ### API #53. get_banner.php → banners SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('banners').select('*').eq('visible', true).order('sort_order')`
+**관련 파일**: `hooks/useBannerList.ts`
+**Supabase 테이블**: `banners`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useBannerList.ts
+const fetchBanners = async () => {
+  try {
+    const response = await apiClient.get('api/get_banner.php', {})
+    if (response.result === 'Y') {
+      setBanners(response.data)
+    }
+  } catch (error) {
+    console.warn('배너 로딩 실패:', error)
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useBannerList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const fetchBanners = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('banners')
+      .select('*')
+      .eq('visibility', '노출중')                    // 노출 중인 배너만
+      .order('display_order', { ascending: true })   // 정렬 순서 (오름차순)
+
+    if (error) {
+      console.warn('배너 로딩 실패:', error.message)
+      return
+    }
+    setBanners(data)
+  } catch (error) {
+    console.warn('배너 로딩 실패:', error)
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 파라미터 없음 (공개 조회) — RLS `banners_select_app` 정책 `USING (true)` (전체 공개)
+- 기존 `visible: true` 필터 → Supabase `visibility` 컬럼은 text 타입 (`'노출중'`/`'종료'`/`'대기'`)이므로 `.eq('visibility', '노출중')`으로 필터
+- 정렬: `sort_order` → `display_order` (Supabase 컬럼명)
+- 인증 없이도 조회 가능 (anon/authenticated 모두 SELECT 허용)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data[].id` (정수) | `data[].id` (UUID) | 예 — `number` → `string` |
+| `data[].title` | `data[].title` | 아니오 |
+| `data[].image` (상대 경로) | `data[].image_url` (절대 URL) | 예 — 키 변경 + URL 형식 변경 |
+| `data[].link` | `data[].link_url` | 예 — 키 변경 |
+| `data[].sort_order` | `data[].display_order` | 예 — 키 변경 |
+| — | `data[].link_type` | — (신규: `'외부 URL'`/`'앱 내 화면'`) |
+| — | `data[].display_position` | — (신규: `'홈 상단'`/`'홈 중간'`) |
+| — | `data[].start_date`, `data[].end_date` | — (신규: 노출 기간) |
 
 ---
 
 ### API #54. get_notice.php → notices SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('notices').select('*').eq('visible', true).order('created_at', { ascending: false })`
+**관련 파일**: `support/notice.tsx`
+**Supabase 테이블**: `notices`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: support/notice.tsx
+const fetchNotices = async (page: number = 1) => {
+  try {
+    const response = await apiClient.get('api/get_notice.php', {
+      page: page,
+    })
+    if (response.result === 'Y') {
+      setNotices(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '공지사항을 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: support/notice.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+const PER_PAGE = 20
+
+const fetchNotices = async (page: number = 1) => {
+  try {
+    const from = (page - 1) * PER_PAGE
+    const to = from + PER_PAGE - 1
+
+    const { data, error } = await supabase
+      .from('notices')
+      .select('id, title, target, is_pinned, created_at')
+      .eq('visibility', '공개')             // 공개 공지만
+      .order('is_pinned', { ascending: false })  // 고정 공지 먼저
+      .order('created_at', { ascending: false }) // 최신순
+      .range(from, to)                       // 페이지네이션
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setNotices(data)
+  } catch (error) {
+    Alert.alert('오류', '공지사항을 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 파라미터: `page` → `.range(from, to)` 방식 변환 (0-indexed)
+- 필터: `visibility='공개'` (Supabase 컬럼), 기존 PHP에서 내부 필터
+- 정렬: 고정 공지(`is_pinned`) 우선 → 최신순(`created_at DESC`)
+- 공개 조회: RLS `notices_select_app` 정책 `USING (true)` (전체 공개)
+- 목록에서는 `content` 제외 (상세에서만 조회 — 네트워크 절약)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data[].wr_id` (정수) | `data[].id` (UUID) | 예 — 키·타입 변경 |
+| `data[].wr_subject` | `data[].title` | 예 — 키 변경 |
+| `data[].wr_datetime` | `data[].created_at` | 예 — 키 변경 |
+| — | `data[].is_pinned` | — (신규: 고정 공지 여부) |
+| — | `data[].target` | — (신규: `'전체'`/`'보호자'`/`'유치원'`) |
 
 ---
 
 ### API #55. get_notice_detail.php → notices SELECT (단건)
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('notices').select('*').eq('id', noticeId).single()`
+**관련 파일**: `support/noticeDetail.tsx`
+**Supabase 테이블**: `notices`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: support/noticeDetail.tsx
+const fetchNoticeDetail = async (noticeId: number) => {
+  try {
+    const response = await apiClient.get('api/get_notice_detail.php', {
+      wr_id: noticeId,
+    })
+    if (response.result === 'Y') {
+      setNotice(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '공지사항을 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: support/noticeDetail.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+const fetchNoticeDetail = async (noticeId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('notices')
+      .select('*')
+      .eq('id', noticeId)
+      .single()               // ⚠️ 단건 조회 필수 — 빠뜨리면 배열 반환 → 앱 크래시
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setNotice(data)  // 객체 (배열 아님)
+  } catch (error) {
+    Alert.alert('오류', '공지사항을 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `wr_id`(정수) → `id`(UUID) — 파라미터 키·타입 변경
+- **`.single()` 필수**: 결과가 1건인 경우 반드시 사용. 빠뜨리면 배열(`[]`)로 반환되어 `data.title` 접근 시 크래시
+- `.single()` 사용 시 결과가 0건이면 `error` 발생 (`PGRST116: JSON object requested, multiple (or no) rows returned`)
+- `content` 컬럼: HTML string 저장 — 앱에서 WebView 또는 HTML 렌더러로 표시
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data.wr_id` (정수) | `data.id` (UUID) | 예 — 키·타입 변경 |
+| `data.wr_subject` | `data.title` | 예 — 키 변경 |
+| `data.wr_content` (HTML) | `data.content` (HTML) | 예 — 키 변경, 형식 동일 |
+| `data.wr_datetime` | `data.created_at` | 예 — 키 변경 |
+| — | `data.attachment_urls` (jsonb) | — (신규: 첨부파일 URL 배열) |
+| — | `data.view_count` | — (신규: 조회수) |
 
 ---
 
 ### API #56. get_faq.php → faqs SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('faqs').select('*').order('display_order')`
+**관련 파일**: `support/customerService.tsx`
+**Supabase 테이블**: `faqs`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: support/customerService.tsx
+const fetchFaqs = async (keyword?: string) => {
+  try {
+    const response = await apiClient.get('api/get_faq.php', {
+      keyword: keyword ?? '',
+    })
+    if (response.result === 'Y') {
+      setFaqs(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', 'FAQ를 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: support/customerService.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+const fetchFaqs = async (keyword?: string) => {
+  try {
+    let query = supabase
+      .from('faqs')
+      .select('*')
+      .eq('visibility', '공개')
+      .order('display_order', { ascending: true })
+
+    // 키워드 검색 (질문 또는 답변에 포함)
+    if (keyword && keyword.trim()) {
+      query = query.or(
+        `question.ilike.%${keyword}%,answer.ilike.%${keyword}%`
+      )
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setFaqs(data)
+  } catch (error) {
+    Alert.alert('오류', 'FAQ를 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 검색: `.ilike('question', '%keyword%')` → `.or('question.ilike.%keyword%,answer.ilike.%keyword%')` (질문+답변 동시 검색)
+- 정렬: `display_order ASC` (관리자가 설정한 순서)
+- 공개 조회: RLS `faqs_select_app` 정책 `USING (true)` (전체 공개)
+- `category` 컬럼 활용: FAQ 카테고리별 필터 (`'일반'`, `'결제'`, `'돌봄'` 등) — 앱 UI에서 탭 분기 시 `.eq('category', selectedCategory)` 추가
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data[].wr_id` (정수) | `data[].id` (UUID) | 예 — 키·타입 변경 |
+| `data[].wr_subject` | `data[].question` | 예 — 키 변경 |
+| `data[].wr_content` | `data[].answer` | 예 — 키 변경 |
+| — | `data[].category` | — (신규: FAQ 카테고리) |
+| — | `data[].display_order` | — (신규: 정렬 순서) |
+| — | `data[].target` | — (신규: `'전체'`/`'보호자'`/`'유치원'`) |
 
 ---
 
 ### API #57. get_policy.php → terms SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('terms').select('*').eq('category', category)`
+**관련 파일**: `hooks/usePolicy.ts`
+**Supabase 테이블**: `terms`, `term_versions`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePolicy.ts
+const fetchPolicy = async (category: string) => {
+  try {
+    const response = await apiClient.get('api/get_policy.php', {
+      type: category,    // 'refund', 'privacy', 'service' 등
+    })
+    if (response.result === 'Y') {
+      setPolicy(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '정책을 불러올 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/usePolicy.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const fetchTerms = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('terms')
+      .select(`
+        id,
+        title,
+        is_required,
+        current_version,
+        effective_date,
+        term_versions (
+          id,
+          version,
+          content,
+          effective_date
+        )
+      `)
+      .eq('visibility', '공개')
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setTerms(data)
+  } catch (error) {
+    Alert.alert('오류', '약관을 불러올 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 기존: `type` 파라미터로 단일 정책 조회 → Supabase: `terms` 전체 목록 + `term_versions` 임베디드 JOIN으로 버전별 내용 포함
+- 기존: `category` 문자열 → Supabase: `terms.id`(UUID)로 식별 (약관 종류가 테이블의 행)
+- 구조 변경: `terms` 테이블은 약관 메타정보(제목, 필수 여부), `term_versions` 테이블이 실제 내용(본문 HTML)을 버전별 관리
+- 공개 조회: `terms_select_app` + `term_versions_select_app` 모두 `USING (true)`
+- 앱에서 특정 약관의 최신 버전 본문 표시: `data[].term_versions` 배열에서 최신 `effective_date` 항목 사용
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data.title` | `data[].title` | 아니오 (복수 항목) |
+| `data.content` (HTML) | `data[].term_versions[].content` (HTML) | 예 — 중첩 구조 |
+| — | `data[].is_required` | — (신규: 필수 동의 여부) |
+| — | `data[].current_version` | — (신규: 현재 버전명) |
+| — | `data[].effective_date` | — (신규: 시행일) |
 
 ---
 
@@ -4969,60 +5584,254 @@ const submitReview = async (reviewData: {
 ### API #58. set_block_user.php → member_blocks INSERT/DELETE (토글)
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: 차단 토글 (INSERT or DELETE)
+**관련 파일**: `hooks/useBlockUser.ts`
+**Supabase 테이블**: `member_blocks`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockUser.ts
+// 차단 토글 (차단 상태에 따라 추가/해제)
+const toggleBlockUser = async (targetMbId: string) => {
+  try {
+    const response = await apiClient.post('api/set_block_user.php', {
+      mb_id: user.mb_id,           // 내 폰번호
+      target_mb_id: targetMbId,    // 대상 폰번호
+    })
+    if (response.result === 'Y') {
+      setIsBlocked(prev => !prev)
+    }
+  } catch (error) {
+    Alert.alert('오류', '차단 처리에 실패했습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockUser.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 차단 추가
+const blockUser = async (targetId: string) => {
+  try {
+    const { error } = await supabase
+      .from('member_blocks')
+      .insert({
+        blocker_id: user.id,     // 내 UUID
+        blocked_id: targetId,    // 대상 UUID
+      })
+
+    if (error) {
+      // 이미 차단 중이면 23505 (unique_violation) → 무시
+      if (error.code === '23505') return
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsBlocked(true)
+  } catch (error) {
+    Alert.alert('오류', '차단 처리에 실패했습니다')
+  }
+}
+
+// 차단 해제
+const unblockUser = async (targetId: string) => {
+  try {
+    const { error } = await supabase
+      .from('member_blocks')
+      .delete()
+      .eq('blocker_id', user.id)
+      .eq('blocked_id', targetId)
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setIsBlocked(false)
+  } catch (error) {
+    Alert.alert('오류', '차단 해제에 실패했습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- 기존: 서버에서 차단 상태를 판단하여 토글 → 전환 후: 앱에서 차단/해제를 **별도 함수로 분리** (UI에서 현재 상태에 따라 호출 분기)
+- `mb_id` + `target_mb_id`(폰번호) → `blocker_id` + `blocked_id`(UUID)
+- 차단 = `INSERT`, 해제 = `DELETE` (행 삭제 — `member_blocks`는 soft delete 아닌 hard delete)
+- RLS: `blocker_id = auth.uid()` 정책으로 본인 차단 기록만 INSERT/DELETE 가능
+- 중복 차단 방지: `member_blocks` 테이블에 `(blocker_id, blocked_id)` UNIQUE 제약이 없으면, INSERT 시 에러 코드 `23505` 대신 중복 행 생성 가능 — 앱 UI에서 이미 차단 중이면 `blockUser` 비활성화 권장
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 — `result === 'Y'` → `error === null` |
+| `message` | `error.message` | 아니오 |
 
 ---
 
 ### API #59. get_block_user.php → member_blocks SELECT
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('member_blocks').select('*').eq('blocker_id', userId).eq('blocked_id', targetId)`
+**관련 파일**: `hooks/useBlockUser.ts`
+**Supabase 테이블**: `member_blocks`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockUser.ts
+// 특정 사용자 차단 여부 확인
+const checkBlocked = async (targetMbId: string) => {
+  try {
+    const response = await apiClient.post('api/get_block_user.php', {
+      mb_id: user.mb_id,           // 내 폰번호
+      target_mb_id: targetMbId,    // 확인 대상 폰번호
+    })
+    setIsBlocked(response.result === 'Y')
+  } catch (error) {
+    setIsBlocked(false)
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockUser.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 특정 사용자 차단 여부 확인
+const checkBlocked = async (targetId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('member_blocks')
+      .select('id')
+      .eq('blocker_id', user.id)       // 내 UUID (RLS 자동 필터)
+      .eq('blocked_id', targetId)      // 대상 UUID
+      .maybeSingle()                   // 0건이면 null, 1건이면 객체
+
+    if (error) {
+      setIsBlocked(false)
+      return
+    }
+    setIsBlocked(data !== null)  // 행이 있으면 차단 중
+  } catch (error) {
+    setIsBlocked(false)
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` + `target_mb_id` → `blocker_id` + `blocked_id` (UUID)
+- `.maybeSingle()` 사용: 0건이면 `data=null` (미차단), 1건이면 객체 (차단 중). `.single()`과 달리 0건이어도 에러 발생 안 함
+- RLS: `blocker_id = auth.uid()` 자동 필터 → `.eq('blocker_id', user.id)` 생략 가능하나, 명시적 작성 권장
+- 반환값: `response.result === 'Y'` → `data !== null` (boolean 판단)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`=차단중, `'N'`=미차단) | `data` (`null`이면 미차단, 객체면 차단중) | 예 — `data !== null` |
 
 ---
 
-### API #60. get_blocked_list.php → member_blocks SELECT + members JOIN
+### API #60. get_blocked_list.php → RPC `app_get_blocked_list`
 
-**전환 방식**: 자동 API | **난이도**: 쉬움
-**Supabase 대응**: `supabase.from('member_blocks').select('*, blocked:members!blocked_id(*)').eq('blocker_id', userId)`
+**전환 방식**: ~~자동 API~~ → **RPC (필수)** | **난이도**: 쉬움 → 중
+**관련 파일**: `hooks/useBlockList.ts` (또는 차단 목록 화면)
+**Supabase 대응**: `supabase.rpc('app_get_blocked_list')`
+
+> ⚠️ **RLS 제약으로 임베디드 JOIN 사용 불가 — RPC 전환 필수**
+>
+> `members` 테이블의 RLS 정책 `members_select_app`은 `id = auth.uid()` **본인 행만** SELECT를 허용합니다.
+> 따라서 `member_blocks`에서 `blocked:members!blocked_id(...)` 임베디드 JOIN으로 **타인** 프로필을 조회하면
+> `blocked` 필드가 **항상 `null`**로 반환됩니다 (RLS가 접근을 차단).
+>
+> 이 문제는 #17(`app_get_kindergarten_detail`), #19(`app_get_guardian_detail`),
+> #23(`app_get_chat_rooms`), #41(`app_get_settlement_summary`) 등
+> 타인 프로필을 JOIN하는 모든 API에서 동일하게 발생하며, 모두 **SECURITY DEFINER RPC** +
+> **`internal.members_public_profile` VIEW**로 해결합니다.
+>
+> `app_get_blocked_list` RPC도 동일한 패턴을 적용합니다.
+> Step 4에서 SQL 구현 예정이며, RPC_PHP_MAPPING.md #15 참조.
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockList.ts (또는 설정 > 차단 관리 화면)
+const fetchBlockedList = async () => {
+  try {
+    const response = await apiClient.get('api/get_blocked_list.php', {
+      mb_id: user.mb_id,   // 내 폰번호
+    })
+    if (response.result === 'Y') {
+      setBlockedUsers(response.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '차단 목록을 불러올 수 없습니다')
+  }
+}
 ```
 
-**After**:
+**After (RPC 방식 — 최종)**:
 ```typescript
-// TODO
+// 파일: hooks/useBlockList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+const fetchBlockedList = async () => {
+  try {
+    // RPC 내부: member_blocks JOIN internal.members_public_profile
+    // SECURITY DEFINER로 RLS 우회 → auth.uid() 수동 검증
+    const { data, error } = await supabase
+      .rpc('app_get_blocked_list')
+      // RPC 내부에서 auth.uid()로 blocker_id 필터 + blocked_at DESC 정렬
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+    setBlockedUsers(data)
+    // data[].blocked_id, data[].nickname, data[].profile_image, data[].blocked_at
+  } catch (error) {
+    Alert.alert('오류', '차단 목록을 불러올 수 없습니다')
+  }
+}
 ```
+
+<details>
+<summary>❌ 참고: 임베디드 JOIN 방식 (RLS로 인해 동작하지 않음)</summary>
+
+```typescript
+// ❌ 이 코드는 members RLS(id = auth.uid()) 때문에
+//    blocked 객체가 항상 null로 반환됩니다. 사용 금지.
+const { data, error } = await supabase
+  .from('member_blocks')
+  .select(`
+    id,
+    blocked_id,
+    blocked_at,
+    blocked:members!blocked_id (
+      id,
+      nickname,
+      profile_image
+    )
+  `)
+  .order('blocked_at', { ascending: false })
+```
+
+</details>
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 **제거** — RPC 내부에서 `auth.uid()`로 `blocker_id` 자동 필터
+- ~~임베디드 JOIN~~ → **RPC `app_get_blocked_list`**: `member_blocks` + `internal.members_public_profile` VIEW를 SECURITY DEFINER RPC 내부에서 JOIN. RLS 제약을 안전하게 우회하여 차단 대상의 공개 프로필(nickname, profile_image)만 반환
+- **SECURITY DEFINER 사용 이유**: `members` 테이블 RLS(`id = auth.uid()`)가 타인 행 SELECT를 차단하므로, RPC 내부에서 `internal.members_public_profile` VIEW(공개 필드만 포함)를 통해 조회. 금융 정보·주소 상세 등 민감 정보는 VIEW에서 제외되어 비노출
+- RPC 예상 반환 구조: `{ blocked_id, nickname, profile_image, blocked_at }[]` — 중첩 객체가 아닌 **플랫 구조** (기존 #17, #19, #23, #41과 동일 패턴)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase RPC 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
+| `data[].mb_id` (폰번호) | `data[].blocked_id` (UUID) | 예 — 키·타입 변경 |
+| `data[].mb_nick` | `data[].nickname` | 예 — 키 변경 (플랫 구조) |
+| `data[].mb_profile1` (파일명) | `data[].profile_image` (전체 URL) | 예 — 키 변경 + URL 형식 |
+| — | `data[].blocked_at` | — (신규: 차단 일시) |
 
 ---
 
@@ -5561,3 +6370,5 @@ export const uploadImages = async (
 | 2026-04-18 | **R4 본문 작성** — §5 채팅 (#22 create_room RPC: SECURITY DEFINER·중복방지·방복원, #23 get_rooms RPC: 미읽음 서브쿼리·상대방 프로필·ChatRoom 인터페이스, #25 send_message Edge Function: 텍스트/이미지 전송·Realtime 구독/해제·postgres_changes 콜백·WebSocket 코드 제거). #28·#29 FK 교정 (room_id → chat_room_id, sql/41_08 스키마와 동기화). 총 R4에서 3개 API 코드 완성 + 2개 기존 코드 교정 |
 | 2026-04-18 | **R4 리뷰 반영 (Issue 4)** — #23 변환 포인트의 미읽음 서브쿼리 설명 교정: `id > last_read_message_id` UUID 비교 → `created_at > (서브쿼리)` 타임스탬프 비교로 변경 + UUID v4 순서 미보장 경고 추가 |
 | 2026-04-18 | **R5 본문 작성** — §6 결제/돌봄 (#34 inicis-callback: WebView P_RETURN_URL 변경·P_NOTI 파라미터 매핑·onMessage 응답 정규화·payment_id 추가, #35 set_inicis_approval 삭제: saveInicisApproval 함수 전체 제거·inicis-callback 내부 흡수·3단계→1단계 축소, #36 create-reservation: FormData→JSON body·날짜 ISO 8601 통합·price 파라미터 제거(변조 방지)·생성/업데이트 모드 통합·부가처리 원자적 통합, #39 complete-care: 양측 하원 확인 로직·both_confirmed 상세 응답·EF 내부 시스템 메시지+FCM), §13 기타 (#66 scheduler: PHP cron→pg_cron 전환·테이블명 변경·알림 중복 방지 컬럼 설명·자동 완료 로직). 총 R5에서 4개 API 코드 완성 + 1개 변환 포인트 완성 |
+| 2026-04-18 | **R6 본문 작성** — §9 즐겨찾기 (#46~#49: UPSERT onConflict 패턴 4개 — 유치원/반려동물 찜 추가 UPSERT·해제 UPDATE is_favorite=false, 용어 변경 partner→kindergarten/animal→pet), §10 알림/FCM (#50: fcm_tokens UPSERT member_id+token UNIQUE, #51: notifications SELECT RLS 자동 필터·type/data jsonb 신규 필드, #52: notifications DELETE 단건+전체·전체 삭제 시 .neq 더미 조건 패턴), §11 콘텐츠 (#53: banners visibility='노출중'·display_order, #54: notices visibility='공개'·is_pinned 우선·.range() 페이지네이션, #55: notices .single() 필수·PGRST116 에러·content HTML, #56: faqs .or() 복합 검색·display_order·category, #57: terms+term_versions 임베디드 JOIN·버전 관리 구조), §12 차단 (#58: member_blocks INSERT/DELETE 분리·23505 중복 무시, #59: .maybeSingle() 차단 여부 확인, #60: members 임베디드 JOIN blocked:members!blocked_id·RLS 주의사항). 총 R6에서 15개 API 코드 완성 — 전체 66개 API 코드 확정 |
+| 2026-04-18 | **R6 리뷰 반영** — #60 전환 방식 `자동 API (임베디드 JOIN)` → `RPC app_get_blocked_list` 변경. `members` 테이블 RLS(`id = auth.uid()`) 제약으로 타인 프로필 임베디드 JOIN 시 `null` 반환 확인 → SECURITY DEFINER RPC + `internal.members_public_profile` VIEW 패턴 적용 (#17, #19, #23, #41과 동일). RLS 경고 헤더 추가, 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동, After 코드 RPC 호출로 교체, 응답 매핑 플랫 구조(중첩 객체 제거) 반영 |

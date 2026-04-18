@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R5 완료, R6부터 다음 라운드 예정)
+> 최종 업데이트: 2026-04-18 (Step 3 완료 + R6 리뷰 반영 — #60 RPC 전환 확인, Step 4 표 4-10 추가, RPC 16개)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -192,7 +192,7 @@
 | 11 | 4 | `app_get_guardians` | ★★☆ | ❌ | ✅ 완료 — PHP 소스 없음, 목록 버전 |
 | 12 | 7 | `app_withdraw_member` | ★★★ | ✅ | ✅ 완료 — soft delete + DDL ALTER + 데이터 정리 |
 
-### Step 3: 앱 API 전환 가이드 작성 🔄 진행 중
+### Step 3: 앱 API 전환 가이드 작성 ✅ 완료
 
 **목표**: 외주 개발자가 모바일 앱(React Native/Expo) 코드를 PHP→Supabase로 전환할 수 있도록 66개 API별 전환 지침서를 작성한다.
 
@@ -221,7 +221,7 @@
 | 3-3 | R3 | RPC 조회 (10개) | ✅ 완료 | GUIDE §11~13 + CODE §4,§6~8,§13 |
 | 3-4 | R4 | 채팅 Realtime (WebSocket → Realtime) | ✅ 완료 | GUIDE §14 + CODE §5 |
 | 3-5 | R5 | 결제/예약 + Edge Functions (7개 EF 인터페이스 포함) | ✅ 완료 | GUIDE §15~16 + CODE §6 |
-| 3-6 | R6 | 나머지 CRUD + 부록 + 교차검증 (즐겨찾기·알림·콘텐츠·차단·기타) | ⬜ 예정 | CODE §9~12, 부록 A·B |
+| 3-6 | R6 | 나머지 CRUD + 부록 + 교차검증 (즐겨찾기·알림·콘텐츠·차단·기타) | ✅ 완료 | CODE §9~12, 부록 A·B |
 
 #### 본문 작성 계획 — 6라운드
 
@@ -253,7 +253,7 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 > ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청 시에만)
 > ```
 >
-> **현재 진행 상황**: R1 + R2 + R3 + R4 + R5 완료. GUIDE §1~16 + CODE §1~§6(결제 4개 API) + §13(#66) 확정. R6부터 다음 라운드 시작 예정.
+> **완료**: R1~R6 본문 작성 + 전체 리뷰 반영 완료. GUIDE §1~16 + 부록 A·B + CODE §1~§13 전체 확정. 66개 API 전환 코드 완성, RPC 16개 확정 (Step 2.5: 13개 + Step 4 추가: 3개).
 
 #### 전환 권장 순서 (외주 개발자 실제 작업 순서)
 
@@ -286,6 +286,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 | 4-7 | scheduler (스케줄러) | ⬜ 예정 | 상 | 자동 상태 변경 + 알림 (cron) |
 | 4-8 | app_create_chat_room (채팅방 생성 RPC) | ⬜ 예정 | 상 | `SECURITY DEFINER` — `chat_room_members` INSERT에 RLS 정책 없음 (RPC 전용 설계), 중복 방 검사·나간 방 복원 로직 포함. §9-1 SECURITY DEFINER 예외 사유 참조 |
 | 4-9 | app_get_chat_rooms (채팅방 목록 RPC) | ⬜ 예정 | 상 | 미읽음 카운트 서브쿼리 (`created_at` 타임스탬프 비교, UUID v4 순서 미보장 → `cm.id >` 비교 사용 금지), 상대방 프로필 JOIN, `chat_room_reservations` COUNT |
+| 4-10 | app_get_blocked_list (차단 목록 RPC) | ⬜ 예정 | 하 | `members` 테이블 RLS(`id = auth.uid()`)로 임베디드 JOIN 시 타인 프로필 `null` 반환 → `SECURITY DEFINER` RPC + `internal.members_public_profile` VIEW 필수. #17, #19, #23, #41과 동일 패턴 |
 
 > **변경 사항 (2026-04-14)**:
 > - ~~address-proxy~~ 삭제: 앱에서 카카오 주소 API를 직접 호출하고 있으며(`kakao-address.php`는 단순 프록시), 네이버 역지오코딩은 앱에서 미사용 확인. 카카오 주소 검색은 앱 클라이언트에서 JavaScript API로 직접 처리 가능.
@@ -969,3 +970,5 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-18 | **Step 3 R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (R4 작성 시 선행 반영). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 동기화). Issue 3: §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 상세 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요 → SECURITY DEFINER + auth.uid() 수동 검증). Issue 4: GUIDE §14-8 미읽음 카운트 SQL `cm.id >` → `cm.created_at >` 타임스탬프 서브쿼리 비교 교정 + UUID v4 경고 노트, Step 4 표에 채팅 RPC 2행(4-8 app_create_chat_room, 4-9 app_get_chat_rooms) ⬜ 예정 추가 |
 | 2026-04-18 | **Step 3 R5 리뷰 반영 (Issue 1~2)** — Issue 1: GUIDE §15 헤더 관련 API 수량 `#34~#39 (6개)` → `#34~#36, #39 (4개)` 교정 + TOC §15 행 동기화 (#37~#38은 §12 참조 안내). Issue 2: GUIDE §15-5 complete-care 출력 필드 테이블 3→5행 확장 — `data.guardian_checkout_confirmed` (boolean), `data.kg_checkout_confirmed` (boolean) 추가, `data.status`/`error` 설명 보강 |
 | 2026-04-18 | **Step 3 R5 본문 작성 완료** — GUIDE §15 결제/예약 전환 (15-1~15-7: 현재↔전환 후 결제 흐름 비교 다이어그램, #34 WebView P_RETURN_URL 변경, #35 inicis-callback 내부 흡수·앱 호출 삭제, #36 create-reservation EF 생성/업데이트 모드, #39 complete-care EF 양측 하원 확인, WebView 콜백 URL 상세, 테스트/상용 MID 전환) + §16 Edge Function 인터페이스 (16-1~16-8: 7개 EF 입출력 스펙·앱 호출/서버 전용 분류·공통 호출 패턴·에러 코드·pg_cron 설정). CODE §6 결제/돌봄 (#34, #35, #36, #39 — 4개 API Before/After + 응답 매핑) + §13 기타 (#66 변환 포인트). 총 4개 API 코드 완성, 1개 변환 포인트 완성, 7개 EF 인터페이스 확정 |
+| 2026-04-18 | **Step 3 R6 본문 작성 완료 (Step 3 전체 완료)** — GUIDE 부록 A 타입 정의 변경 총정리 7종 (UserType·PetType·KindergartenType·ReservationType·ChatRoomType/ChatMessageType·SettlementSummaryResponse·GuardianReviewsResponse/KindergartenReviewsResponse) + 부록 B 환경변수/패키지 체크리스트 완성 (env 6개·패키지 4개·삭제 파일 3개·신규 파일 3개·전환 검증 15항목). CODE §9~12 (15개 API Before/After 코드 완성 — 즐겨찾기 #46~#49 UPSERT/UPDATE 패턴, 알림 #50~#52 FCM/notifications CRUD, 콘텐츠 #53~#57 공개 읽기+임베디드 JOIN, 차단 #58~#60 INSERT/DELETE 토글+maybeSingle). GUIDE §6 banners/notices 컬럼명 교정 (visible→visibility). **전체 66개 API 전환 코드 확정, 0개 TODO 잔존** |
+| 2026-04-18 | **Step 3 R6 리뷰 반영** — #60 `get_blocked_list.php` 임베디드 JOIN → RPC `app_get_blocked_list` 전환 필수 확인 (`members` RLS `id=auth.uid()` 제약으로 타인 프로필 null 반환). Step 4 표에 4-10 행 추가 (SECURITY DEFINER + internal.members_public_profile VIEW, 난이도 하). RPC_PHP_MAPPING.md #15 행 추가 (15→16개). DB_MAPPING_REFERENCE.md member_blocks 컬럼 상세 추가. GUIDE/CODE Phase A/B API 수 교정 (44→43, 14→15) |

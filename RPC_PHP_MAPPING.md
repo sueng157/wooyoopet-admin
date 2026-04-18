@@ -1,7 +1,7 @@
-# RPC 15개 — PHP 원본 매핑표
+# RPC 16개 — PHP 원본 매핑표
 
 > **작성일**: 2026-04-15
-> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 1 반영 — 채팅 RPC 2개 추가, 13→15개)
+> **최종 업데이트**: 2026-04-18 (R6 리뷰 반영 — 차단 목록 RPC 1개 추가, 15→16개)
 > **작성 기준**: `legacy_php_api_all.txt` PHP 소스 코드 분석 + `MOBILE_APP_ANALYSIS.md` 앱 호출 파일 참조
 > **용도**: 외주개발자에게 각 RPC 함수의 앱 화면 매핑 확인 요청 → ✅ 확인 완료
 
@@ -60,14 +60,15 @@
 
 ---
 
-## R4에서 추가 예정 RPC (Step 4 구현 대상)
+## Step 4 추가 예정 RPC (3개)
 
-> 아래 2개는 R4 채팅 Realtime 전환 설계 시 도출된 RPC입니다. Step 2.5 RPC(#1~#12)와 달리 SQL 구현이 아직 완료되지 않았으며, Step 4(Edge Functions + 채팅 RPC)에서 함께 구현합니다.
+> 아래 3개는 R4 채팅 Realtime 전환 설계 및 R6 차단 목록 RLS 검토 시 도출된 RPC입니다. Step 2.5 RPC(#1~#12)와 달리 SQL 구현이 아직 완료되지 않았으며, Step 4(Edge Functions + 추가 RPC)에서 함께 구현합니다.
 
 | 순서 | RPC 함수명 | 원본 PHP | PHP에서의 용도 (한 줄 요약) | 앱 화면 추정 |
 |------|-----------|---------|--------------------------|------------|
 | 13 | `app_create_chat_room` | `chat.php` (`create_room`) | 채팅방 생성/복원 (SECURITY DEFINER). guardian_id + kindergarten_id 중복 체크, 나간 방 `status='활성'` 복원, `chat_room_members` 2건 INSERT | 채팅 시작 (`hooks/useChat.ts`) |
 | 14 | `app_get_chat_rooms` | `chat.php` (`get_rooms`) | 채팅방 목록 + 미읽음 수 + 상대방 프로필. `last_read_message_id` 기반 `created_at` 타임스탬프 비교로 unread_count 계산 (⚠️ UUID v4 순서 미보장 → R4 리뷰 Issue 4) | 채팅 목록 (`hooks/useChatRoom.ts`) |
+| 15 | `app_get_blocked_list` | `get_blocked_list.php` | 차단 목록 + 차단 대상 프로필(닉네임, 프로필 이미지). `members` RLS(`id = auth.uid()`) 제약으로 임베디드 JOIN 불가 → SECURITY DEFINER + `internal.members_public_profile` VIEW 사용. #17, #19, #23, #41과 동일 패턴 | 차단 관리 (`hooks/useBlockList.ts`) |
 
 ---
 
@@ -79,3 +80,4 @@
 | 2026-04-17 | 외주개발자 확인 완료 반영, Step 2.5 구현 완료 (13/13) 기록 |
 | 2026-04-18 | R3 리뷰 Issue 반영 — RPC #5 함수명 `app_get_reservations` → `app_get_reservations_guardian` 동기화, 태그 수 6개 → 7개 교정 |
 | 2026-04-18 | **R4 리뷰 Issue 1 반영** — 채팅 RPC 2개 추가 (#13 `app_create_chat_room`, #14 `app_get_chat_rooms`), 제목 13→15개 업데이트. Step 4 구현 대상으로 분류 |
+| 2026-04-18 | **R6 리뷰 반영** — 차단 목록 RPC 1개 추가 (#15 `app_get_blocked_list`), 제목 15→16개 업데이트. `members` RLS 제약(#60 임베디드 JOIN null 반환)으로 RPC 전환 필수 확인, Step 4 구현 대상 |
