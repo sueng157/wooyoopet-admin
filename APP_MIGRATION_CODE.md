@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-17 (R2 리뷰 반영 — Issue 1~3 수정)
+> **최종 업데이트**: 2026-04-18 (R3 본문 작성 — §4,§6,§7,§8,§13 RPC 조회 10개 API)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -1674,20 +1674,97 @@ const setRepresentativePet = async (petId: string) => {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `hooks/useKinderGarten.ts` → `fetchKindergarten()`
-**Supabase 대응**: `supabase.rpc('app_get_kindergarten_detail', { p_kindergarten_member_id })`
+**Supabase 대응**: `supabase.rpc('app_get_kindergarten_detail', { p_kindergarten_id })`
 
 **Before**:
 ```typescript
-// TODO: apiClient.get('api/get_partner.php', { mb_id, user_id })
+// 파일: hooks/useKinderGarten.ts
+// 유치원 상세 조회 (프로필 + 운영자 + 반려동물 + 찜여부)
+const fetchKindergarten = async (partnerId: string) => {
+  try {
+    const response = await apiClient.get('api/get_partner.php', {
+      mb_id: partnerId,          // 유치원 운영자 폰번호
+      user_id: user.mb_id,       // 조회자(보호자) 폰번호 → 찜 여부 판단용
+    })
+    if (response.result === 'Y') {
+      // response.data: { partner: {...}, animals: [...] }
+      setKindergarten(response.data.partner)
+      setAnimals(response.data.animals)
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: supabase.rpc('app_get_kindergarten_detail', { p_kindergarten_member_id: memberId })
+// 파일: hooks/useKinderGarten.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 유치원 상세 조회 (프로필 + 운영자 + 반려동물 + 리뷰수 + 정산상태 + 찜여부)
+const fetchKindergarten = async (kindergartenId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_kindergarten_detail', {
+      p_kindergarten_id: kindergartenId,   // 유치원 UUID
+      // user_id 제거 — auth.uid()가 RPC 내부에서 자동 추출
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    // RPC 응답: { success, data: { kindergarten, operator, resident_pets, review_count, inicis_status, is_favorite } }
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '유치원을 찾을 수 없습니다')
+      return null
+    }
+
+    setKindergarten(data.data.kindergarten)
+    setOperator(data.data.operator)
+    setResidentPets(data.data.resident_pets ?? [])
+    setReviewCount(data.data.review_count)
+    setIsFavorite(data.data.is_favorite)
+    setInicisStatus(data.data.inicis_status)
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO: 응답 구조 변환 (partner/animals → kindergarten 응답), 필드 매핑 테이블 -->
+- `mb_id` (운영자 폰번호) → `p_kindergarten_id` (유치원 UUID) — 운영자 ID가 아닌 **유치원 ID**로 변경
+- `user_id` (조회자 폰번호) 파라미터 제거 → RPC 내부에서 `auth.uid()` 자동 사용
+- 가격 구조: `wr_2`(파이프 문자열) → `kindergarten.prices` 중첩 객체 (소형/중형/대형 × 1h/24h/walk/pickup)
+- 이미지: `partner_img1~10` (10개 개별 필드) → `kindergarten.photo_urls` (text[] 배열)
+- `partner_freshness: 100` (하드코딩) → `kindergarten.freshness_current` (실제값)
+- `partner_rCnt: '0'` (하드코딩) → `review_count` (실제 COUNT)
+- 금융 정보(`partner_bank_name`/`partner_account`), 호수(`address_building_ho`), 노쇼 카운트: **제외** (비공개)
+- RPC 응답은 `{ success, data }` 래퍼 — `data.success`를 반드시 체크
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.partner.wr_id` | `data.data.kindergarten.id` (UUID) | 예 — 정수 → UUID, 경로 변경 |
+| `data.partner.wr_subject` | `data.data.kindergarten.name` | 예 — 키 이름 변경 |
+| `data.partner.wr_content` | `data.data.kindergarten.description` | 예 — 키 이름 변경 |
+| `data.partner.wr_2` (파이프 문자열) | `data.data.kindergarten.prices.small.1h` 등 | 예 — 구조 변경 |
+| `data.partner.partner_img1~10` | `data.data.kindergarten.photo_urls[]` | 예 — 10필드 → 배열 |
+| `data.partner.partner_freshness` | `data.data.kindergarten.freshness_current` | 예 — 키 이름 변경 |
+| `data.partner.partner_rCnt` | `data.data.review_count` | 예 — 경로 + 타입 변경 (string→number) |
+| `data.partner.is_favorite` | `data.data.is_favorite` | 예 — 경로 변경, string→boolean |
+| `data.partner.settlement_ready` | `data.data.inicis_status` | 예 — `'0'`/`'1'` → `'미등록'`/`'등록완료'` |
+| `data.animals[]` | `data.data.resident_pets[]` | 예 — 키 이름 변경 |
+| — | `data.data.operator` (신규) | 운영자 프로필 (닉네임, 이미지) |
+| `data.partner.partner_bank_name` | — (제외) | 금융정보 비노출 |
+| `data.partner.partner_ho` | — (제외) | 호수 비공개 |
 
 ---
 
@@ -1695,20 +1772,79 @@ const setRepresentativePet = async (petId: string) => {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `utils/fetchPartnerList.ts`
-**Supabase 대응**: `supabase.rpc('app_get_kindergartens')`
+**Supabase 대응**: `supabase.rpc('app_get_kindergartens', { p_latitude, p_longitude, p_limit })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/fetchPartnerList.ts
+// 유치원 목록 조회 (전체 — 페이지네이션 없음)
+const fetchPartnerList = async () => {
+  try {
+    const response = await apiClient.get('api/get_partner_list.php', {
+      mb_id: user.mb_id,        // 조회자 폰번호 → 찜 여부 판단
+    })
+    if (response.result === 'Y') {
+      // response.data.partners: 전체 유치원 배열
+      return response.data.partners
+    }
+    return []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/fetchPartnerList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 유치원 목록 조회 (거리순 정렬, safety cap 적용)
+const fetchKindergartenList = async (
+  latitude?: number,    // 현재 위치 위도
+  longitude?: number,   // 현재 위치 경도
+  limit: number = 100   // 최대 건수 (기본 100, 최대 200)
+) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_kindergartens', {
+      p_latitude: latitude ?? null,
+      p_longitude: longitude ?? null,
+      p_limit: limit,
+    })
+
+    if (error) return []
+
+    if (!data?.success) return []
+
+    // data.data: { total_count, kindergartens: [...] }
+    return data.data.kindergartens ?? []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 제거 → `auth.uid()`로 찜 여부 자동 판단 (RPC 내부)
+- 좌표 파라미터 추가 (`p_latitude`, `p_longitude`) — 거리순 정렬용, 미제공 시 최신순
+- `p_limit` safety cap (최소 1, 최대 200) — 전체 반환 → 최대 건수 제한
+- 필터: `inicis_status='등록완료'` + `registration_status='registered'` 자동 적용 (앱에서 별도 필터 불필요)
+- 가격: 소형 2개만 반환 (`price_small_1h`, `price_small_24h`) — 12개 전체는 상세(#17)에서
+- `distance_km`: 좌표 제공 시 계산되어 반환 (km 단위, 소수점 2자리)
+- `total_count`: 전체 유치원 수 반환 (클러스터링 등 클라이언트용)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.partners[].wr_id` | `data.data.kindergartens[].id` (UUID) | 예 — 정수 → UUID |
+| `data.partners[].wr_subject` | `data.data.kindergartens[].name` | 예 — 키 이름 변경 |
+| `data.partners[].partner_img1~10` | `data.data.kindergartens[].photo_urls[]` | 예 — 10필드 → 배열 |
+| `data.partners[].is_favorite` | `data.data.kindergartens[].is_favorite` | 예 — string → boolean |
+| — | `data.data.kindergartens[].distance_km` (신규) | 거리 (좌표 미제공 시 null) |
+| — | `data.data.kindergartens[].operator` (신규) | 운영자 프로필 |
+| — | `data.data.kindergartens[].review_count` (신규) | 실제 리뷰 수 |
+| — | `data.data.total_count` (신규) | 전체 유치원 수 |
 
 ---
 
@@ -1716,20 +1852,87 @@ const setRepresentativePet = async (petId: string) => {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `hooks/useProtector.ts` → `fetchProtector()`
-**Supabase 대응**: `supabase.rpc('app_get_guardian_detail', { p_guardian_member_id })`
+**Supabase 대응**: `supabase.rpc('app_get_guardian_detail', { p_member_id })`
+
+> **참고**: `get_protector.php` PHP 소스가 존재하지 않으므로 Before 코드는 `get_partner.php`의 대칭 구조로 추정하여 작성했습니다.
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useProtector.ts
+// 보호자 상세 조회 (프로필 + 반려동물 목록)
+const fetchProtector = async (protectorId: string) => {
+  try {
+    const response = await apiClient.get('api/get_protector.php', {
+      mb_id: protectorId,        // 보호자 폰번호
+      user_id: user.mb_id,       // 조회자(유치원) 폰번호
+    })
+    if (response.result === 'Y') {
+      setProtector(response.data.protector)
+      setAnimals(response.data.animals)
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useProtector.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 보호자 상세 조회 (프로필 + 반려동물 목록 + 반려동물별 찜 여부)
+const fetchGuardian = async (memberId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_guardian_detail', {
+      p_member_id: memberId,   // 보호자 UUID
+      // user_id 제거 — auth.uid()가 RPC 내부에서 자동 추출
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    // RPC 응답: { success, data: { guardian, pets } }
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '보호자를 찾을 수 없습니다')
+      return null
+    }
+
+    setGuardian(data.data.guardian)
+    setPets(data.data.pets ?? [])
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` (보호자 폰번호) → `p_member_id` (보호자 UUID)
+- `user_id` (조회자) 파라미터 제거 → `auth.uid()` 자동 (찜 여부 판단)
+- 찜은 보호자 단위가 아닌 **반려동물 단위**: `pets[].is_favorite` — 유치원 운영자가 해당 반려동물을 찜했는지
+- 주소: `address_road` 비공개, `address_complex` + `address_building_dong`만 반환
+- 리뷰 수, 가격, 정산 정보: 없음 (유치원 전용)
+- `is_draft=true` 임시저장 반려동물: 자동 제외
+
+**응답 매핑**:
+
+| PHP 응답 필드 (추정) | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.protector.mb_id` | `data.data.guardian.id` (UUID) | 예 — 폰번호 → UUID |
+| `data.protector.mb_nick` | `data.data.guardian.nickname` | 예 — 키 이름 변경 |
+| `data.protector.mb_profile1` | `data.data.guardian.profile_image` | 예 — 파일명 → 전체 URL |
+| `data.protector.mb_4` | `data.data.guardian.address_complex` | 예 — 키 이름 변경 |
+| `data.protector.mb_dong` | `data.data.guardian.address_building_dong` | 예 — 키 이름 변경 |
+| `data.animals[]` | `data.data.pets[]` | 예 — 키 이름 변경 |
+| `data.animals[].is_favorite` | `data.data.pets[].is_favorite` | 예 — string → boolean |
+| — | `data.data.guardian.status` (신규) | 회원 상태 (정상/탈퇴 등) |
 
 ---
 
@@ -1737,20 +1940,79 @@ const setRepresentativePet = async (petId: string) => {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `utils/fetchProtectorList.ts`
-**Supabase 대응**: `supabase.rpc('app_get_guardians', { p_page, p_per_page })`
+**Supabase 대응**: `supabase.rpc('app_get_guardians', { p_latitude, p_longitude, p_limit })`
+
+> **참고**: `get_protector_list.php` PHP 소스가 존재하지 않으므로 Before 코드는 `get_partner_list.php`의 대칭 구조로 추정하여 작성했습니다.
 
 **Before**:
 ```typescript
-// TODO
+// 파일: utils/fetchProtectorList.ts
+// 보호자 목록 조회
+const fetchProtectorList = async () => {
+  try {
+    const response = await apiClient.get('api/get_protector_list.php', {
+      mb_id: user.mb_id,        // 조회자(유치원) 폰번호
+    })
+    if (response.result === 'Y') {
+      return response.data.protectors
+    }
+    return []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: utils/fetchProtectorList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 보호자 목록 조회 (거리순 정렬, safety cap 적용)
+const fetchGuardianList = async (
+  latitude?: number,
+  longitude?: number,
+  limit: number = 100
+) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_guardians', {
+      p_latitude: latitude ?? null,
+      p_longitude: longitude ?? null,
+      p_limit: limit,
+    })
+
+    if (error) return []
+
+    if (!data?.success) return []
+
+    // data.data: { total_count, guardians: [...] }
+    return data.data.guardians ?? []
+  } catch (error) {
+    return []
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 제거 → `auth.uid()` 자동 인증
+- 좌표 파라미터 추가 (`p_latitude`, `p_longitude`) — 거리순 정렬용, 미제공 시 최신순
+- `p_limit` safety cap (최소 1, 최대 200)
+- 필터: `current_mode='보호자'` + `status='정상'` 자동 적용 (탈퇴/정지 회원 제외)
+- `pet_thumbnails[]`: 각 보호자의 반려동물 첫 번째 사진 배열 (`[{ id, name, thumbnail }]`)
+- `distance_km`: 정렬 전용으로 CTE 내부 계산, **반환하지 않음**
+- 찜 여부, 리뷰 수: 목록에서 제외 (해당 UI 없음)
+
+**응답 매핑**:
+
+| PHP 응답 필드 (추정) | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.protectors[].mb_id` | `data.data.guardians[].id` (UUID) | 예 — 폰번호 → UUID |
+| `data.protectors[].mb_nick` | `data.data.guardians[].nickname` | 예 — 키 이름 변경 |
+| `data.protectors[].mb_profile1` | `data.data.guardians[].profile_image` | 예 — 파일명 → 전체 URL |
+| `data.protectors[].mb_4` | `data.data.guardians[].address_complex` | 예 — 키 이름 변경 |
+| — | `data.data.guardians[].address_building_dong` (신규) | 동 정보 |
+| — | `data.data.guardians[].pet_thumbnails[]` (신규) | 반려동물 썸네일 배열 |
+| — | `data.data.total_count` (신규) | 전체 보호자 수 |
 
 ---
 
@@ -2666,24 +2928,120 @@ const deleteTemplate = async (templateId: string) => {
 
 ---
 
-### API #37. get_payment_request.php → RPC `app_get_reservations` / `app_get_reservations_kindergarten`
+### API #37. get_payment_request.php → RPC `app_get_reservations_guardian` / `app_get_reservations_kindergarten`
 
-**전환 방식**: RPC | **난이도**: 중
+**전환 방식**: RPC (2개 분리) | **난이도**: 중
 **관련 파일**: `hooks/usePaymentRequestList.ts`
-**Supabase 대응**: `supabase.rpc('app_get_reservations', { p_page, p_per_page })` (보호자) / `supabase.rpc('app_get_reservations_kindergarten', { ... })` (유치원)
+**Supabase 대응**: `supabase.rpc('app_get_reservations_guardian', { ... })` (보호자) / `supabase.rpc('app_get_reservations_kindergarten', { ... })` (유치원)
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePaymentRequestList.ts
+// 돌봄 예약 목록 조회 (보호자/유치원 공통)
+const fetchPaymentRequestList = async (page: number = 1) => {
+  try {
+    const response = await apiClient.get('api/get_payment_request.php', {
+      mb_id: systemMode === '1' ? user.mb_id : undefined,     // 보호자 모드
+      to_mb_id: systemMode === '2' ? user.mb_id : undefined,  // 유치원 모드
+      pet_id: selectedPetId ?? undefined,
+      page: page,
+      per_page: 50,
+    })
+    if (response.result === 'Y') {
+      setPaymentRequests(response.data.data)
+      // ⚠️ response.data.meta.total은 항상 0 (PHP 하드코딩 버그)
+      return response.data
+    }
+    return null
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: 보호자/유치원 분기 → 각각 다른 RPC 호출
+// 파일: hooks/usePaymentRequestList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 돌봄 예약 목록 조회 — 보호자/유치원 모드에 따라 다른 RPC 호출
+const fetchReservationList = async (
+  status?: string,        // 상태 필터 (NULL=전체)
+  petId?: string,         // 반려동물 필터 (선택)
+  page: number = 1,
+  perPage: number = 20
+) => {
+  try {
+    // current_mode에 따라 RPC 분기
+    // '보호자' → app_get_reservations_guardian (내가 요청한 예약)
+    // '유치원' → app_get_reservations_kindergarten (나에게 들어온 예약)
+    const rpcName = user.current_mode === '보호자'
+      ? 'app_get_reservations_guardian'
+      : 'app_get_reservations_kindergarten'
+
+    const { data, error } = await supabase.rpc(rpcName, {
+      p_status: status ?? null,
+      p_pet_id: petId ?? null,
+      p_page: page,
+      p_per_page: perPage,
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    if (!data?.success) return null
+
+    // data.data: { reservations, meta }
+    //
+    // ■ 보호자 모드 (app_get_reservations_guardian):
+    //   reservations[].kindergarten: { id, name, address_complex, address_building_dong, photo_urls }
+    //   reservations[].pet: { id, name, breed, gender, size_class, weight, photo_urls, is_representative }
+    //   reservations[].payment: { amount, status, payment_method, paid_at } | null
+    //
+    // ■ 유치원 모드 (app_get_reservations_kindergarten):
+    //   reservations[].member: { id, nickname, profile_image, address_complex, current_mode }
+    //   reservations[].pet: (동일)
+    //   reservations[].payment: (동일)
+    //
+    // 공통: reservations[].id, status, checkin_scheduled, checkout_scheduled,
+    //        checkin_actual, checkout_actual, walk_count, pickup_requested,
+    //        reject_reason, created_at, is_review_written
+
+    setReservations(data.data.reservations ?? [])
+    setMeta(data.data.meta)
+    return data.data
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- **1개 PHP → 2개 RPC 분리**: `mb_id`/`to_mb_id` 파라미터 분기 → `current_mode`에 따라 다른 RPC 호출
+- `mb_id`/`to_mb_id` 파라미터 제거 → `auth.uid()` 자동 (보호자: `member_id=auth.uid()`, 유치원: 본인 유치원 자동 조회)
+- **보호자 응답**: `kindergarten` 키에 유치원 정보 (이름, 단지명+동, 사진)
+- **유치원 응답**: `member` 키에 보호자 정보 (닉네임, 프로필, 단지명). 주소 비대칭: 보호자는 `address_complex`만 (개인정보 최소화)
+- `price` (예약 컬럼) → `payment.amount` (결제 테이블 LATERAL JOIN 최신 1건)
+- `is_review_written` (컬럼) → `guardian_reviews` EXISTS 서브쿼리
+- `meta.total: 0` (PHP 하드코딩 버그) → 실제 COUNT
+- `per_page` 최대 50 cap (PHP는 50 고정)
+- 유치원 미등록 사용자가 유치원 모드 호출 시: 빈 배열 반환 (에러 아님)
+
+**응답 매핑** (보호자 모드):
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.data[].id` | `data.data.reservations[].id` (UUID) | 예 — 정수 → UUID |
+| `data.data[].status` | `data.data.reservations[].status` | 아니오 |
+| `data.data[].start_date` + `start_time` | `data.data.reservations[].checkin_scheduled` | 예 — 2필드→1필드 |
+| `data.data[].end_date` + `end_time` | `data.data.reservations[].checkout_scheduled` | 예 — 2필드→1필드 |
+| `data.data[].price` | `data.data.reservations[].payment.amount` | 예 — 경로 변경 |
+| `data.data[].partner` | `data.data.reservations[].kindergarten` | 예 — 키 이름 변경 |
+| `data.data[].animal` | `data.data.reservations[].pet` | 예 — 키 이름 변경 |
+| `data.data[].is_review_written` | `data.data.reservations[].is_review_written` | 아니오 (서브쿼리→boolean) |
+| `data.meta.total` (`0` 하드코딩) | `data.data.meta.total` (실제값) | 예 — 버그 수정 |
 
 ---
 
@@ -2695,16 +3053,107 @@ const deleteTemplate = async (templateId: string) => {
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/usePaymentRequest.ts
+// 돌봄 예약 상세 조회
+const fetchPaymentRequest = async (requestId: string) => {
+  try {
+    const response = await apiClient.get('api/get_payment_request_by_id.php', {
+      id: requestId,
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setPaymentRequest(response.data)
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/usePaymentRequest.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 돌봄 예약 상세 조회 (보호자/유치원 통합 — RLS가 당사자 여부 자동 판별)
+const fetchReservationDetail = async (reservationId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_reservation_detail', {
+      p_reservation_id: reservationId,   // 예약 UUID
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '예약을 찾을 수 없습니다')
+      return null
+    }
+
+    // data.data: { reservation, pet, kindergarten, member, payment, refund }
+    //
+    // reservation: 예약 상세 정보
+    //   { id, status, checkin_scheduled, checkout_scheduled,
+    //     checkin_actual, checkout_actual, walk_count, pickup_requested,
+    //     reject_reason, reject_detail, rejected_at, requested_at,
+    //     guardian_checkout_confirmed, kg_checkout_confirmed,
+    //     guardian_checkout_confirmed_at, kg_checkout_confirmed_at,
+    //     created_at, is_review_written }
+    //
+    // pet: 반려동물 (birth_date, description 등 확장 필드 포함)
+    // kindergarten: 유치원 (name, address_complex, address_building_dong, photo_urls, freshness_current)
+    // member: 보호자 (nickname, profile_image, address_complex, current_mode)
+    //
+    // payment: 결제 (확장 — approval_number, card_number, card_company, pg_transaction_id)
+    //   ※ null이면 결제 미완료
+    //
+    // refund: 환불/위약금 (penalty_amount, refund_amount, status, completed_at, cancel_reason)
+    //   ※ null이면 환불 없음
+
+    setReservation(data.data.reservation)
+    setPet(data.data.pet)
+    setKindergarten(data.data.kindergarten)
+    setMember(data.data.member)
+    setPayment(data.data.payment)
+    setRefund(data.data.refund)
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `id` (정수) → `p_reservation_id` (UUID)
+- `mb_id` 파라미터 제거 → RLS가 당사자 여부 자동 판별 (비당사자 → NULL 반환 = 접근 거부)
+- 보호자/유치원 통합 함수: 양쪽 모두 동일한 응답 구조 (`reservation`, `pet`, `kindergarten`, `member`, `payment`, `refund`)
+- 결제 확장: `payment.approval_number`, `card_number`, `card_company`, `pg_transaction_id` (목록에는 없던 필드)
+- 환불 정보: `refund` 키 신규 (PHP에서는 `payment_request.penalty` 컬럼 → Supabase `refunds` 테이블 분리)
+- 예약 확장: `reject_detail`, `rejected_at`, `requested_at`, `guardian_checkout_confirmed`, `kg_checkout_confirmed`, `*_confirmed_at`
+- `payment`/`refund`가 null이면 해당 데이터 없음 (결제 미완료 / 환불 없음)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.id` | `data.data.reservation.id` (UUID) | 예 — 정수 → UUID, 경로 변경 |
+| `data.status` | `data.data.reservation.status` | 예 — 경로 변경 |
+| `data.start_date` + `start_time` | `data.data.reservation.checkin_scheduled` | 예 — 2필드→1필드 |
+| `data.price` | `data.data.payment.amount` | 예 — 테이블 분리 |
+| `data.penalty` | `data.data.refund.penalty_amount` | 예 — 테이블 분리 |
+| `data.payment_approval_info` | `data.data.payment.approval_number` 등 | 예 — 별도 쿼리→payments 통합 |
+| `data.partner` | `data.data.kindergarten` | 예 — 키 이름 변경 |
+| `data.animal` | `data.data.pet` | 예 — 키 이름 변경 |
+| `data.member` | `data.data.member` | 예 — 경로 변경 |
+| — | `data.data.refund` (신규) | 환불/위약금 (별도 테이블) |
+| — | `data.data.reservation.reject_detail` (신규) | 거절 상세 |
+| — | `data.data.reservation.guardian_checkout_confirmed` (신규) | 보호자 하원 확인 |
 
 ---
 
@@ -2838,24 +3287,119 @@ const submitReview = async (reviewData: {
 
 > **가이드 참조**: `APP_MIGRATION_GUIDE.md §13 리뷰/정산/교육 RPC`
 
-### API #41. get_settlement.php → RPC `app_get_settlement_summary`
+### API #41. get_settlement.php + get_settlement_list.php → RPC `app_get_settlement_summary`
 
 **전환 방식**: RPC | **난이도**: 중
-**관련 파일**: `hooks/useSettlement.ts` (추정), `hooks/useSettlementInfo.ts`
-**Supabase 대응**: `supabase.rpc('app_get_settlement_summary', { p_period_start, p_period_end, p_page, p_per_page })`
+**관련 파일**: `hooks/useSettlement.ts`
+**Supabase 대응**: `supabase.rpc('app_get_settlement_summary', { p_start_date, p_end_date, p_page, p_per_page })`
 
 **Before**:
 ```typescript
-// TODO: 2개 PHP (get_settlement + get_settlement_list) 호출
+// 파일: hooks/useSettlement.ts
+// 정산 요약 + 기간별 상세 조회 (2개 PHP 호출)
+const fetchSettlement = async () => {
+  try {
+    // ① 누적 집계 조회
+    const summaryResponse = await apiClient.get('api/get_settlement.php', {
+      mb_id: user.mb_id,
+    })
+
+    // ② 기간별 상세 명세 조회
+    const listResponse = await apiClient.get('api/get_settlement_list.php', {
+      mb_id: user.mb_id,
+      start_date: startDate,     // '2026-04-01'
+      end_date: endDate,         // '2026-04-30'
+      page: page,
+    })
+
+    if (summaryResponse.result === 'Y') {
+      setSummary(summaryResponse.data)
+    }
+    if (listResponse.result === 'Y') {
+      setSettlementList(listResponse.data)
+    }
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO: 단일 RPC로 summary + period_summary + details 통합 조회
+// 파일: hooks/useSettlement.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 정산 통합 조회 — 1개 RPC로 summary + period_summary + details 한 번에
+const fetchSettlement = async (
+  startDate?: string,   // 'YYYY-MM-DD' 또는 미지정(전체)
+  endDate?: string,
+  page: number = 1,
+  perPage: number = 20
+) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_settlement_summary', {
+      p_start_date: startDate ?? null,
+      p_end_date: endDate ?? null,
+      p_page: page,
+      p_per_page: perPage,
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '정산 조회 실패')
+      return
+    }
+
+    // data.data: { summary, next_settlement, period_summary, details, meta }
+    //
+    // summary: 전체 기간 누적 (기간 필터 무관)
+    //   { total_settled_amount, total_unsettled_amount, total_held_amount }
+    //
+    // next_settlement: 가장 가까운 미래 정산예정 (없으면 null)
+    //   { amount, scheduled_date, account_bank, account_number }
+    //
+    // period_summary: 기간 필터 적용 합산
+    //   { settlement_revenue, total_payment_amount, total_commission_amount }
+    //
+    // details: 건별 상세 (기간 필터 + 페이지네이션)
+    //   [{ id, transaction_type, payment_amount, commission_rate, commission_amount,
+    //      settlement_amount, status, scheduled_date, created_at, reservation_id,
+    //      member: { id, nickname, profile_image, address_complex } }]
+
+    setSummary(data.data.summary)
+    setNextSettlement(data.data.next_settlement)
+    setPeriodSummary(data.data.period_summary)
+    setDetails(data.data.details ?? [])
+    setMeta(data.data.meta)
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- **2개 PHP → 1개 RPC**: `get_settlement.php`(누적 집계) + `get_settlement_list.php`(기간 상세)를 `app_get_settlement_summary` 하나로 통합
+- `mb_id` 파라미터 제거 → `auth.uid()` → 본인 유치원 자동 조회 (유치원 미등록 시 에러)
+- 날짜 형식: `YYYY-MM-DD` 문자열 (RPC 내부에서 정규식 검증)
+- `details[].member`: 보호자 정보를 `internal.members_public_profile` VIEW로 안전 조회 (주소 비대칭 정책: `address_complex`만)
+- `next_settlement.account_bank/account_number`: `settlement_infos` 테이블에서 본인 계좌정보 JOIN (정산예정 없으면 전체 null)
+- 페이지네이션: `p_per_page` 최대 50 cap
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `summaryResponse.data.total_amount` | `data.data.summary.total_settled_amount` | 예 — 키 이름 변경 |
+| `summaryResponse.data.pending_amount` | `data.data.summary.total_unsettled_amount` | 예 — 키 이름 변경 |
+| `listResponse.data[]` | `data.data.details[]` | 예 — 구조 변경 |
+| `listResponse.data[].protector_name` | `data.data.details[].member.nickname` | 예 — 중첩 구조 |
+| — | `data.data.next_settlement` (신규) | 가장 가까운 정산예정 |
+| — | `data.data.period_summary` (신규) | 기간 합산 집계 |
+| — | `data.data.meta` (신규) | 페이지네이션 정보 |
 
 ---
 
@@ -3048,20 +3592,103 @@ const saveSettlementInfo = async (info: {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `hooks/useReviewList.ts`
-**Supabase 대응**: `supabase.rpc('app_get_guardian_reviews', { p_pet_id, p_page, p_per_page })`
+**Supabase 대응**: `supabase.rpc('app_get_guardian_reviews', { p_kindergarten_id, p_page, p_per_page })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useReviewList.ts
+// 보호자→유치원 후기 목록 조회 (유치원 상세 화면)
+const fetchGuardianReviews = async (partnerId: string, page: number = 1) => {
+  try {
+    const response = await apiClient.get('api/get_review.php', {
+      type: 'pet',               // 보호자→유치원 후기
+      id: partnerId,             // 유치원 ID (PHP에서는 partner_id)
+      page: page,
+      per_page: 20,
+    })
+    if (response.result === 'Y') {
+      setReviews(response.data.reviews)
+      setTagCounts(response.data.tag_counts)  // 태그별 카운트
+      return response.data
+    }
+    return null
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useReviewList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 보호자→유치원 후기 목록 조회 (유치원 상세 화면)
+const fetchGuardianReviews = async (
+  kindergartenId: string,
+  page: number = 1,
+  perPage: number = 20
+) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_guardian_reviews', {
+      p_kindergarten_id: kindergartenId,    // 유치원 UUID
+      p_page: page,
+      p_per_page: perPage,
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '후기 조회 실패')
+      return null
+    }
+
+    // data.data: { tags, reviews, meta }
+    //
+    // tags: 7개 긍정 태그별 카운트 (순서 보장)
+    //   [{ tag: '상담이 친절하고 편안했어요', count: 12 }, ...]
+    //
+    // reviews: 후기 목록 (최신순)
+    //   [{ id, satisfaction, selected_tags, content, image_urls, written_at,
+    //      pet: { id, name, breed, photo_urls },
+    //      member: { id, nickname, profile_image } }]
+    //
+    // meta: { page, per_page, total }
+
+    setTags(data.data.tags ?? [])
+    setReviews(data.data.reviews ?? [])
+    setMeta(data.data.meta)
+    return data.data
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO: 태그 집계 구조 변경 -->
+- `type='pet'` 파라미터 제거 → 전용 RPC `app_get_guardian_reviews` (테이블 분리)
+- `id` (partner_id) → `p_kindergarten_id` (유치원 UUID)
+- 태그 집계: PHP 응답 구조 → RPC `tags[]` 배열 (`[{ tag, count }]`, 7개 고정, 순서 보장)
+- 숨김 후기(`is_hidden=true`): 자동 제외 (앱에서 별도 필터 불필요)
+- `reviews[].pet`: 반려동물 정보 포함 (internal VIEW — RLS 우회)
+- `reviews[].member`: 작성자(보호자) 프로필 (internal VIEW — RLS 우회)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.tag_counts` (객체) | `data.data.tags[]` (배열) | 예 — 구조 변경 (객체→배열) |
+| `data.reviews[].id` | `data.data.reviews[].id` (UUID) | 예 — 정수 → UUID |
+| `data.reviews[].content` | `data.data.reviews[].content` | 아니오 |
+| `data.reviews[].tags` (JSON 문자열) | `data.data.reviews[].selected_tags` (jsonb) | 예 — 키 이름 + 타입 |
+| `data.reviews[].images` (JSON 문자열) | `data.data.reviews[].image_urls` (jsonb) | 예 — 키 이름 + 타입 |
+| `data.reviews[].created_at` | `data.data.reviews[].written_at` | 예 — 키 이름 변경 |
+| — | `data.data.reviews[].satisfaction` (신규) | 만족도 |
+| — | `data.data.reviews[].pet` (신규) | 반려동물 정보 |
+| — | `data.data.reviews[].member` (신규) | 작성자 프로필 |
 
 ---
 
@@ -3069,20 +3696,108 @@ const saveSettlementInfo = async (info: {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `hooks/useReviewList.ts`
-**Supabase 대응**: `supabase.rpc('app_get_kindergarten_reviews', { p_kindergarten_id, p_page, p_per_page })`
+**Supabase 대응**: `supabase.rpc('app_get_kindergarten_reviews', { p_pet_id, p_page, p_per_page })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useReviewList.ts
+// 유치원→보호자 후기 목록 조회 (반려동물 프로필 화면)
+const fetchKindergartenReviews = async (petId: string, page: number = 1) => {
+  try {
+    const response = await apiClient.get('api/get_review.php', {
+      type: 'partner',            // 유치원→보호자 후기
+      id: petId,                  // 반려동물 ID
+      page: page,
+      per_page: 20,
+    })
+    if (response.result === 'Y') {
+      setReviews(response.data.reviews)
+      setTagCounts(response.data.tag_counts)
+      return response.data
+    }
+    return null
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useReviewList.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 유치원→보호자 후기 목록 조회 (반려동물 프로필 화면)
+// ⚠️ is_guardian_only 분기: RPC 내부에서 auth.uid()와 pet.member_id 비교
+//    - 보호자(pet 주인): 전체 후기 표시
+//    - 그 외 사용자: is_guardian_only=false 후기만 표시
+const fetchKindergartenReviews = async (
+  petId: string,
+  page: number = 1,
+  perPage: number = 20
+) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_kindergarten_reviews', {
+      p_pet_id: petId,            // 반려동물 UUID
+      p_page: page,
+      p_per_page: perPage,
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '후기 조회 실패')
+      return null
+    }
+
+    // data.data: { tags, reviews, meta }
+    //
+    // tags: 7개 긍정 태그별 카운트 (전체 후기 기반, is_guardian_only 무관)
+    //   [{ tag: '사람을 좋아하고 애교가 많아요', count: 8 }, ...]
+    //
+    // reviews: 후기 목록 (최신순, is_guardian_only 분기 적용)
+    //   [{ id, satisfaction, selected_tags, content, is_guardian_only, written_at,
+    //      kindergarten: { id, name, photo_urls } }]
+    //   ※ image_urls 없음 (kindergarten_reviews에 이미지 컬럼 없음)
+    //
+    // meta: { page, per_page, total }
+
+    setTags(data.data.tags ?? [])
+    setReviews(data.data.reviews ?? [])
+    setMeta(data.data.meta)
+    return data.data
+  } catch (error) {
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO: is_guardian_only 필터 설명 -->
+- `type='partner'` 파라미터 제거 → 전용 RPC `app_get_kindergarten_reviews` (테이블 분리)
+- `id` (pet_id) → `p_pet_id` (반려동물 UUID)
+- **`is_guardian_only` 분기**: RPC 내부에서 자동 처리 — 보호자는 전체, 그 외는 공개만. 앱에서 별도 분기 불필요
+- **태그 집계 정책**: `is_guardian_only=true` 후기도 태그 카운트에 포함
+- `reviews[].kindergarten`: 후기를 작성한 유치원 정보 (어떤 유치원의 후기인지)
+- `reviews[].image_urls` 없음: `kindergarten_reviews` 테이블에 이미지 컬럼 미존재
+- `reviews[].is_guardian_only`: 반환됨 (앱 UI에서 "보호자에게만 보이는 후기" 라벨 표시용)
+- `pet` 객체 미포함: 조회 대상이 반려동물이므로 중복 (반려동물 정보는 호출 측에서 이미 보유)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.tag_counts` (객체) | `data.data.tags[]` (배열) | 예 — 구조 변경 |
+| `data.reviews[].id` | `data.data.reviews[].id` (UUID) | 예 — 정수 → UUID |
+| `data.reviews[].content` | `data.data.reviews[].content` | 아니오 |
+| `data.reviews[].tags` | `data.data.reviews[].selected_tags` | 예 — 키 이름 + 타입 |
+| `data.reviews[].created_at` | `data.data.reviews[].written_at` | 예 — 키 이름 변경 |
+| — | `data.data.reviews[].satisfaction` (신규) | 만족도 |
+| — | `data.data.reviews[].is_guardian_only` (신규) | 보호자 전용 후기 플래그 |
+| — | `data.data.reviews[].kindergarten` (신규) | 작성 유치원 정보 |
+| `data.reviews[].images` | — (없음) | kindergarten_reviews에 이미지 없음 |
 
 ---
 
@@ -3550,20 +4265,100 @@ const submitReview = async (reviewData: {
 
 **전환 방식**: RPC | **난이도**: 중
 **관련 파일**: `app/kindergarten/tutorial/index.tsx`
-**Supabase 대응**: `supabase.rpc('app_get_education_with_progress', { p_category })`
+**Supabase 대응**: `supabase.rpc('app_get_education_with_progress', { p_kindergarten_id })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/tutorial/index.tsx
+// 교육 주제 목록 + 이수 현황 조회
+const fetchEducation = async () => {
+  try {
+    const formData = new FormData()
+    formData.append('mb_id', user.mb_id)
+    // ca_name: 카테고리 (선택)
+
+    const response = await apiClient.post('api/get_education.php', formData)
+    if (response.result === 'Y') {
+      setEducationList(response.data.educations)  // 교육 주제 배열
+      setSolvedList(response.data.solved ?? [])     // 이수 완료 ID 배열
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: app/kindergarten/tutorial/index.tsx (수정)
+import { supabase } from '@/lib/supabase'
+
+// 교육 주제 + 퀴즈 + 이수 현황 통합 조회
+const fetchEducation = async (kindergartenId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_education_with_progress', {
+      p_kindergarten_id: kindergartenId,   // 유치원 UUID
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '교육 조회 실패')
+      return null
+    }
+
+    // data.data: { completion, topics }
+    //
+    // completion: 이수 현황 (이수 기록 미존재 시 기본값 자동 반환)
+    //   { kindergarten_id, total_topics, completed_topics, progress_rate,
+    //     completion_status ('미시작'|'진행중'|'완료'),
+    //     checklist_confirmed, pledge_agreed, all_completed_at }
+    //
+    // topics: 교육 주제 배열 (display_order 순)
+    //   [{ topic_id, display_order, title, top_image_url,
+    //      principle_text, principle_details,
+    //      correct_behavior_1, correct_behavior_2, wrong_behavior_1,
+    //      is_completed, completed_at,
+    //      quiz: { quiz_id, question_text, question_image_url,
+    //              choice_a, choice_b, correct_answer,
+    //              correct_explanation, wrong_explanation } | null }]
+
+    setCompletion(data.data.completion)
+    setTopics(data.data.topics ?? [])
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '서버와 통신할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` → `p_kindergarten_id` (유치원 UUID) — 교육은 유치원 단위
+- `ca_name` (카테고리 필터) 파라미터 제거 → `visibility='공개'` 교육만 전체 조회 (클라이언트에서 필터링)
+- POST FormData → `.rpc()` JSON 파라미터
+- `educations` + `solved` (2개 배열) → `topics[].is_completed`로 통합 (각 주제에 이수 여부 포함)
+- 퀴즈 데이터: PHP에서 JSON 문자열 파싱 → RPC에서 `education_quizzes` LEFT JOIN으로 `quiz` 객체 직접 반환 (null이면 퀴즈 없음)
+- 이수 기록 미존재(첫 진입): `completion`에 기본값 반환 (`progress_rate: 0`, `completion_status: '미시작'` 등) — 앱에서 별도 null 체크 불필요
+- `total_topics`: 공개 교육 주제 수를 동적 계산 (하드코딩 아님)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data.educations[]` | `data.data.topics[]` | 예 — 키 이름 변경, 구조 확장 |
+| `data.educations[].id` | `data.data.topics[].topic_id` (UUID) | 예 — 키 이름 + 타입 |
+| `data.educations[].title` | `data.data.topics[].title` | 아니오 |
+| `data.educations[].quiz` (JSON 문자열) | `data.data.topics[].quiz` (객체) | 예 — 문자열→객체 (JSON.parse 불필요) |
+| `data.solved[]` (ID 배열) | `data.data.topics[].is_completed` (boolean) | 예 — 배열→주제별 개별 플래그 |
+| — | `data.data.completion` (신규) | 이수 현황 요약 |
+| — | `data.data.topics[].completed_at` (신규) | 주제별 완료 일시 |
 
 ---
 
@@ -3962,3 +4757,4 @@ export const uploadImages = async (
 | 2026-04-17 | **R1 리뷰 반영 (Issue 2~8)** — §1 #4~#6 선행 작성 사유 노트 추가(Issue 3), #3 `convertBirthDate` 유틸 추가+params 변환 반영(Issue 4), #3 `convertGender` 유틸+CHECK 제약 명시+upsert 변환 적용 반영(Issue 5), #8 카카오 REST API 키 보안 경고 강조 박스 추가(Issue 6) |
 | 2026-04-17 | **R2 본문 작성** — §3 반려동물 (#9~#16) 8개 API Before/After 코드 + 응답 매핑, §4 유치원 프로필 (#21) 코드, §5 채팅 자동 API (#24, #26~#29) 5개 코드, 채팅 템플릿 (#30~#33) 4개 코드, §6 돌봄 후기 (#40) 코드, §7 정산 (#42~#43) 2개 코드, §8 리뷰 (#45) 코드, §13 기타 (#62~#65) 4개 코드, 부록 Storage 공통 유틸 작성. 총 R2에서 26개 API 코드 완성 |
 | 2026-04-17 | **R2 리뷰 반영 (Issue 1~3)** — Issue 1: #21 가격 컬럼 `price_*_add` 3개 → `price_*_24h` + `price_*_pickup` 6개로 교정 (총 12개 컬럼 정확 반영), Issue 2: #11 RLS 안내 명확화 (본인 전용 API, 타인 반려동물은 RPC `app_get_guardian_detail` 사용 안내), Issue 3: #10 `!inner` JOIN → 별도 2회 조회 패턴 교정 (찜하지 않은 반려동물 조회 실패 방지) |
+| 2026-04-18 | **R3 본문 작성** — §4 유치원/보호자 RPC (#17~#20) 4개 API Before/After 코드 + 응답 매핑 (유치원 상세: prices 중첩객체·review_count 실제값·금융정보 제외, 유치원 목록: 거리순+safety cap, 보호자 상세: 반려동물별 찜·주소 비대칭, 보호자 목록: pet_thumbnails), §6 예약 RPC (#37~#38) 2개 API (보호자/유치원 2개 RPC 분기·LATERAL JOIN 결제·refunds 분리), §7 정산 RPC (#41) 1개 API (2개 PHP 통합·4파트 구조·날짜 검증), §8 리뷰 RPC (#44, #44b) 2개 API (태그 집계 7개·is_guardian_only 분기), §13 교육 RPC (#61) 1개 API (topics+quiz+completion 통합·기본값 자동). 총 R3에서 10개 API 코드 완성 |
