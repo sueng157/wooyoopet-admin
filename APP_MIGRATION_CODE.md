@@ -421,12 +421,18 @@ const withdrawMember = async (reason: string) => {
   try {
     // RPC: members.status→'탈퇴', pets.deleted=true,
     //       kindergartens.registration_status='withdrawn'
-    const { error: rpcError } = await supabase.rpc('app_withdraw_member', {
+    const { data, error: rpcError } = await supabase.rpc('app_withdraw_member', {
       p_reason: reason,
     })
 
     if (rpcError) {
       Alert.alert('오류', rpcError.message)
+      return
+    }
+
+    // ⚠️ 비즈니스 에러 체크 (ALREADY_WITHDRAWN, HAS_ACTIVE_RESERVATIONS 등)
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '탈퇴 처리 실패')
       return
     }
 
@@ -449,13 +455,16 @@ const withdrawMember = async (reason: string) => {
 - RPC가 수행하는 작업: `members.status='탈퇴'`, `members.withdrawn_at=NOW()`, `members.withdraw_reason=p_reason`, `pets.deleted=true`, `kindergartens.registration_status='withdrawn'`
 - RPC 호출 후 반드시 `supabase.auth.signOut()` 호출하여 로컬 세션 정리
 - Auth 사용자 삭제는 관리자 Edge Function에서 후속 처리 (앱에서 직접 삭제 불가)
+- ⚠️ `data?.success` 체크 필수: RPC는 비즈니스 에러(이미 탈퇴, 활성 예약 존재 등)를 HTTP 200 + `{success:false, error, code}` 형태로 반환하므로, `rpcError` 체크만으로는 부족
 
 **응답 매핑**:
 
 | PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
 |---|---|---|
-| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
-| `message` | `error.message` | 아니오 |
+| `result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 — 문자열 → boolean |
+| `message` | `data.error` (실패 시 사유 문자열) | 예 — 키 이름 변경 |
+| — | `data.code` (`ALREADY_WITHDRAWN` 등) | 예 — 신규 필드 |
+| — | `data.withdrawn_at` (성공 시 탈퇴 시각) | 예 — 신규 필드 |
 
 ---
 
@@ -1652,7 +1661,11 @@ const setRepresentativePet = async (petId: string) => {
 - `mb_id` 제거 → RPC 내부에서 `auth.uid()` 자동 사용 (SECURITY INVOKER)
 - `wr_id` → `p_pet_id` (UUID, RPC 파라미터 `p_` 접두사 규칙)
 - RPC가 수행하는 작업: ① p_pet_id 존재 검증 → ② 기존 대표 해제 (`is_representative=false`) → ③ 선택한 반려동물 대표 설정 (`is_representative=true`)
-- RPC 응답 형식: `{ success: boolean, data?: {...}, error?: string, reset_count?: number }`
+- RPC 응답 형식: `{ success: boolean, data?: {...}, error?: string, code?: string, reset_count?: number }`
+  ※ `reset_count`는 최상위 키로 존재 (다른 RPC의 `data` 내부 구조와 다름).
+     이는 대표 설정 해제 건수를 즉시 확인하기 위한 편의 설계이며, 앱 코드에서는
+     `data?.success` 만 체크하면 되므로 기능적 영향 없음.
+- ⚠️ `data?.success` 체크 필수: 다른 모든 RPC와 동일하게, Supabase 전송 에러(`error`)와 비즈니스 에러(`data.success===false`)를 구분하여 이중 체크 수행
 - 트랜잭션 안전성: RPC 내부에서 p_pet_id 존재 여부를 먼저 검증하므로, 기존 대표 해제 후 새 대표 설정 실패하는 경우가 없음
 
 **응답 매핑**:
@@ -6476,3 +6489,4 @@ export const uploadImages = async (
 | 2026-04-18 | **R5 본문 작성** — §6 결제/돌봄 (#34 inicis-callback: WebView P_RETURN_URL 변경·P_NOTI 파라미터 매핑·onMessage 응답 정규화·payment_id 추가, #35 set_inicis_approval 삭제: saveInicisApproval 함수 전체 제거·inicis-callback 내부 흡수·3단계→1단계 축소, #36 create-reservation: FormData→JSON body·날짜 ISO 8601 통합·price 파라미터 제거(변조 방지)·생성/업데이트 모드 통합·부가처리 원자적 통합, #39 complete-care: 양측 하원 확인 로직·both_confirmed 상세 응답·EF 내부 시스템 메시지+FCM), §13 기타 (#66 scheduler: PHP cron→pg_cron 전환·테이블명 변경·알림 중복 방지 컬럼 설명·자동 완료 로직). 총 R5에서 4개 API 코드 완성 + 1개 변환 포인트 완성 |
 | 2026-04-18 | **R6 본문 작성** — §9 즐겨찾기 (#46~#49: UPSERT onConflict 패턴 4개 — 유치원/반려동물 찜 추가 UPSERT·해제 UPDATE is_favorite=false, 용어 변경 partner→kindergarten/animal→pet), §10 알림/FCM (#50: fcm_tokens UPSERT member_id+token UNIQUE, #51: notifications SELECT RLS 자동 필터·type/data jsonb 신규 필드, #52: notifications DELETE 단건+전체·전체 삭제 시 .neq 더미 조건 패턴), §11 콘텐츠 (#53: banners visibility='노출중'·display_order, #54: notices visibility='공개'·is_pinned 우선·.range() 페이지네이션, #55: notices .single() 필수·PGRST116 에러·content HTML, #56: faqs .or() 복합 검색·display_order·category, #57: terms+term_versions 임베디드 JOIN·버전 관리 구조), §12 차단 (#58: member_blocks INSERT/DELETE 분리·23505 중복 무시, #59: .maybeSingle() 차단 여부 확인, #60: members 임베디드 JOIN blocked:members!blocked_id·RLS 주의사항). 총 R6에서 15개 API 코드 완성 — 전체 66개 API 코드 확정 |
 | 2026-04-18 | **R6 리뷰 반영** — #60 전환 방식 `자동 API (임베디드 JOIN)` → `RPC app_get_blocked_list` 변경. `members` 테이블 RLS(`id = auth.uid()`) 제약으로 타인 프로필 임베디드 JOIN 시 `null` 반환 확인 → SECURITY DEFINER RPC + `internal.members_public_profile` VIEW 패턴 적용 (#17, #19, #23, #41과 동일). RLS 경고 헤더 추가, 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동, After 코드 RPC 호출로 교체, 응답 매핑 플랫 구조(중첩 객체 제거) 반영 |
+| 2026-04-18 | **RPC 전수조사 조건부 합격 2건 반영** — M1: #4 `app_withdraw_member` After 코드에 `data?.success` 비즈니스 에러 체크 추가 (ALREADY_WITHDRAWN, HAS_ACTIVE_RESERVATIONS 등 HTTP 200으로 반환되는 에러 누락 방지), 변환 포인트에 이중 체크 필수 항목 추가, 응답 매핑 테이블을 SQL 실제 응답(`data.success`, `data.error`, `data.code`, `data.withdrawn_at`)에 맞게 교체. M2: #16 `app_set_representative_pet` 변환 포인트에 `code` 필드 추가, `reset_count` 최상위 키 위치 설명 주석 보강, `data?.success` 이중 체크 패턴 주석 추가 |
