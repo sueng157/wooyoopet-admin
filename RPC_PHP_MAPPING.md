@@ -1,7 +1,7 @@
-# RPC 13개 — PHP 원본 매핑표
+# RPC 15개 — PHP 원본 매핑표
 
 > **작성일**: 2026-04-15
-> **최종 업데이트**: 2026-04-18 (R3 리뷰 Issue 반영 — RPC #5 함수명 동기화 + 태그 수 교정)
+> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 1 반영 — 채팅 RPC 2개 추가, 13→15개)
 > **작성 기준**: `legacy_php_api_all.txt` PHP 소스 코드 분석 + `MOBILE_APP_ANALYSIS.md` 앱 호출 파일 참조
 > **용도**: 외주개발자에게 각 RPC 함수의 앱 화면 매핑 확인 요청 → ✅ 확인 완료
 
@@ -56,4 +56,26 @@
 |------|------|----|
 | sql/44_00_app_public_views.sql | internal 스키마 VIEW 3개 (members_public_profile, pets_public_info, settlement_infos_public) | #133 |
 | sql/44_00a_ddl_alter_tables.sql | DDL ALTER — pets.deleted 컬럼 추가 + kindergartens.registration_status CHECK 제약 변경 ('withdrawn' 추가) | #137 |
-| sql/44_01 ~ 44_12 (+ 44_05b) | 앱용 RPC 함수 13개 | #133, #135, #136, #137 |
+| sql/44_01 ~ 44_12 (+ 44_05b) | 앱용 RPC 함수 13개 (Step 2.5 범위) | #133, #135, #136, #137 |
+
+---
+
+## R4에서 추가 예정 RPC (Step 4 구현 대상)
+
+> 아래 2개는 R4 채팅 Realtime 전환 설계 시 도출된 RPC입니다. Step 2.5 RPC(#1~#12)와 달리 SQL 구현이 아직 완료되지 않았으며, Step 4(Edge Functions + 채팅 RPC)에서 함께 구현합니다.
+
+| 순서 | RPC 함수명 | 원본 PHP | PHP에서의 용도 (한 줄 요약) | 앱 화면 추정 |
+|------|-----------|---------|--------------------------|------------|
+| 13 | `app_create_chat_room` | `chat.php` (`create_room`) | 채팅방 생성/복원 (SECURITY DEFINER). guardian_id + kindergarten_id 중복 체크, 나간 방 `status='활성'` 복원, `chat_room_members` 2건 INSERT | 채팅 시작 (`hooks/useChat.ts`) |
+| 14 | `app_get_chat_rooms` | `chat.php` (`get_rooms`) | 채팅방 목록 + 미읽음 수 + 상대방 프로필. `last_read_message_id` 기반 `created_at` 타임스탬프 비교로 unread_count 계산 (⚠️ UUID v4 순서 미보장 → R4 리뷰 Issue 4) | 채팅 목록 (`hooks/useChatRoom.ts`) |
+
+---
+
+## 변경 이력
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-04-15 | 초안 — 13개 RPC PHP 원본 매핑표 작성 |
+| 2026-04-17 | 외주개발자 확인 완료 반영, Step 2.5 구현 완료 (13/13) 기록 |
+| 2026-04-18 | R3 리뷰 Issue 반영 — RPC #5 함수명 `app_get_reservations` → `app_get_reservations_guardian` 동기화, 태그 수 6개 → 7개 교정 |
+| 2026-04-18 | **R4 리뷰 Issue 1 반영** — 채팅 RPC 2개 추가 (#13 `app_create_chat_room`, #14 `app_get_chat_rooms`), 제목 13→15개 업데이트. Step 4 구현 대상으로 분류 |

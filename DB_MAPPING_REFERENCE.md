@@ -1,6 +1,6 @@
 # 기존 DB ↔ 신규 DB 전체 매핑 대조표
 
-> 최종 업데이트: 2026-04-17 (Step 2.5 완료 반영 — pets.deleted 컬럼 추가, kindergartens.registration_status CHECK 변경)
+> 최종 업데이트: 2026-04-18 (R4 리뷰 Issue 2 반영 — chat_room_members.room_id → chat_room_id FK 교정)
 > 목적: MariaDB(기존 PHP 서버) → Supabase(신규) 테이블/컬럼 1:1 대조
 > 사용법: Step 2 SQL 작성 전, 매니저와 함께 검토하여 빠진 것/잘못된 것 확인
 
@@ -330,7 +330,7 @@
 
 | MariaDB room_members | Supabase chat_room_members | 비고 |
 |---------------------|--------------------------|------|
-| room_id | room_id (FK) | |
+| room_id | chat_room_id (FK) | ⚠️ 컬럼명 변경 — sql/41_08 참조. R4 리뷰 Issue 2 교정 |
 | mb_id | member_id (FK) | |
 | mb_5 | role | '1'→보호자, '2'→유치원 |
 | last_read_message_id | last_read_message_id | 안 읽은 메시지 수 계산용 |
@@ -473,3 +473,4 @@
 | 2026-04-13 | **전수 교정** — 실제 Supabase DB와 대조하여 85개 불일치 수정: 테이블명 7개 교정 (pet_breeds, favorite_kindergartens, favorite_pets, chat_templates 등), 컬럼명 15개 교정 (address_complex, profile_image, checkin_scheduled 등), 불필요 매핑 8개 삭제, 누락 컬럼 49개 보완, 신규 추가 컬럼 18개 확정 |
 | 2026-04-13 | **매니저 검토 반영** — members.address_doc_urls → ✅ 존재로 변경 (신규 18→17개), kindergartens.address_doc_urls 추가 (✅ 존재), reservations 3개 컬럼 추가 (guardian_checkout_confirmed_at, kg_checkout_confirmed_at, auto_complete_scheduled_at), payments.cancel_reason 추가, kindergarten_reviews.is_guardian_only 추가, chat_messages.image_urls 추가, 테이블별 컬럼 수 정정 |
 | 2026-04-14 | **외주 개발자 확인 반영** — g5_write_animal wr_1~wr_11 매핑 전면 교정 (기존 추정 순서 전부 틀림), 신규 컬럼 2개 추가 (is_birth_date_unknown ← wr_6, is_draft ← wr_10), pets 14→16컬럼, 섹션 2-3 매핑표 재작성, 섹션 3-4 미확인→확인완료로 변경 |
+| 2026-04-18 | **R4 리뷰 Issue 2 반영** — `chat_room_members` 매핑표 Supabase 컬럼명 `room_id` → `chat_room_id (FK)` 교정 (sql/41_08_app_chat_room_members.sql 스키마와 동기화) |

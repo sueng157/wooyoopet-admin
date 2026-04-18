@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R3 리뷰 완료·이슈 반영, R4부터 다음 라운드 예정)
+> 최종 업데이트: 2026-04-18 (Step 3 진행 중 — R4 리뷰 Issue 1~4 반영 완료, R5부터 다음 라운드 예정)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -219,7 +219,7 @@
 | 3-1 | R1 | 인증 + apiClient 교체 (mb_id → Supabase Auth, FormData → Supabase JS) | ✅ 완료 | GUIDE §1~2 + CODE §1~2 |
 | 3-2 | R2 | 단순 CRUD 핵심 (반려동물·유치원·보호자·주소·회원·채팅템플릿) | ✅ 완료 | GUIDE §3~10 + CODE §3~4 |
 | 3-3 | R3 | RPC 조회 (10개) | ✅ 완료 | GUIDE §11~13 + CODE §4,§6~8,§13 |
-| 3-4 | R4 | 채팅 Realtime (WebSocket → Realtime) | ⬜ 예정 | GUIDE §14 + CODE §5 |
+| 3-4 | R4 | 채팅 Realtime (WebSocket → Realtime) | ✅ 완료 | GUIDE §14 + CODE §5 |
 | 3-5 | R5 | 결제/예약 + Edge Functions (7개 EF 인터페이스 포함) | ⬜ 예정 | GUIDE §15~16 + CODE §6 |
 | 3-6 | R6 | 나머지 CRUD + 부록 + 교차검증 (즐겨찾기·알림·콘텐츠·차단·기타) | ⬜ 예정 | CODE §9~12, 부록 A·B |
 
@@ -253,7 +253,7 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 > ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청 시에만)
 > ```
 >
-> **현재 진행 상황**: R1 + R2 + R3 완료 (리뷰 PASS + Issue 2건 반영 완료). GUIDE §1~13 + CODE §1~§13(R3 대상 10개 API) 확정. R4부터 다음 라운드 시작 예정.
+> **현재 진행 상황**: R1 + R2 + R3 + R4 완료. GUIDE §1~14 + CODE §1~§5(채팅 3개 API) 확정. R5부터 다음 라운드 시작 예정.
 
 #### 전환 권장 순서 (외주 개발자 실제 작업 순서)
 
@@ -284,6 +284,8 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 | 4-5 | send-alimtalk (카카오 알림톡) | ⬜ 예정 | 중 | 외부 API 키 보호 |
 | 4-6 | send-push (FCM 푸시) | ⬜ 예정 | 중 | Firebase Admin SDK 서버 전용 |
 | 4-7 | scheduler (스케줄러) | ⬜ 예정 | 상 | 자동 상태 변경 + 알림 (cron) |
+| 4-8 | app_create_chat_room (채팅방 생성 RPC) | ⬜ 예정 | 상 | `SECURITY DEFINER` — `chat_room_members` INSERT에 RLS 정책 없음 (RPC 전용 설계), 중복 방 검사·나간 방 복원 로직 포함. §9-1 SECURITY DEFINER 예외 사유 참조 |
+| 4-9 | app_get_chat_rooms (채팅방 목록 RPC) | ⬜ 예정 | 상 | 미읽음 카운트 서브쿼리 (`created_at` 타임스탬프 비교, UUID v4 순서 미보장 → `cm.id >` 비교 사용 금지), 상대방 프로필 JOIN, `chat_room_reservations` COUNT |
 
 > **변경 사항 (2026-04-14)**:
 > - ~~address-proxy~~ 삭제: 앱에서 카카오 주소 API를 직접 호출하고 있으며(`kakao-address.php`는 단순 프록시), 네이버 역지오코딩은 앱에서 미사용 확인. 카카오 주소 검색은 앱 클라이언트에서 JavaScript API로 직접 처리 가능.
@@ -879,6 +881,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 - RLS 정책은 관리자(admin)와 앱 사용자(authenticated)를 분리
 - 관리자 전용 RPC 함수는 `SECURITY DEFINER + is_admin()` 체크 유지
 - 앱용 RPC 함수는 `SECURITY INVOKER` 사용 (RLS 자동 적용)
+  - **예외: `app_create_chat_room`** (R4 리뷰 Issue 3) — 이 RPC만 `SECURITY DEFINER`를 사용한다. 이유: 채팅방 생성 시 `chat_room_members`에 상대방(본인이 아닌 회원) 행도 INSERT해야 하나, `chat_room_members`의 INSERT 정책이 없음(RPC 전용 INSERT 설계). 또한 중복 채팅방 검사(`guardian_id` + `kindergarten_id` 조합) 시 상대방의 `chat_rooms` 행에 대한 SELECT가 필요하여 RLS가 이를 차단한다. 따라서 `SECURITY DEFINER + auth.uid()` 수동 검증으로 구현하며, `is_admin()` 체크 대신 인증 사용자 확인(`auth.uid() IS NOT NULL`)과 본인이 guardian 또는 kindergarten 소유자인지 파라미터 검증을 내부에서 수행한다.
 
 ### 9-2. 앱 코드 수정 범위 최소화
 
@@ -962,3 +965,5 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-17 | **Step 3 R2 리뷰 반영 (Issue 1~3)** — Issue 1: CODE #21 & GUIDE §9-3 가격 컬럼 `price_*_add` 3개 → `price_*_24h` + `price_*_pickup` 6개로 교정 (총 12개 컬럼 정확 반영). Issue 2: CODE #11 RLS 안내 명확화 (본인 전용 API, 타인 반려동물은 RPC `app_get_guardian_detail` 사용 안내). Issue 3: CODE #10 `!inner` JOIN → 별도 2회 조회 패턴 교정 (찜하지 않은 반려동물 404 방지) |
 | 2026-04-18 | **Step 3 R3 본문 작성 완료** — GUIDE §11~13 (3개 장) + CODE §4,§6~8,§13 (10개 API) 완성. 대상: 유치원/보호자 RPC(#17~#20: 상세+목록, 거리순 정렬, internal VIEW, 주소 비대칭 정책), 예약 조회 RPC(#37~#38: 보호자/유치원 2개 분리, LATERAL JOIN 결제, refunds 분리), 정산 RPC(#41: 2개 PHP 통합, 4파트 구조, 날짜 검증), 리뷰 RPC(#44/#44b: 태그 집계 7개, is_guardian_only 분기), 교육 RPC(#61: topics+quiz+completion 통합, 기본값 자동) |
 | 2026-04-18 | **Step 3 R3 리뷰 완료 (Issue 1~2 반영)** — 10개 API 전수 PASS. Issue 1: RPC #5 함수명 `app_get_reservations` → `app_get_reservations_guardian` 동기화 (RPC_PHP_MAPPING.md + MIGRATION_PLAN.md 전체 5개소). Issue 2: 리뷰 태그 수 교정 `6개 기본 태그` → `7개 긍정 태그` (RPC_PHP_MAPPING.md #9, #12) |
+| 2026-04-18 | **Step 3 R4 본문 작성 완료** — GUIDE §14 (채팅 전환 10개 하위 섹션) + CODE §5 (#22, #23, #25 — 3개 API) 완성. 대상: 채팅방 생성 RPC(#22: SECURITY DEFINER, 중복 방지, 방 복원), 채팅방 목록 RPC(#23: 미읽음 서브쿼리, 상대방 프로필 JOIN), 메시지 전송 Edge Function(#25: Storage+Realtime+FCM 복합, Realtime postgres_changes 구독/해제, WebSocket 코드 전면 교체). 아키텍처 가이드(WebSocket↔Realtime 비교 다이어그램, useChat.ts 리팩터링 가이드, Storage chat-files 연동, 읽음 처리 미읽음 카운트, ChatRoomType/MessageType 변경 요약). CODE #28/#29 FK 교정(room_id → chat_room_id, sql/41_08 스키마 동기화) |
+| 2026-04-18 | **Step 3 R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (R4 작성 시 선행 반영). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 동기화). Issue 3: §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 상세 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요 → SECURITY DEFINER + auth.uid() 수동 검증). Issue 4: GUIDE §14-8 미읽음 카운트 SQL `cm.id >` → `cm.created_at >` 타임스탬프 서브쿼리 비교 교정 + UUID v4 경고 노트, Step 4 표에 채팅 RPC 2행(4-8 app_create_chat_room, 4-9 app_get_chat_rooms) ⬜ 예정 추가 |

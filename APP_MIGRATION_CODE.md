@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R3 본문 작성 — §4,§6,§7,§8,§13 RPC 조회 10개 API)
+> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 4 반영 — #23 미읽음 서브쿼리 UUID→timestamp 비교 교정)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -2206,45 +2206,188 @@ const updateKindergarten = async (kgData: {
 
 > **가이드 참조**: `APP_MIGRATION_GUIDE.md §14 채팅 전환`
 
-### API #22. chat.php → create_room → RPC
+### API #22. chat.php → create_room → RPC `app_create_chat_room`
 
-**전환 방식**: RPC | **난이도**: 상
-**관련 파일**: `hooks/useChat.ts`, 채팅 시작 화면
+**전환 방식**: RPC (SECURITY DEFINER) | **난이도**: 상
+**관련 파일**: `hooks/useChat.ts` → `createRoom()`, 채팅 시작 화면
 **Supabase 대응**: `supabase.rpc('app_create_chat_room', { p_target_member_id })`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts
+// 채팅방 생성 (보호자↔유치원 1:1 채팅방)
+const createRoom = async (targetMbId: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('method', 'create_room')
+    formData.append('mb_id', user.mb_id)           // 내 폰번호
+    formData.append('target_mb_id', targetMbId)     // 상대방 폰번호
+    // name = '폰번호-폰번호' 형식으로 서버에서 자동 생성
+
+    const response = await apiClient.post('api/chat.php', formData)
+    if (response.result === 'Y') {
+      const roomId = response.data.room_id
+      router.push(`/chat/${roomId}`)
+      return roomId
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '채팅방을 생성할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+// 채팅방 생성 또는 기존 방 복원 (보호자↔유치원 1:1)
+const createRoom = async (targetMemberId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('app_create_chat_room', {
+      p_target_member_id: targetMemberId,  // 상대방 UUID
+      // 내 ID: auth.uid() → RPC 내부에서 자동 추출
+      // 역할 판별: members.current_mode → RPC 내부에서 자동 판별
+    })
+
+    if (error) {
+      Alert.alert('오류', error.message)
+      return null
+    }
+
+    // RPC 응답: { success, data: { room_id, is_new } }
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '채팅방을 생성할 수 없습니다')
+      return null
+    }
+
+    const roomId = data.data.room_id
+    // is_new: true=신규 생성, false=기존 방 복원 (나갔다가 다시 대화)
+    router.push(`/chat/${roomId}`)
+    return roomId
+  } catch (error) {
+    Alert.alert('오류', '채팅방을 생성할 수 없습니다')
+    return null
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- FormData + `method=create_room` → `supabase.rpc('app_create_chat_room', { ... })`
+- `mb_id` + `target_mb_id` (폰번호 2개) → `p_target_member_id` (상대방 UUID 1개). 내 ID는 `auth.uid()` 자동 추출
+- 채팅방 이름: `'폰번호-폰번호'` 형식 제거 → `guardian_id` + `kindergarten_id` FK 구조
+- 중복 방지: 기존 `name` 문자열 비교 → `guardian_id + kindergarten_id` 조합 UNIQUE 체크
+- 방 복원: 나갔던 방이 있으면 `status='활성'`으로 복원 후 기존 방 ID 반환 (`is_new=false`)
+- SECURITY DEFINER: 상대방 `chat_room_members` 레코드 INSERT를 위해 테이블 소유자 권한 필요
+- 역할 자동 판별: `members.current_mode`가 `'보호자'`면 guardian, `'유치원'`이면 kindergarten
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 |
+| `data.room_id` (정수) | `data.data.room_id` (UUID) | 예 — 정수 → UUID |
+| — | `data.data.is_new` (boolean) | 예 — 신규 (신규 생성 vs 기존 복원) |
 
 ---
 
-### API #23. chat.php → get_rooms → RPC
+### API #23. chat.php → get_rooms → RPC `app_get_chat_rooms`
 
 **전환 방식**: RPC | **난이도**: 상
-**관련 파일**: `hooks/useChatRoom.ts` (추정)
+**관련 파일**: `hooks/useChatRoom.ts`, `app/chat/index.tsx` (채팅 목록 화면)
 **Supabase 대응**: `supabase.rpc('app_get_chat_rooms')`
 
 **Before**:
 ```typescript
-// TODO
+// 파일: hooks/useChatRoom.ts
+// 채팅방 목록 조회 (마지막 메시지 + 미읽음 수 + 상대방 프로필)
+const fetchChatRooms = async () => {
+  try {
+    const response = await apiClient.get('api/chat.php', {
+      method: 'get_rooms',
+      mb_id: user.mb_id,
+    })
+    if (response.result === 'Y') {
+      setChatRooms(response.data)  // [{ room_id, name, last_message, unread_count, ... }]
+    }
+  } catch (error) {
+    setChatRooms([])
+  }
+}
 ```
 
 **After**:
 ```typescript
-// TODO
+// 파일: hooks/useChatRoom.ts (수정)
+import { supabase } from '@/lib/supabase'
+
+interface ChatRoom {
+  room_id: string               // UUID
+  status: string                // '활성' | '비활성'
+  last_message: string | null
+  last_message_at: string | null  // timestamptz
+  last_message_type: string | null
+  unread_count: number
+  is_muted: boolean
+  opponent: {
+    id: string                  // UUID
+    nickname: string
+    profile_image: string | null
+    role: string                // '보호자' | '유치원'
+  }
+  reservation_count: number
+}
+
+// 채팅방 목록 조회 (미읽음 수 + 상대방 프로필 포함)
+const fetchChatRooms = async () => {
+  try {
+    const { data, error } = await supabase.rpc('app_get_chat_rooms')
+    // mb_id 파라미터 제거 — auth.uid()로 자동 식별
+
+    if (error) {
+      setChatRooms([])
+      return
+    }
+
+    // RPC 응답: { success, data: ChatRoom[] }
+    if (!data?.success) {
+      setChatRooms([])
+      return
+    }
+
+    setChatRooms(data.data as ChatRoom[])
+  } catch (error) {
+    setChatRooms([])
+  }
+}
 ```
 
 **변환 포인트**:
-<!-- TODO -->
+- `mb_id` 파라미터 제거 → RPC 내부에서 `auth.uid()` 자동 추출
+- `name` (`'폰번호-폰번호'`) 파싱으로 상대방 식별 → `opponent` 구조화 객체 (RPC 내 members JOIN)
+- 미읽음 수: PHP 별도 쿼리 → RPC 내부 서브쿼리 (`chat_messages WHERE created_at > (last_read_message_id의 created_at 서브쿼리) AND sender_id ≠ auth.uid()`). ⚠️ UUID v4는 순서 미보장이므로 `cm.id >` 비교 대신 `cm.created_at >` 타임스탬프 비교 사용 (R4 리뷰 Issue 4)
+- 정렬: `last_message_at DESC` (최신 메시지 순)
+- `status='활성'` 방만 반환 (나간 방 제외)
+- `opponent.profile_image`: 파일명 → Storage 전체 URL (internal VIEW 사용)
+- `reservation_count`: 해당 채팅방에 연결된 예약 수 (`chat_room_reservations` COUNT)
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `data[].room_id` (정수) | `data.data[].room_id` (UUID) | 예 — 정수 → UUID |
+| `data[].name` (`'폰번호-폰번호'`) | — (제거) | — `opponent` 객체로 대체 |
+| `data[].last_message` | `data.data[].last_message` | 아니오 |
+| `data[].last_message_time` | `data.data[].last_message_at` | 예 — 키 이름 변경 |
+| `data[].unread_count` | `data.data[].unread_count` | 아니오 |
+| 상대방 이름 (name 파싱 + 별도 조회) | `data.data[].opponent.nickname` | 예 — 구조 변경 |
+| 상대방 이미지 (별도 조회) | `data.data[].opponent.profile_image` | 예 — 구조 변경 |
+| — | `data.data[].opponent.role` | 예 — 신규 (`'보호자'` / `'유치원'`) |
+| — | `data.data[].is_muted` | 예 — 신규 |
+| — | `data.data[].last_message_type` | 예 — 신규 |
+| — | `data.data[].reservation_count` | 예 — 신규 |
 
 ---
 
@@ -2328,10 +2471,273 @@ const getMessageHistory = async (roomId: string, page: number = 1, perPage: numb
 ### API #25. chat.php → send_message → Edge Function `send-chat-message`
 
 **전환 방식**: Edge Function | **난이도**: 상
-**관련 파일**: `hooks/useChat.ts` → `send()`
+**관련 파일**: `hooks/useChat.ts` → `sendMessage()`, `app/chat/[room]/index.tsx`
 **Supabase 대응**: `supabase.functions.invoke('send-chat-message', { body })`
 
-> **R4 (채팅 Realtime)에서 상세 작성 예정** — send_message는 Storage 파일 업로드 + Realtime 브로드캐스트 + FCM 푸시가 결합된 복잡한 로직으로, Edge Function 구현과 함께 R4에서 다룹니다. R2에서는 자동 API 대상만 작성합니다.
+**Before**:
+```typescript
+// 파일: hooks/useChat.ts
+// ① 텍스트 메시지 전송
+const sendTextMessage = async (roomId: string, content: string) => {
+  try {
+    const formData = new FormData()
+    formData.append('method', 'send_message')
+    formData.append('room_id', roomId)
+    formData.append('mb_id', user.mb_id)
+    formData.append('content', content)
+    formData.append('message_type', 'text')
+
+    const response = await apiClient.post('api/chat.php', formData)
+    if (response.result === 'Y') {
+      // WebSocket으로 상대방에게 실시간 전달은 별도 처리
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '메시지를 전송할 수 없습니다')
+    return null
+  }
+}
+
+// ② 이미지 메시지 전송
+const sendImageMessage = async (roomId: string, imageFile: any) => {
+  try {
+    const formData = new FormData()
+    formData.append('method', 'send_message')
+    formData.append('room_id', roomId)
+    formData.append('mb_id', user.mb_id)
+    formData.append('message_type', 'image')
+    formData.append('file', {
+      uri: imageFile.uri,
+      type: imageFile.type || 'image/jpeg',
+      name: imageFile.fileName || 'image.jpg',
+    } as any)
+
+    const response = await apiClient.post('api/chat.php', formData)
+    if (response.result === 'Y') {
+      return response.data
+    }
+    return null
+  } catch (error) {
+    Alert.alert('오류', '이미지를 전송할 수 없습니다')
+    return null
+  }
+}
+
+// ③ WebSocket 실시간 수신 (react-use-websocket)
+const { sendMessage: wsSend, lastMessage, readyState } = useWebSocket(
+  `${WEBSOCKET_URL}?room_id=${roomId}&mb_id=${user.mb_id}`,
+  {
+    heartbeat: {
+      message: 'ping',
+      returnMessage: 'pong',
+      timeout: 60000,
+      interval: 25000,
+    },
+    reconnectAttempts: 10,
+    reconnectInterval: 3000,
+    shouldReconnect: () => true,
+  }
+)
+
+// ④ 수신 메시지 처리
+useEffect(() => {
+  if (lastMessage?.data) {
+    try {
+      const parsed = JSON.parse(lastMessage.data)
+      if (parsed.type === 'message') {
+        setMessages(prev => [...prev, parsed.data])
+        // 읽음 처리
+        readChat(roomId, parsed.data.id)
+      }
+    } catch (e) {
+      // 파싱 에러 무시 (ping/pong 등)
+    }
+  }
+}, [lastMessage])
+```
+
+**After**:
+```typescript
+// 파일: hooks/useChat.ts (수정)
+import { supabase } from '@/lib/supabase'
+import { RealtimeChannel } from '@supabase/supabase-js'
+
+// ─── Realtime 채널 관리 ───────────────────────────────
+let chatChannel: RealtimeChannel | null = null
+
+// 채팅방 Realtime 구독 시작
+const subscribeToChatRoom = (roomId: string) => {
+  // 기존 구독 해제
+  if (chatChannel) {
+    chatChannel.unsubscribe()
+  }
+
+  chatChannel = supabase
+    .channel(`chat:${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `chat_room_id=eq.${roomId}`,
+      },
+      (payload) => {
+        // 새 메시지 수신 — payload.new에 INSERT된 row 전체
+        const newMessage = payload.new as ChatMessageType
+        setMessages(prev => [...prev, newMessage])
+
+        // 내가 보낸 메시지가 아니면 읽음 처리
+        if (newMessage.sender_id !== user.id) {
+          readChat(roomId, newMessage.id)
+        }
+      }
+    )
+    .subscribe()
+}
+
+// 채팅방 Realtime 구독 해제
+const unsubscribeFromChatRoom = () => {
+  if (chatChannel) {
+    chatChannel.unsubscribe()
+    chatChannel = null
+  }
+}
+
+// 컴포넌트 마운트/언마운트 시 구독 관리
+useEffect(() => {
+  if (roomId) {
+    subscribeToChatRoom(roomId)
+  }
+  return () => {
+    unsubscribeFromChatRoom()
+  }
+}, [roomId])
+
+// ─── 메시지 전송 ──────────────────────────────────────
+// ① 텍스트 메시지 전송
+const sendTextMessage = async (roomId: string, content: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-chat-message', {
+      body: {
+        room_id: roomId,
+        content: content,
+        message_type: 'text',
+      },
+    })
+
+    if (error) {
+      Alert.alert('오류', '메시지를 전송할 수 없습니다')
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '메시지를 전송할 수 없습니다')
+      return null
+    }
+
+    // 메시지 INSERT → Realtime postgres_changes로 자동 수신됨
+    // → subscribeToChatRoom 콜백에서 messages state에 자동 추가
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '메시지를 전송할 수 없습니다')
+    return null
+  }
+}
+
+// ② 이미지 메시지 전송
+const sendImageMessage = async (roomId: string, imageFiles: ImagePickerAsset[]) => {
+  try {
+    // 이미지 파일을 FormData로 전송
+    const formData = new FormData()
+    formData.append('room_id', roomId)
+    formData.append('content', '')
+    formData.append('message_type', 'image')
+
+    imageFiles.forEach((file, index) => {
+      formData.append('image_files', {
+        uri: file.uri,
+        type: file.mimeType || 'image/jpeg',
+        name: file.fileName || `image_${index}.jpg`,
+      } as any)
+    })
+
+    const { data, error } = await supabase.functions.invoke('send-chat-message', {
+      body: formData,
+    })
+
+    if (error) {
+      Alert.alert('오류', '이미지를 전송할 수 없습니다')
+      return null
+    }
+
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '이미지를 전송할 수 없습니다')
+      return null
+    }
+
+    // Edge Function이 Storage 업로드 + chat_messages INSERT 완료
+    // → Realtime으로 자동 수신됨 (image_urls 포함)
+    return data.data
+  } catch (error) {
+    Alert.alert('오류', '이미지를 전송할 수 없습니다')
+    return null
+  }
+}
+```
+
+**변환 포인트**:
+- **메시지 전송**: FormData + `apiClient.post('api/chat.php')` → `supabase.functions.invoke('send-chat-message', { body })`
+- **실시간 수신**: `useWebSocket` + `lastMessage` + `JSON.parse` → `supabase.channel().on('postgres_changes')` — DB INSERT 자동 감지
+- **heartbeat/재연결**: 수동 설정 (25초 interval, 60초 timeout, 10회 재시도) → Supabase 자동 관리 (코드 제거)
+- **연결 상태**: `readyState` (OPEN/CONNECTING 등) → 채널 상태 (`subscribed`/`closed` 등) 또는 불필요 (자동 재연결)
+- **이미지 전송**: FormData `file` 1개 → FormData `image_files` 복수 (다중 이미지 지원)
+- **이미지 저장**: 서버 파일시스템 `file_path` → Storage `image_urls` (jsonb 배열)
+- **FCM 푸시**: PHP 내부 처리 → Edge Function `send-push` 내부 호출 (앱 코드 변경 없음)
+- **mb_id 제거**: 메시지 전송 시 `mb_id` 파라미터 불필요 → JWT에서 `sender_id` 자동 추출
+- **`react-use-websocket` 패키지 제거**: 전환 완료 후 `yarn remove react-use-websocket`
+
+**Edge Function 입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `room_id` | UUID | ✅ | 채팅방 ID |
+| `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
+| `image_files` | File[] | ❌ | 이미지 파일 (FormData 전송) |
+
+**Edge Function 출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `success` | boolean | 성공 여부 |
+| `data.message_id` | UUID | 생성된 메시지 ID |
+| `data.image_urls` | string[] | Storage 이미지 URL 배열 (이미지 전송 시) |
+| `error` | string | 에러 메시지 (실패 시) |
+
+**응답 매핑**:
+
+| PHP 응답 필드 | Supabase 응답 필드 | 변환 필요 |
+|---|---|---|
+| `result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 |
+| `data.id` (정수) | `data.data.message_id` (UUID) | 예 — 정수 → UUID |
+| `data.file_path` (문자열) | `data.data.image_urls` (배열) | 예 — 문자열 → jsonb 배열 |
+| (WebSocket push로 상대방 수신) | (Realtime postgres_changes 자동) | 예 — 방식 변경 |
+
+**Realtime 수신 메시지(payload.new) 구조**:
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `id` | UUID | 메시지 ID |
+| `chat_room_id` | UUID | 채팅방 ID |
+| `sender_id` | UUID | 발신자 ID |
+| `sender_type` | string | `'보호자'` / `'유치원'` / `'시스템'` |
+| `message_type` | string | `'text'` / `'image'` / `'file'` / `'payment_request'` / `'care_start'` / `'care_end'` / `'review'` |
+| `content` | string | 메시지 내용 |
+| `image_urls` | string[] \| null | 이미지 URL 배열 |
+| `is_read` | boolean | 읽음 여부 |
+| `created_at` | string | 생성 시각 |
 
 ---
 
@@ -2471,7 +2877,7 @@ const leaveRoom = async (roomId: string) => {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useChat.ts` → `mutedRoom()`
-**Supabase 대응**: `supabase.from('chat_room_members').update({ is_muted }).eq('room_id', roomId).eq('member_id', userId)`
+**Supabase 대응**: `supabase.from('chat_room_members').update({ is_muted }).eq('chat_room_id', roomId).eq('member_id', userId)`
 **Supabase 테이블**: `chat_room_members`
 
 **Before**:
@@ -2507,7 +2913,7 @@ const mutedRoom = async (roomId: string, muted: boolean) => {
     const { error } = await supabase
       .from('chat_room_members')
       .update({ is_muted: muted })
-      .eq('room_id', roomId)
+      .eq('chat_room_id', roomId)   // ⚠️ R4 교정: room_id → chat_room_id (sql/41_08 스키마 참조)
       .eq('member_id', user.id)
 
     if (error) {
@@ -2538,7 +2944,7 @@ const mutedRoom = async (roomId: string, muted: boolean) => {
 
 **전환 방식**: 자동 API | **난이도**: 쉬움
 **관련 파일**: `hooks/useChat.ts` → `readChat()`
-**Supabase 대응**: `supabase.from('chat_room_members').update({ last_read_message_id }).eq('room_id', roomId).eq('member_id', userId)`
+**Supabase 대응**: `supabase.from('chat_room_members').update({ last_read_message_id }).eq('chat_room_id', roomId).eq('member_id', userId)`
 **Supabase 테이블**: `chat_room_members`
 
 **Before**:
@@ -2570,7 +2976,7 @@ const readChat = async (roomId: string, lastMessageId: string) => {
     await supabase
       .from('chat_room_members')
       .update({ last_read_message_id: lastMessageId })
-      .eq('room_id', roomId)
+      .eq('chat_room_id', roomId)   // ⚠️ R4 교정: room_id → chat_room_id (sql/41_08 스키마 참조)
       .eq('member_id', user.id)
     // 읽음 처리 — 실패해도 무시
   } catch (error) {
@@ -4758,3 +5164,5 @@ export const uploadImages = async (
 | 2026-04-17 | **R2 본문 작성** — §3 반려동물 (#9~#16) 8개 API Before/After 코드 + 응답 매핑, §4 유치원 프로필 (#21) 코드, §5 채팅 자동 API (#24, #26~#29) 5개 코드, 채팅 템플릿 (#30~#33) 4개 코드, §6 돌봄 후기 (#40) 코드, §7 정산 (#42~#43) 2개 코드, §8 리뷰 (#45) 코드, §13 기타 (#62~#65) 4개 코드, 부록 Storage 공통 유틸 작성. 총 R2에서 26개 API 코드 완성 |
 | 2026-04-17 | **R2 리뷰 반영 (Issue 1~3)** — Issue 1: #21 가격 컬럼 `price_*_add` 3개 → `price_*_24h` + `price_*_pickup` 6개로 교정 (총 12개 컬럼 정확 반영), Issue 2: #11 RLS 안내 명확화 (본인 전용 API, 타인 반려동물은 RPC `app_get_guardian_detail` 사용 안내), Issue 3: #10 `!inner` JOIN → 별도 2회 조회 패턴 교정 (찜하지 않은 반려동물 조회 실패 방지) |
 | 2026-04-18 | **R3 본문 작성** — §4 유치원/보호자 RPC (#17~#20) 4개 API Before/After 코드 + 응답 매핑 (유치원 상세: prices 중첩객체·review_count 실제값·금융정보 제외, 유치원 목록: 거리순+safety cap, 보호자 상세: 반려동물별 찜·주소 비대칭, 보호자 목록: pet_thumbnails), §6 예약 RPC (#37~#38) 2개 API (보호자/유치원 2개 RPC 분기·LATERAL JOIN 결제·refunds 분리), §7 정산 RPC (#41) 1개 API (2개 PHP 통합·4파트 구조·날짜 검증), §8 리뷰 RPC (#44, #44b) 2개 API (태그 집계 7개·is_guardian_only 분기), §13 교육 RPC (#61) 1개 API (topics+quiz+completion 통합·기본값 자동). 총 R3에서 10개 API 코드 완성 |
+| 2026-04-18 | **R4 본문 작성** — §5 채팅 (#22 create_room RPC: SECURITY DEFINER·중복방지·방복원, #23 get_rooms RPC: 미읽음 서브쿼리·상대방 프로필·ChatRoom 인터페이스, #25 send_message Edge Function: 텍스트/이미지 전송·Realtime 구독/해제·postgres_changes 콜백·WebSocket 코드 제거). #28·#29 FK 교정 (room_id → chat_room_id, sql/41_08 스키마와 동기화). 총 R4에서 3개 API 코드 완성 + 2개 기존 코드 교정 |
+| 2026-04-18 | **R4 리뷰 반영 (Issue 4)** — #23 변환 포인트의 미읽음 서브쿼리 설명 교정: `id > last_read_message_id` UUID 비교 → `created_at > (서브쿼리)` 타임스탬프 비교로 변경 + UUID v4 순서 미보장 경고 추가 |

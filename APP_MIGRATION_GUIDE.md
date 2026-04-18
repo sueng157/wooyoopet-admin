@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 가이드
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R3 본문 작성 — §11~13 RPC 조회 10개 API)
+> **최종 업데이트**: 2026-04-18 (R4 리뷰 Issue 1~4 반영 — §14-8 미읽음 카운트 UUID→timestamp 교정, SECURITY DEFINER 사유 등)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **전제 조건**: Supabase 프로젝트 설정 완료, Step 2.5 RPC 13개 배포 완료
 > **관련 문서**: `MIGRATION_PLAN.md` (설계서), `APP_MIGRATION_CODE.md` (코드 예시), `RPC_PHP_MAPPING.md` (RPC 매핑), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
@@ -211,7 +211,7 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 | 11 | 유치원/보호자 RPC | 3-3 / R3 | 4개 (#17~#20) | ✅ 완료 |
 | 12 | 예약 조회 RPC | 3-3 / R3 | 2개 (#37, #38) | ✅ 완료 |
 | 13 | 리뷰/정산/교육 RPC | 3-3 / R3 | 4개 (#41, #44, #44b, #61) | ✅ 완료 |
-| 14 | 채팅 전환 (WebSocket → Realtime) | 3-4 / R4 | 9개 (#22~#30) | ⬜ 예정 |
+| 14 | 채팅 전환 (WebSocket → Realtime) | 3-4 / R4 | 9개 (#22~#30) | ✅ 완료 |
 | 15 | 결제/예약 전환 | 3-5 / R5 | 5개 (#34~#38) | ⬜ 예정 |
 | 16 | Edge Function 인터페이스 | 3-5 / R5 | 7개 (#25, #34~#36, #39, #1, #66) | ⬜ 예정 |
 | A | 부록: 타입 정의 변경 총정리 | 3-6 / R6 | — | ⬜ 예정 |
@@ -1338,43 +1338,384 @@ RPC 내부에서 `auth.uid()`와 반려동물의 `member_id`를 비교하여 보
 ## 14. 채팅 전환 (WebSocket → Realtime)
 
 > **작성 라운드**: 3-4 / R4
-> **관련 API**: #22~#30 (9개)
+> **관련 API**: #22~#30 (9개, 이 중 #24, #26~#30은 R2에서 자동 API 코드 작성 완료)
 > **핵심 변경**: WebSocket (`react-use-websocket`) → Supabase Realtime (`supabase.channel()`)
-> **관련 파일**: `hooks/useChat.ts` (대규모 리팩터링), `components/ChatMessage.tsx`
+> **관련 파일**: `hooks/useChat.ts` (대규모 리팩터링), `hooks/useChatRoom.ts`, `components/ChatMessage.tsx`, `app/chat/[room]/index.tsx`
 
 ### 14-1. 현재 채팅 아키텍처 vs 전환 후 아키텍처
 
-<!-- TODO: WebSocket 기반 흐름 다이어그램 -->
-<!-- TODO: Supabase Realtime 기반 흐름 다이어그램 -->
+**현재 흐름 (WebSocket + PHP)**:
+
+```
+┌──────────┐   ① WebSocket 연결           ┌──────────────────┐
+│  앱 화면   │ ─────────────────────────→  │ 카페24 채팅 서버     │
+│ (useChat) │   wss://wooyoopet.store/ws  │ (server.py/Docker) │
+│           │                              │                    │
+│           │   ② 메시지 수신 (실시간)        │  ← WebSocket push  │
+│           │ ←─────────────────────────   │                    │
+│           │                              └──────────────────┘
+│           │   ③ 메시지 전송/조회            ┌──────────────────┐
+│           │ ─────────────────────────→  │ PHP API (chat.php)  │
+│           │   apiClient.post(FormData)  │  → MariaDB          │
+│           │ ←─────────────────────────  │  → room/chat 테이블  │
+└──────────┘   ④ 응답 (JSON)              └──────────────────┘
+```
+
+문제점:
+- **서버 2개 동시 관리**: 카페24 WebSocket 서버 + 스마일서브 PHP API 서버
+- **이원화된 메시지 흐름**: 실시간 수신(WebSocket) ≠ 메시지 저장(PHP API) → 동기화 이슈
+- **heartbeat 부담**: 25초 간격 ping/pong, 60초 타임아웃 → 앱 백그라운드 시 연결 끊김
+- **수동 재연결**: 네트워크 변경/앱 복귀 시 WebSocket 재연결 로직 직접 구현 필요
+
+**전환 후 흐름 (Supabase Realtime)**:
+
+```
+┌──────────┐   ① Realtime 채널 구독        ┌──────────────────────┐
+│  앱 화면   │ ─────────────────────────→  │  Supabase             │
+│ (useChat) │  supabase.channel(room_id)  │  ┌─ Realtime 서버     │
+│           │                              │  │  (자동 관리)        │
+│           │   ② 메시지 수신 (실시간)        │  │  ← postgres_changes │
+│           │ ←─────────────────────────   │  │                     │
+│           │                              │  ├─ PostgREST (자동 API)│
+│           │   ③ 메시지 전송               │  │  ← chat_messages     │
+│           │ ─────────────────────────→  │  │                     │
+│           │  Edge Function (send-chat)  │  ├─ Edge Functions     │
+│           │                              │  │  ← FCM + Storage    │
+│           │   ④ 자동 INSERT 감지          │  │                     │
+│           │ ←─────────────────────────   │  └─ PostgreSQL        │
+└──────────┘   postgres_changes 이벤트     └──────────────────────┘
+```
+
+장점:
+- **단일 인프라**: Supabase 하나로 실시간 + API + DB + Storage 통합
+- **자동 동기화**: `chat_messages` INSERT 시 Realtime이 자동으로 변경 이벤트 전파
+- **자동 재연결**: Supabase JS 클라이언트가 네트워크 복구 시 자동 재구독
+- **RLS 보안**: Realtime도 RLS 정책을 따르므로, 채팅방 참여자만 이벤트 수신
 
 ### 14-2. useChat.ts 리팩터링 가이드
 
-<!-- TODO: 기존 useChat 구조 분석 → 전환 후 구조 설계 -->
-<!-- TODO: Supabase Realtime subscription 패턴 -->
+기존 `useChat.ts`는 앱에서 가장 큰 hook 파일(~1,482줄)로, WebSocket 연결 관리 + 메시지 CRUD + 읽음 처리 + 파일 전송이 모두 포함되어 있습니다. 전환 시 **WebSocket 관련 코드를 모두 제거**하고 Supabase Realtime 구독으로 교체합니다.
 
-### 14-3. API #22. chat.php → create_room → RPC
+**제거 대상 (WebSocket 관련)**:
 
-<!-- 참조: APP_MIGRATION_CODE.md #22 -->
+| 기존 코드 | 역할 | 전환 후 |
+|-----------|------|---------|
+| `import useWebSocket from 'react-use-websocket'` | 라이브러리 import | 삭제 |
+| `const { sendMessage, lastMessage, readyState }` | WebSocket 훅 | `supabase.channel()` |
+| `EXPO_PUBLIC_WEBSOCKET_URL` 환경변수 참조 | WebSocket 서버 URL | 삭제 |
+| heartbeat 설정 (`heartbeat: { interval: 25000, ... }`) | ping/pong | Supabase 자동 관리 |
+| `reconnectAttempts`, `reconnectInterval` | 재연결 로직 | Supabase 자동 재연결 |
+| `ReadyState` 상태 체크 (`OPEN`, `CONNECTING` 등) | 연결 상태 | 채널 상태 체크 |
+| `useEffect` 내 `lastMessage` 파싱 로직 | 수신 메시지 파싱 | `on('postgres_changes')` 콜백 |
 
-### 14-4. API #23. chat.php → get_rooms → RPC
+**전환 후 구조 핵심**:
 
-<!-- 참조: APP_MIGRATION_CODE.md #23 -->
+```
+useChat.ts (수정 후)
+├── Realtime 채널 관리
+│   ├── subscribeToChatRoom(roomId)   ← supabase.channel() 구독
+│   ├── unsubscribeFromChatRoom()     ← channel.unsubscribe()
+│   └── handleNewMessage(payload)     ← INSERT 이벤트 콜백
+├── 메시지 CRUD
+│   ├── getMessageHistory(roomId)     ← R2에서 작성 완료 (#24)
+│   ├── sendMessage(roomId, content)  ← Edge Function 호출 (#25)
+│   └── getChatImages(roomId)         ← R2에서 작성 완료 (#26)
+├── 채팅방 관리
+│   ├── leaveRoom(roomId)             ← R2에서 작성 완료 (#27)
+│   └── mutedRoom(roomId, muted)      ← R2에서 작성 완료 (#28)
+├── 읽음 처리
+│   └── readChat(roomId, messageId)   ← R2에서 작성 완료 (#29)
+└── 파일 전송
+    └── uploadAndSend(roomId, file)   ← Storage + Edge Function
+```
+
+**R2에서 이미 작성된 자동 API 코드**:
+- #24 `getMessageHistory` — `chat_messages SELECT` (페이지네이션)
+- #26 `getChatImages` — `chat_messages SELECT WHERE image_urls IS NOT NULL`
+- #27 `leaveRoom` — `chat_rooms UPDATE (status='비활성')`
+- #28 `mutedRoom` — `chat_room_members UPDATE (is_muted)`
+- #29 `readChat` — `chat_room_members UPDATE (last_read_message_id)`
+- #30 `fetchTemplates` — `chat_templates SELECT` (상용문구)
+
+**R4에서 새로 작성하는 핵심 코드 3개**:
+- #22 `createRoom` — RPC `app_create_chat_room` (채팅방 생성)
+- #23 `getRooms` — RPC `app_get_chat_rooms` (채팅방 목록 + 미읽음 수)
+- #25 `sendMessage` — Edge Function `send-chat-message` (메시지 전송)
+
+> ⚠️ **R2 코드의 FK 컬럼명 보정**: R2에서 작성한 #28, #29 코드의 `.eq('room_id', roomId)`는 실제 DB 스키마 `chat_room_id`와 불일치합니다. `chat_room_members` 테이블의 FK는 `chat_room_id`이므로 `.eq('chat_room_id', roomId)`로 수정해야 합니다. (sql/41_08 참조)
+
+### 14-3. API #22. chat.php → create_room → RPC `app_create_chat_room`
+
+**전환 방식**: RPC (SECURITY DEFINER) | **난이도**: 상
+
+채팅 시작 시 호출하는 채팅방 생성 API입니다. 기존 PHP는 `chat.php`에서 `method=create_room` 분기로 처리했으나, Supabase에서는 **SECURITY DEFINER RPC**로 전환합니다.
+
+**SECURITY DEFINER가 필요한 이유**: 채팅방 생성 시 `chat_rooms` INSERT + `chat_room_members` 2건 INSERT가 트랜잭션으로 묶여야 합니다. 특히 `chat_room_members`에는 상대방 member_id 레코드도 INSERT해야 하는데, RLS 정책이 `member_id = auth.uid()` 제한이므로 일반 API로는 상대방 레코드를 생성할 수 없습니다. SECURITY DEFINER RPC는 테이블 소유자 권한으로 실행되어 이 제약을 우회합니다.
+
+**핵심 로직**:
+1. 기존 채팅방 존재 확인: `guardian_id` + `kindergarten_id` 조합이 이미 있는지 체크
+2. 이미 있으면 `status='활성'`으로 복원 + 기존 방 ID 반환 (나간 방 복구)
+3. 없으면 `chat_rooms` INSERT + `chat_room_members` 2건 INSERT
+4. 호출자의 `current_mode`로 역할 자동 판별: `'보호자'` → guardian, `'유치원'` → kindergarten
+
+**주요 변경점**:
+- `mb_id`(폰번호 2개) → `p_target_member_id`(상대방 UUID 1개). 내 ID는 `auth.uid()`
+- `name` 필드(`'폰번호-폰번호'` 형식) 제거 → `guardian_id` + `kindergarten_id` FK로 구조화
+- 채팅방 중복 생성 방지: PHP에서는 `name` 문자열 비교 → RPC에서는 `guardian_id + kindergarten_id` UNIQUE 체크
+- 방 나가기 후 재대화: PHP `deleted_at` 복원 → Supabase `status='활성'` 복원
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #22 참조
+
+### 14-4. API #23. chat.php → get_rooms → RPC `app_get_chat_rooms`
+
+**전환 방식**: RPC | **난이도**: 상
+
+채팅 목록 화면에서 호출하는 채팅방 목록 조회 API입니다. 기존 PHP는 `chat.php`에서 `method=get_rooms` (또는 채팅방 목록 조회 분기)로 처리했습니다.
+
+**RPC가 필요한 이유**: 채팅방 목록은 단순 SELECT가 아닙니다. 각 방의 **미읽음 메시지 수**(unread_count), **마지막 메시지**, **상대방 프로필** 정보를 서브쿼리로 조회해야 하며, `chat_room_members`의 `last_read_message_id`와 `chat_messages`의 COUNT를 교차 비교합니다.
+
+**응답 구조**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `room_id` | UUID | 채팅방 ID |
+| `status` | text | '활성' / '비활성' |
+| `last_message` | text | 마지막 메시지 내용 |
+| `last_message_at` | timestamptz | 마지막 메시지 시각 |
+| `last_message_type` | text | 마지막 메시지 타입 (텍스트/이미지/시스템 등) |
+| `unread_count` | integer | 미읽음 메시지 수 |
+| `is_muted` | boolean | 알림 차단 여부 |
+| `opponent` | object | 상대방 프로필 (`id`, `nickname`, `profile_image`, `role`) |
+| `reservation_count` | integer | 해당 채팅방의 예약 수 |
+
+**핵심 로직**:
+1. `chat_room_members`에서 `member_id = auth.uid()`인 방만 조회 (RLS 연동)
+2. 상대방 프로필: `chat_room_members`에서 `member_id ≠ auth.uid()`인 레코드의 `members` JOIN
+3. 미읽음 수: `chat_messages` 중 `id > last_read_message_id`이고 `sender_id ≠ auth.uid()`인 COUNT
+4. `status='활성'` 방만 반환 + `last_message_at DESC` 정렬
+
+**주요 변경점**:
+- `mb_id` 파라미터 → `auth.uid()` 자동 (RPC 내부)
+- `name`(폰번호 조합) 파싱 → `opponent` 구조화 객체
+- WebSocket 연결 상태 → 제거 (Realtime 구독은 별도)
+- PHP에서 별도 쿼리로 가져오던 `unread_count` → RPC 내부 서브쿼리 통합
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #23 참조
 
 ### 14-5. API #25. chat.php → send_message → Edge Function `send-chat-message`
 
-<!-- 참조: APP_MIGRATION_CODE.md #25 -->
+**전환 방식**: Edge Function | **난이도**: 상
+
+채팅 메시지 전송 API입니다. 채팅 시스템에서 **가장 복잡한 단일 API**로, 메시지 저장 + 파일 업로드 + 실시간 전파 + 푸시 알림이 하나의 흐름에 결합됩니다.
+
+**Edge Function이 필요한 이유**: 클라이언트(앱)에서 `chat_messages` INSERT만으로는 FCM 푸시 전송, 상대방 `is_muted` 체크, `notifications` INSERT 등의 서버 사이드 로직을 수행할 수 없습니다. 또한 이미지 파일 업로드 시 Storage URL 획득 → `image_urls` 컬럼 반영까지 원자적으로 처리해야 합니다.
+
+**처리 흐름**:
+
+```
+앱 → Edge Function (send-chat-message)
+  1. JWT에서 sender_id 추출
+  2. chat_room_members 검증 (참여자인지)
+  3. 파일 있으면 → Storage 업로드 (chat-files/{room_id}/{msg_id}/)
+  4. chat_messages INSERT (content, message_type, image_urls)
+  5. chat_rooms UPDATE (last_message, last_message_at, total_message_count +1)
+  6. 상대방 is_muted 체크
+  7. is_muted=false면 → FCM 푸시 발송 (send-push 내부 호출)
+  8. notifications INSERT
+```
+
+**주요 변경점**:
+- FormData 전송 → `supabase.functions.invoke('send-chat-message', { body })` JSON
+- 이미지: `file_path` (서버 파일시스템) → `image_urls` (Storage 공개 URL 배열)
+- 실시간 전파: PHP → WebSocket 서버 push → Supabase `chat_messages` INSERT 시 Realtime `postgres_changes` 자동 전파
+- FCM 푸시: PHP 내부 → Edge Function `send-push` 내부 호출
+
+**입력 스펙**:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `room_id` | UUID | ✅ | 채팅방 ID |
+| `content` | string | 조건부 | 텍스트 메시지 (이미지 전용이면 빈 문자열 가능) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
+| `image_files` | File[] | ❌ | 이미지 파일 배열 (FormData 전송 시) |
+
+**출력 스펙**:
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `success` | boolean | 성공 여부 |
+| `data.message_id` | UUID | 생성된 메시지 ID |
+| `data.image_urls` | string[] | Storage 업로드된 이미지 URL 배열 |
+| `error` | string | 에러 메시지 (실패 시) |
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #25 참조
 
 ### 14-6. Realtime 구독 패턴 (메시지 수신)
 
-<!-- TODO: supabase.channel() 구독 코드, onPostgresChanges vs broadcast -->
+기존 WebSocket 방식에서는 `react-use-websocket` 라이브러리의 `lastMessage`를 `useEffect`로 감시하여 새 메시지를 처리했습니다. 전환 후에는 **Supabase Realtime의 `postgres_changes` 이벤트**를 구독합니다.
+
+**구독 방식**: `postgres_changes` (INSERT 이벤트 감지)
+
+`postgres_changes`는 `chat_messages` 테이블에 INSERT가 발생하면 해당 채팅방 구독자에게 자동으로 새 레코드를 전달합니다. 별도의 브로드캐스트 서버가 불필요합니다.
+
+**채널 구독 라이프사이클**:
+
+```
+채팅방 진입 (mount)
+  → supabase.channel(`chat:${roomId}`) 생성
+  → .on('postgres_changes', { filter: `chat_room_id=eq.${roomId}` }) 구독
+  → INSERT 이벤트 수신 시 → 메시지 목록 state에 추가
+  → 스크롤 자동 하단 이동
+
+채팅방 퇴장 (unmount)
+  → channel.unsubscribe()
+  → 메모리 정리
+```
+
+**RLS와 Realtime**: Supabase Realtime은 RLS 정책을 따릅니다. `chat_messages_select_app` 정책에 의해 **채팅방 참여자만** INSERT 이벤트를 수신합니다. 비참여자가 채널을 구독해도 이벤트가 전달되지 않습니다.
+
+**Broadcast와의 차이**: Supabase Realtime에는 `postgres_changes`(DB 변경 감지)와 `broadcast`(임의 메시지 전송) 두 가지 모드가 있습니다. 채팅에서는 **`postgres_changes`를 사용**합니다. 이유:
+- 메시지가 DB에 저장되어야 히스토리 조회가 가능
+- Edge Function에서 INSERT하면 자동으로 구독자에게 전달
+- 별도 브로드캐스트 로직 불필요 (DB INSERT = 실시간 전파)
+
+**채팅방 목록 실시간 업데이트**: 채팅 목록 화면에서도 별도 Realtime 채널을 구독하여, 다른 방에 새 메시지가 도착하면 `last_message`와 `unread_count`를 실시간 갱신할 수 있습니다. 이 구독은 `chat_rooms` 테이블의 UPDATE 이벤트(`last_message_at` 변경)를 감지합니다.
+
+> 📝 코드 예시: `APP_MIGRATION_CODE.md` #25 내 Realtime 구독 코드 참조
 
 ### 14-7. 이미지/파일 전송 (Storage 연동)
 
-<!-- TODO: Storage 업로드 → chat_messages.image_urls 패턴 -->
+기존 PHP에서는 이미지를 FormData로 `chat.php`에 전송하면 서버 파일시스템에 저장 후 `file_path`(상대 경로)를 DB에 기록했습니다. 전환 후에는 **Supabase Storage의 `chat-files` 버킷**을 사용합니다.
+
+**Storage 버킷 구성**:
+
+| 항목 | 값 |
+|------|---|
+| 버킷 이름 | `chat-files` |
+| 공개 여부 | **private** (채팅방 참여자만 접근) |
+| 최대 파일 크기 | 10MB |
+| 경로 형식 | `chat-files/{chat_room_id}/{message_id}/{filename}` |
+
+**RLS 정책**: `chat_room_members`에 본인이 참여한 채팅방의 파일만 업로드/다운로드 가능 (sql/43_02 참조).
+
+**이미지 전송 흐름**:
+
+```
+① 앱에서 이미지 선택 (react-native-image-picker)
+② Edge Function (send-chat-message) 호출 — image_files 첨부
+③ Edge Function 내부:
+   a. chat_messages INSERT (message_type='image', image_urls=[] 임시)
+   b. Storage 업로드 → signed URL 획득
+   c. chat_messages UPDATE (image_urls = [url1, url2, ...])
+④ Realtime postgres_changes로 상대방에게 전파
+```
+
+**기존 `file_path` → `image_urls` 변환**:
+- 기존: `file_path` = 단일 문자열 (`'/uploads/chat/123/image.jpg'`)
+- 전환 후: `image_urls` = jsonb 배열 (`['https://.../chat-files/room-id/msg-id/image1.jpg', ...]`)
+- 한 메시지에 **여러 이미지** 첨부 가능 (기존은 1개씩만)
+
+**signed URL**: `chat-files` 버킷은 private이므로, 앱에서 이미지를 표시하려면 signed URL이 필요합니다:
+```typescript
+const { data } = await supabase.storage
+  .from('chat-files')
+  .createSignedUrl(filePath, 3600)  // 1시간 유효
+```
+
+> **대안**: Edge Function에서 INSERT 시점에 public URL을 생성하여 `image_urls`에 저장하면, 앱에서 별도 signed URL 요청이 불필요합니다. 이 방식은 Edge Function 구현(Step 4)에서 확정합니다.
 
 ### 14-8. 읽음 처리 / 미읽음 카운트
 
-<!-- TODO: last_read_message_id UPDATE, unread_count 계산 -->
+**읽음 처리 (R2 #29 작성 완료)**:
+채팅방 진입 시 / 새 메시지 수신 시 `chat_room_members.last_read_message_id`를 최신 메시지 ID로 UPDATE합니다. 이 코드는 R2 §10-1에서 이미 작성되었습니다 (`APP_MIGRATION_CODE.md` #29 참조).
+
+**미읽음 카운트 계산**:
+미읽음 수는 **RPC 내부에서 계산**됩니다 (#23 `app_get_chat_rooms`). 계산 공식:
+
+```sql
+-- unread_count 계산 (RPC 내부 서브쿼리)
+SELECT COUNT(*)
+FROM chat_messages cm
+WHERE cm.chat_room_id = crm.chat_room_id
+  AND cm.sender_id <> auth.uid()              -- 내가 보낸 메시지 제외
+  AND cm.created_at > COALESCE(
+    (SELECT cm2.created_at
+     FROM chat_messages cm2
+     WHERE cm2.id = crm.last_read_message_id),
+    '1970-01-01T00:00:00Z'::timestamptz
+  )
+  -- last_read_message_id가 NULL이면 전체 메시지 = 미읽음
+```
+
+> ⚠️ **UUID v4 순서 비교 금지 (R4 리뷰 Issue 4)**
+> Supabase `gen_random_uuid()`는 **UUID v4 (랜덤)**를 생성합니다. UUID v4는 시간 순서를 보장하지 않으므로, `cm.id > crm.last_read_message_id` 같은 비교는 **올바른 미읽음 카운트를 보장하지 못합니다**.
+> 대신 `last_read_message_id`로 해당 메시지의 `created_at` 타임스탬프를 서브쿼리로 조회한 뒤, `cm.created_at > (서브쿼리)` 형태로 시간 기반 비교를 사용합니다.
+> UUID v7 (시간순)을 채택한다면 직접 비교도 가능하지만, 현재 스키마는 v4이므로 반드시 타임스탬프 기반 비교를 사용하십시오.
+
+**읽음 처리 타이밍**:
+1. **채팅방 진입 시**: 가장 최신 메시지 ID로 즉시 UPDATE
+2. **새 메시지 수신 시**: Realtime 이벤트 콜백에서 자동 UPDATE (채팅방 화면이 열려 있을 때)
+3. **앱 복귀 시**: 채팅방 화면이 foreground로 돌아오면 최신 메시지로 UPDATE
+
+**기존 대비 변경점**:
+- `read_chat.php` GET 호출 → `chat_room_members` UPDATE (R2 코드 그대로)
+- `mb_id` → `member_id` (UUID), `last_read_id` → `last_read_message_id`
+- 미읽음 수: PHP에서 별도 API/WebSocket 이벤트 → RPC 응답에 `unread_count` 포함
+
+### 14-9. 채팅 관련 자동 API 교차 참조 (R2 작성 완료)
+
+아래 API는 R2 §10-1에서 이미 Before/After 코드가 작성되었습니다. 이 장에서는 설명만 교차 참조하며, 코드 중복 작성하지 않습니다.
+
+| # | API | 전환 방식 | CODE 참조 | 비고 |
+|---|-----|---------|----------|------|
+| #24 | `get_messages` | 자동 API | CODE #24 | 메시지 히스토리 (페이지네이션) |
+| #26 | `get_images` | 자동 API | CODE #26 | 이미지 메시지 필터 조회 |
+| #27 | `leave_room` | 자동 API | CODE #27 | `status='비활성'` 변경 |
+| #28 | `muted` | 자동 API | CODE #28 | `is_muted` 토글 |
+| #29 | `read_chat.php` | 자동 API | CODE #29 | `last_read_message_id` UPDATE |
+| #30 | `get_message_template` | 자동 API | CODE #30 | 상용문구 조회 |
+
+### 14-10. ChatRoomType / MessageType 변경 요약
+
+**ChatRoomType** (RPC #23 응답):
+
+| PHP 응답 필드 | Supabase 응답 필드 | 타입 변경 | 비고 |
+|---|---|---|---|
+| `room.id` (정수) | `data[].room_id` (UUID) | `number` → `string` | PK |
+| `room.name` (`'폰번호-폰번호'`) | — (제거) | — | `guardian_id` + `kindergarten_id` FK로 대체 |
+| `room.last_message` | `data[].last_message` | — | |
+| `room.last_message_time` | `data[].last_message_at` | `string` → `timestamptz` | |
+| `room.unread_count` | `data[].unread_count` | — | RPC 서브쿼리로 계산 |
+| 상대방 이름 (name 파싱) | `data[].opponent.nickname` | — | 구조화 객체 |
+| 상대방 이미지 (별도 조회) | `data[].opponent.profile_image` | — | RPC 내 JOIN |
+| — | `data[].opponent.role` | — (신규) | `'보호자'` / `'유치원'` |
+| — | `data[].is_muted` | — (신규) | 알림 차단 여부 |
+| — | `data[].last_message_type` | — (신규) | 마지막 메시지 타입 |
+
+**MessageType** (Realtime 이벤트 / #24 응답):
+
+| PHP 응답 필드 | Supabase 응답 필드 | 타입 변경 | 비고 |
+|---|---|---|---|
+| `msg.id` (정수) | `data[].id` (UUID) | `number` → `string` | PK |
+| `msg.room_id` | `data[].chat_room_id` | 예 — 키 이름 변경 | FK |
+| `msg.mb_id` (폰번호) | `data[].sender_id` (UUID) | 예 — 폰번호 → UUID | |
+| — | `data[].sender_type` | — (신규) | `'보호자'` / `'유치원'` / `'시스템'` |
+| `msg.message_type` | `data[].message_type` | — | 동일 |
+| `msg.content` | `data[].content` | — | |
+| `msg.file_path` | `data[].image_urls` (jsonb) | `string` → `string[]` | 다중 이미지 |
+| `msg.file_type` | — (제거) | — | `message_type`으로 대체 |
+| `msg.created_at` | `data[].created_at` | — | |
+| — | `data[].is_read` | — (신규) | 읽음 여부 |
+
+**WebSocket 메시지 → Realtime 이벤트 비교**:
+
+| 항목 | WebSocket (기존) | Supabase Realtime (전환 후) |
+|------|-----------------|--------------------------|
+| 수신 형식 | JSON 문자열 (`lastMessage.data`) | `payload.new` 객체 (PostgreSQL row) |
+| 이벤트 타입 | 커스텀 (`type: 'message'`, `type: 'ping'` 등) | `postgres_changes` INSERT |
+| 파싱 | `JSON.parse(lastMessage.data)` | 직접 접근 (`payload.new.content`) |
+| 연결 관리 | 수동 (heartbeat, reconnect) | 자동 (`supabase.channel()`) |
+| 인증 | WebSocket URL에 토큰 포함 | JWT 자동 (Supabase Auth 세션) |
 
 ---
 
@@ -1538,3 +1879,5 @@ const { data, error } = await supabase.functions.invoke('function-name', {
 | 2026-04-17 | **R2 본문 작성** — §3 반려동물 CRUD (아키텍처 변경, PetType 매핑표, 8개 API 설명), §4 즐겨찾기 (UPSERT+is_favorite 패턴), §5 알림/FCM (구조 요약), §6 콘텐츠 (공개 읽기 패턴, .single() 주의), §7 차단 (토글 패턴), §8 채팅 템플릿 (chat_templates 통합 구조, 4개 CRUD), §9 주소/프로필/회원 (#21 유치원 프로필 — 가격 구조 변경, Storage), §10 기타 자동 API (채팅 자동 5개, 돌봄/정산/리뷰 4개, 기타 4개 — 임베디드 JOIN, 중복 체크 패턴) |
 | 2026-04-17 | **R2 리뷰 반영 (Issue 1~3)** — Issue 1: §9-3 가격 컬럼명 12개 정확 기재 (소형/중형/대형 × 1h/24h/walk/pickup), Issue 2: CODE #11 RLS 안내 정비 (본인 전용 + RPC 안내), Issue 3: CODE #10 inner JOIN → 별도 조회 교정 |
 | 2026-04-18 | **R3 본문 작성** — §11 유치원/보호자 RPC (아키텍처 변경 요약, #17~#20 API 설명 4개, KindergartenDetailType/GuardianDetailType 매핑표), §12 예약 조회 RPC (보호자/유치원 분리 설명, #37~#38 API 설명 2개, PaymentRequestType→ReservationType 매핑표), §13 리뷰/정산/교육 RPC (#41 정산 2개 PHP 통합 설명 + 4파트 구조, #44/#44b 리뷰 태그 집계 + is_guardian_only 분기, #61 교육 이수현황 통합 조회). 총 10개 API TODO 해소 |
+| 2026-04-18 | **R4 본문 작성** — §14 채팅 전환 (14-1~14-10: WebSocket↔Realtime 아키텍처 비교 다이어그램, useChat.ts 리팩터링 가이드 — 제거 대상/전환 후 구조/R2 완료 항목 정리, #22 create_room RPC — SECURITY DEFINER 이유·중복 방지·방 복원, #23 get_rooms RPC — 미읽음 서브쿼리·상대방 프로필 JOIN, #25 send_message Edge Function — 처리 흐름 8단계·입출력 스펙, Realtime postgres_changes 구독 패턴 — RLS 연동·broadcast 차이, Storage chat-files 버킷 연동 — private 버킷·signed URL, 읽음 처리 미읽음 카운트 계산 공식, R2 자동 API 교차 참조 6개, ChatRoomType/MessageType 변경 요약 + WebSocket↔Realtime 비교표). CODE #28/#29 FK 교정 (room_id → chat_room_id) |
+| 2026-04-18 | **R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (선행 반영 완료). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 스키마 동기화). Issue 3: MIGRATION_PLAN.md §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요). Issue 4: §14-8 미읽음 카운트 SQL `cm.id >` UUID v4 비교 → `cm.created_at >` 타임스탬프 서브쿼리 비교로 교정 + UUID v4 순서 미보장 경고 노트 추가, MIGRATION_PLAN Step 4 표에 채팅 RPC 2행(4-8, 4-9) 추가 |
