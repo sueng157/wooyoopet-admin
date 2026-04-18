@@ -212,7 +212,7 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 | 12 | 예약 조회 RPC | 3-3 / R3 | 2개 (#37, #38) | ✅ 완료 |
 | 13 | 리뷰/정산/교육 RPC | 3-3 / R3 | 4개 (#41, #44, #44b, #61) | ✅ 완료 |
 | 14 | 채팅 전환 (WebSocket → Realtime) | 3-4 / R4 | 9개 (#22~#30) | ✅ 완료 |
-| 15 | 결제/예약 전환 | 3-5 / R5 | 5개 (#34~#38) | ✅ 완료 |
+| 15 | 결제/예약 전환 | 3-5 / R5 | 4개 (#34~#36, #39) | ✅ 완료 |
 | 16 | Edge Function 인터페이스 | 3-5 / R5 | 7개 (#25, #34~#36, #39, #1, #66) | ✅ 완료 |
 | A | 부록: 타입 정의 변경 총정리 | 3-6 / R6 | — | ⬜ 예정 |
 | B | 부록: 환경 변수 / 패키지 체크리스트 | 3-6 / R6 | — | ⬜ 예정 |
@@ -1722,7 +1722,7 @@ WHERE cm.chat_room_id = crm.chat_room_id
 ## 15. 결제/예약 전환
 
 > **작성 라운드**: 3-5 / R5
-> **관련 API**: #34~#39 (6개)
+> **관련 API**: #34~#36, #39 (4개 — Edge Function 전환 대상). #37, #38 예약 조회는 §12 참조
 > **핵심 변경**: PHP 콜백 → Edge Function, WebView 콜백 URL 변경
 > **관련 파일**: `app/payment/inicisPayment.tsx`, `app/payment/inicisApproval.tsx`, `app/payment/request.tsx`
 
@@ -1933,9 +1933,11 @@ WHERE cm.chat_room_id = crm.chat_room_id
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `success` | boolean | 성공 여부 |
-| `data.status` | string | 갱신된 예약 상태 (`'돌봄완료'` 또는 기존 상태 유지) |
-| `data.both_confirmed` | boolean | 양측 모두 하원 확인 여부 |
-| `error` | string | 에러 메시지 (실패 시) |
+| `data.status` | string | 갱신된 예약 상태 (`'돌봄완료'` — 양측 확인 완료 시, 또는 기존 상태 유지) |
+| `data.both_confirmed` | boolean | 양측 모두 하원 확인 여부 (`true` 시 돌봄완료 전환됨) |
+| `data.guardian_checkout_confirmed` | boolean | 보호자 하원 확인 여부 |
+| `data.kg_checkout_confirmed` | boolean | 유치원 하원 확인 여부 |
+| `error` | string | 에러 메시지 (실패 시 — 예: 이미 완료된 예약, 권한 없음 등) |
 
 > 📝 코드 예시: `APP_MIGRATION_CODE.md` #39 참조
 
@@ -2451,4 +2453,5 @@ SELECT cron.schedule(
 | 2026-04-18 | **R3 본문 작성** — §11 유치원/보호자 RPC (아키텍처 변경 요약, #17~#20 API 설명 4개, KindergartenDetailType/GuardianDetailType 매핑표), §12 예약 조회 RPC (보호자/유치원 분리 설명, #37~#38 API 설명 2개, PaymentRequestType→ReservationType 매핑표), §13 리뷰/정산/교육 RPC (#41 정산 2개 PHP 통합 설명 + 4파트 구조, #44/#44b 리뷰 태그 집계 + is_guardian_only 분기, #61 교육 이수현황 통합 조회). 총 10개 API TODO 해소 |
 | 2026-04-18 | **R4 본문 작성** — §14 채팅 전환 (14-1~14-10: WebSocket↔Realtime 아키텍처 비교 다이어그램, useChat.ts 리팩터링 가이드 — 제거 대상/전환 후 구조/R2 완료 항목 정리, #22 create_room RPC — SECURITY DEFINER 이유·중복 방지·방 복원, #23 get_rooms RPC — 미읽음 서브쿼리·상대방 프로필 JOIN, #25 send_message Edge Function — 처리 흐름 8단계·입출력 스펙, Realtime postgres_changes 구독 패턴 — RLS 연동·broadcast 차이, Storage chat-files 버킷 연동 — private 버킷·signed URL, 읽음 처리 미읽음 카운트 계산 공식, R2 자동 API 교차 참조 6개, ChatRoomType/MessageType 변경 요약 + WebSocket↔Realtime 비교표). CODE #28/#29 FK 교정 (room_id → chat_room_id) |
 | 2026-04-18 | **R4 리뷰 반영 (Issue 1~4)** — Issue 1: RPC_PHP_MAPPING.md 채팅 RPC 2개 추가·제목 13→15개 (선행 반영 완료). Issue 2: DB_MAPPING_REFERENCE.md `chat_room_members.room_id` → `chat_room_id (FK)` 교정 (sql/41_08 스키마 동기화). Issue 3: MIGRATION_PLAN.md §9-1에 `app_create_chat_room` SECURITY DEFINER 예외 사유 추가 (chat_room_members INSERT RLS 부재·중복 방 검사 시 타 회원 행 SELECT 필요). Issue 4: §14-8 미읽음 카운트 SQL `cm.id >` UUID v4 비교 → `cm.created_at >` 타임스탬프 서브쿼리 비교로 교정 + UUID v4 순서 미보장 경고 노트 추가, MIGRATION_PLAN Step 4 표에 채팅 RPC 2행(4-8, 4-9) 추가 |
+| 2026-04-18 | **R5 리뷰 반영 (Issue 1~2)** — Issue 1: §15 헤더 관련 API 수량 `#34~#39 (6개)` → `#34~#36, #39 (4개)` 교정 + TOC §15 행 동기화 (#37~#38은 §12 참조 안내). Issue 2: §15-5 complete-care 출력 필드 테이블 3→5행 확장 — `data.guardian_checkout_confirmed` (boolean), `data.kg_checkout_confirmed` (boolean) 추가, `data.status`/`error` 설명 보강 |
 | 2026-04-18 | **R5 본문 작성** — §15 결제/예약 전환 (15-1~15-7: 현재↔전환 후 결제 흐름 비교 다이어그램, #34 inicis-callback — WebView P_RETURN_URL 변경·P_NOTI 파라미터·앱 호출 삭제, #35 set_inicis_approval 삭제 — inicis-callback 내부 흡수·앱 3단계→1단계, #36 create-reservation EF — 예약 생성+채팅방 자동 생성+FCM 원자적 처리·생성/업데이트 통합, #39 complete-care EF — 양측 하원 확인 로직·auto_complete, WebView 콜백 URL 변경 상세·P_MID 환경변수 분리, 테스트/상용 MID 전환 가이드). §16 Edge Function 인터페이스 (16-1~16-8: 앱 호출/서버 전용 EF 분류표, 공통 호출 패턴 2종 — JSON body·FormData, HTTP 에러 코드 매핑표, inicis-callback 입력 11필드+HTML 출력 스펙, send-chat-message 8단계 처리 흐름, create-reservation 생성 8단계+업데이트 모드 3분기, complete-care 8단계 처리+auto_complete, send-alimtalk Auth SMS 훅 연동, send-push 범용 FCM — 멀티캐스트+토큰 cleanup, scheduler 5개 처리 항목+알림 중복 방지+pg_cron 설정 예시). 총 4개 API TODO 해소 + 7개 EF 인터페이스 확정 |
