@@ -780,7 +780,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 #### 7-2-2. send-chat-message (채팅 메시지 전송)
 
 ```
-입력: room_id, member_id, content, message_type, file(선택)
+입력: room_id, member_id, content, message_type('text'|'image'|'file'), file(선택)
 처리:
   1. 채팅방 멤버 검증
   2. 파일 있으면 Storage 업로드 → URL 획득
@@ -800,7 +800,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
   2. payments 연결 (payment_approval_id)
   3. room_id 없으면 채팅방 자동 생성 (create_room 로직 재현)
   4. chat_room_reservations INSERT
-  5. chat_messages INSERT (message_type='payment_request')
+  5. chat_messages INSERT (message_type='reservation_request')
   6. Realtime 브로드캐스트
   7. 상대방 FCM 푸시
   8. notifications INSERT

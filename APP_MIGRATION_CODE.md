@@ -2717,8 +2717,8 @@ const sendImageMessage = async (roomId: string, imageFiles: ImagePickerAsset[]) 
 |---|---|---|---|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
-| `image_files` | File[] | ❌ | 이미지 파일 (FormData 전송) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `image_files` | File[] | ❌ | 이미지/파일 (FormData 전송) |
 
 **Edge Function 출력 스펙**:
 
@@ -2746,7 +2746,7 @@ const sendImageMessage = async (roomId: string, imageFiles: ImagePickerAsset[]) 
 | `chat_room_id` | UUID | 채팅방 ID |
 | `sender_id` | UUID | 발신자 ID |
 | `sender_type` | string | `'보호자'` / `'유치원'` / `'시스템'` |
-| `message_type` | string | `'text'` / `'image'` / `'file'` / `'payment_request'` / `'care_start'` / `'care_end'` / `'review'` |
+| `message_type` | string | `'text'` / `'image'` / `'file'` / `'reservation_request'` / `'reservation_confirmed'` / `'care_start'` / `'care_end'` / `'review'` |
 | `content` | string | 메시지 내용 |
 | `image_urls` | string[] \| null | 이미지 URL 배열 |
 | `is_read` | boolean | 읽음 여부 |

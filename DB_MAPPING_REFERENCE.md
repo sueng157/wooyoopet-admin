@@ -318,7 +318,7 @@
 | room_id (FK) | chat_room_id (FK) | ✅ 존재 | |
 | mb_id | sender_id (FK) | ✅ 존재 | 폰번호→uuid |
 | — | sender_type | ✅ 존재 | 보호자/유치원/시스템 |
-| message_type | message_type | ✅ 존재 | 텍스트/이미지/시스템 등 |
+| message_type | message_type | ✅ 존재 | 영문 8종: text/image/file/reservation_request/reservation_confirmed/care_start/care_end/review |
 | content | content | ✅ 존재 | 텍스트 + 이미지 URL 포함 |
 | file_path | — | — | image_urls 컬럼으로 대체됨 |
 | file_type | — | — | message_type으로 구분 |

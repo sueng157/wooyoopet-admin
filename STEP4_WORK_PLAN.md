@@ -78,7 +78,7 @@
 **R2 주요 설계 결정**:
 - `app_create_chat_room`: 역할 판별은 `members.current_mode`로 수행, guardian_id는 보호자 members.id, kindergarten_id는 kindergartens.id(FK)
 - `app_get_chat_rooms`: SECURITY INVOKER 유지 — `chat_room_members` RLS가 상대방 행을 차단하므로 `chat_rooms.guardian_id/kindergarten_id` + `kindergartens.member_id`로 상대방 도출
-- `last_message_type`: chat_rooms 테이블에 컬럼 부재 → chat_messages 서브쿼리로 가장 최근 비시스템 메시지의 message_type 조회
+- `last_message_type`: chat_rooms 테이블에 컬럼 부재 → chat_messages 서브쿼리로 가장 최근 비시스템 메시지의 message_type 조회 (영문 8종: text/image/file/reservation_request/reservation_confirmed/care_start/care_end/review)
 
 ### R3: 채팅 EF (1개)
 
@@ -88,12 +88,18 @@
 |------|---|------|------|--------|
 | 1 | 4-2 | `send-chat-message` | EF | `supabase/functions/send-chat-message/index.ts` |
 
-**R3 완료 기준**:
-- 텍스트/이미지 메시지 전송
+**R3 완료 기준**: ✅ **전항 충족 (2026-04-19 구현 완료, 2026-04-19 배포 완료)**
+- 텍스트/이미지/파일 메시지 전송
 - Storage 업로드 (`chat-files/{room_id}/{msg_id}/`)
 - `chat_messages` INSERT + `chat_rooms` UPDATE
-- `send-push` 내부 호출 (is_muted 체크)
+- `send-push` 내부 호출 (`await` + `try/catch`, is_muted 체크)
 - `notifications` INSERT
+- `message_type` 영문 8종 DB 직접 저장 (`MESSAGE_TYPE_MAP` 제거)
+- `file` 타입 미리보기 분기 (`'동영상을 보냈습니다.'`)
+
+**R3 배포 기록** (2026-04-19):
+- `send-chat-message` EF: `supabase functions deploy send-chat-message` 배포 완료
+- `sql/45_01_chat_messages_type_migration.sql`: Supabase SQL Editor 실행 완료 (한글→영문 CHECK 제약 전환)
 
 ### R4: 결제/돌봄 (3개)
 
@@ -107,7 +113,7 @@
 
 **R4 완료 기준**:
 - `inicis-callback`: PG POST 수신 + `payments` UPSERT + HTML postMessage 반환
-- `create-reservation`: 예약 INSERT + 채팅방 자동생성 + 시스템 메시지 + FCM (생성/상태변경 통합)
+- `create-reservation`: 예약 INSERT + 채팅방 자동생성 + 시스템 메시지 (`reservation_request`/`reservation_confirmed`) + FCM (생성/상태변경 통합)
 - `complete-care`: 양측 하원 확인 로직 + 시스템 메시지 + FCM + `auto_complete_scheduled_at` 설정
 
 ### R5: 스케줄러 (1개)
@@ -423,7 +429,7 @@ Step 4에서 구현하는 서버 코드의 입출력은 Step 3 CODE.md에서 약
 
 #### `send-chat-message` (4-2)
 - **CODE.md #25**: `supabase.functions.invoke('send-chat-message', { body })`
-- **입력**: `{ room_id: UUID, content: string, message_type: 'text'|'image'|'file', image_files?: File[] }`
+- **입력**: `{ room_id: UUID, content: string, message_type: 'text'|'image'|'file', image_files?: File[] }` (DB에는 영문 8종 저장, 사용자 전송용 3종)
 - **출력**: `{ success: true, data: { message_id: UUID, image_urls?: string[] } }` 또는 `{ success: false, error: string }`
 
 #### `inicis-callback` (4-1)

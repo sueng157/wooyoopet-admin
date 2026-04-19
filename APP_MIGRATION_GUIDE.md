@@ -1496,7 +1496,7 @@ useChat.ts (수정 후)
 | `status` | text | '활성' / '비활성' |
 | `last_message` | text | 마지막 메시지 내용 |
 | `last_message_at` | timestamptz | 마지막 메시지 시각 |
-| `last_message_type` | text | 마지막 메시지 타입 (텍스트/이미지/시스템 등) |
+| `last_message_type` | text | 마지막 메시지 타입 (text/image/file/reservation_request 등 영문 8종) |
 | `unread_count` | integer | 미읽음 메시지 수 |
 | `is_muted` | boolean | 알림 차단 여부 |
 | `opponent` | object | 상대방 프로필 (`id`, `nickname`, `profile_image`, `role`) |
@@ -1550,8 +1550,10 @@ useChat.ts (수정 후)
 |------|------|------|------|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 메시지 (이미지 전용이면 빈 문자열 가능) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
-| `image_files` | File[] | ❌ | 이미지 파일 배열 (FormData 전송 시) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `image_files` | File[] | ❌ | 이미지/파일 배열 (FormData 전송 시) |
+
+> ⚠️ **message_type DB 저장값**: DB에는 영문 8종(`text`, `image`, `file`, `reservation_request`, `reservation_confirmed`, `care_start`, `care_end`, `review`)으로 저장됩니다. `sender_type`만 한글(보호자/유치원/시스템) 유지.
 
 **출력 스펙**:
 
@@ -1877,7 +1879,7 @@ WHERE cm.chat_room_id = crm.chat_room_id
 2. `payments` 연결 (`payment_id` ← `inicis-callback`에서 생성된 결제 레코드)
 3. 채팅방 존재 확인 → 없으면 자동 생성 (`app_create_chat_room` RPC 내부 호출)
 4. `chat_room_reservations` INSERT (채팅방↔예약 연결)
-5. `chat_messages` INSERT (`message_type='payment_request'` 시스템 메시지)
+5. `chat_messages` INSERT (`message_type='reservation_request'` 시스템 메시지)
 6. 상대방 FCM 푸시 발송 (`send-push` 내부 호출)
 7. `notifications` INSERT
 
@@ -1908,7 +1910,7 @@ WHERE cm.chat_room_id = crm.chat_room_id
 **업데이트 모드**: `reservation_id`를 추가로 전달하면 UPDATE 모드로 동작합니다.
 - `status='거절'` → `reject_reason`, `reject_detail` 설정 + 시스템 메시지 + FCM
 - `status='취소'` → 위약금 계산 + `refunds` INSERT + 시스템 메시지 + FCM
-- `status='예약확정'` → 시스템 메시지 + FCM
+- `status='예약확정'` → 시스템 메시지 (`message_type='reservation_confirmed'`) + FCM
 
 > 📝 코드 예시: `APP_MIGRATION_CODE.md` #36 참조
 
@@ -2155,8 +2157,8 @@ const { data, error } = await supabase.functions.invoke('send-chat-message', {
 |------|------|------|------|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` |
-| `image_files` | File[] | ❌ | 이미지 파일 배열 (FormData로 전송) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `image_files` | File[] | ❌ | 이미지/파일 배열 (FormData로 전송) |
 
 **EF 내부 처리**:
 1. JWT에서 `sender_id` 추출
@@ -2214,7 +2216,7 @@ const { data, error } = await supabase.functions.invoke('send-chat-message', {
 2. `payments.reservation_id` UPDATE (결제↔예약 연결)
 3. `room_id` 없으면 `app_create_chat_room` RPC 호출 → 채팅방 자동 생성
 4. `chat_room_reservations` INSERT (채팅방↔예약 연결)
-5. `chat_messages` INSERT (`message_type='payment_request'`, 시스템 메시지)
+5. `chat_messages` INSERT (`message_type='reservation_request'`, 시스템 메시지)
 6. Realtime `postgres_changes` 자동 전파 (chat_messages INSERT)
 7. 상대방 `send-push` 호출 (FCM)
 8. `notifications` INSERT
@@ -2629,7 +2631,7 @@ interface ChatMessageType {
   chat_room_id: string
   sender_id: string
   sender_type: '보호자' | '유치원' | '시스템'
-  message_type: 'text' | 'image' | 'file' | 'payment_request' | 'care_start' | 'care_end' | 'review'
+  message_type: 'text' | 'image' | 'file' | 'reservation_request' | 'reservation_confirmed' | 'care_start' | 'care_end' | 'review'
   content: string
   image_urls: string[] | null
   is_read: boolean
