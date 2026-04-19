@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-18 (Step 3 완료 + R6 리뷰 반영 — #60 RPC 전환 확인, Step 4 표 4-10 추가, RPC 16개)
+> 최종 업데이트: 2026-04-19 (Step 4 R5 scheduler 배포 + pg_cron 설정 완료)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -283,7 +283,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 | 4-4 | complete-care (돌봄 완료) | ⬜ 예정 | 중 | 상태 변경 + 시스템 메시지 + FCM |
 | 4-5 | send-alimtalk (카카오 알림톡) | ⬜ 예정 | 중 | 외부 API 키 보호 |
 | 4-6 | send-push (FCM 푸시) | ⬜ 예정 | 중 | Firebase Admin SDK 서버 전용 |
-| 4-7 | scheduler (스케줄러) | ⬜ 예정 | 상 | 자동 상태 변경 + 알림 (cron) |
+| 4-7 | scheduler (스케줄러) | ✅ 배포 완료 | 상 | 자동 상태 변경 + 알림 (cron). EF 배포 + pg_cron 등록 + Vault 시크릿 + scheduler_history 실행 확인 완료 (2026-04-19) |
 | 4-8 | app_create_chat_room (채팅방 생성 RPC) | ⬜ 예정 | 상 | `SECURITY DEFINER` — `chat_room_members` INSERT에 RLS 정책 없음 (RPC 전용 설계), 중복 방 검사·나간 방 복원 로직 포함. §9-1 SECURITY DEFINER 예외 사유 참조 |
 | 4-9 | app_get_chat_rooms (채팅방 목록 RPC) | ⬜ 예정 | 상 | 미읽음 카운트 서브쿼리 (`created_at` 타임스탬프 비교, UUID v4 순서 미보장 → `cm.id >` 비교 사용 금지), 상대방 프로필 JOIN, `chat_room_reservations` COUNT |
 | 4-10 | app_get_blocked_list (차단 목록 RPC) | ⬜ 예정 | 하 | `members` 테이블 RLS(`id = auth.uid()`)로 임베디드 JOIN 시 타인 프로필 `null` 반환 → `SECURITY DEFINER` RPC + `internal.members_public_profile` VIEW 필수. #17, #19, #23, #41과 동일 패턴 |
@@ -976,3 +976,4 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-18 | **Step 3 R6 본문 작성 완료 (Step 3 전체 완료)** — GUIDE 부록 A 타입 정의 변경 총정리 7종 (UserType·PetType·KindergartenType·ReservationType·ChatRoomType/ChatMessageType·SettlementSummaryResponse·GuardianReviewsResponse/KindergartenReviewsResponse) + 부록 B 환경변수/패키지 체크리스트 완성 (env 6개·패키지 4개·삭제 파일 3개·신규 파일 3개·전환 검증 15항목). CODE §9~12 (15개 API Before/After 코드 완성 — 즐겨찾기 #46~#49 UPSERT/UPDATE 패턴, 알림 #50~#52 FCM/notifications CRUD, 콘텐츠 #53~#57 공개 읽기+임베디드 JOIN, 차단 #58~#60 INSERT/DELETE 토글+maybeSingle). GUIDE §6 banners/notices 컬럼명 교정 (visible→visibility). **전체 66개 API 전환 코드 확정, 0개 TODO 잔존** |
 | 2026-04-18 | **Step 3 R6 리뷰 반영** — #60 `get_blocked_list.php` 임베디드 JOIN → RPC `app_get_blocked_list` 전환 필수 확인 (`members` RLS `id=auth.uid()` 제약으로 타인 프로필 null 반환). Step 4 표에 4-10 행 추가 (SECURITY DEFINER + internal.members_public_profile VIEW, 난이도 하). RPC_PHP_MAPPING.md #15 행 추가 (15→16개). DB_MAPPING_REFERENCE.md member_blocks 컬럼 상세 추가. GUIDE/CODE Phase A/B API 수 교정 (44→43, 14→15) |
 | 2026-04-18 | **Step 3 전수 검수 완료 + 이슈 수정** — REVIEW_REPORT.md 작성 (4대 점검: 코드 명확성·일관성 R1~R6·DB 스키마 정합성·Step 4 함수 추적). 발견 이슈 [치명] 3건 + [중요] 2건 전체 수정 완료: C1(#62 education_completions UPSERT 전면 재작성 — member_id/topic_id → kindergarten_id/topic_details JSONB), C2(#63 banks is_active → use_yn), C3(#43 settlement_infos onConflict member_id → kindergarten_id), I1(#57 term_versions version → version_number), I3(#42 응답 매핑 복붙 가능 코드 예시 추가). I2(terms slug 오보) 제거. [경미] 3건 + [제안] 4건은 현행 유지 |
+| 2026-04-19 | **Step 4 R5 scheduler 배포 + pg_cron 설정 완료** — scheduler EF 배포 (`--no-verify-jwt`), pg_cron·pg_net 확장 활성화, `sql/47_01_scheduler_cron_setup.sql` 실행 (Vault 방식 시크릿 관리), cron Job 등록 확인 (scheduler-every-5min, jobid=1, active=true). scheduler_history 정상 실행 확인 (care_start 1건 + care_end 2건 처리, 중복 방지 정상). Step 4 표 4-7 상태 ✅ 배포 완료로 업데이트 |

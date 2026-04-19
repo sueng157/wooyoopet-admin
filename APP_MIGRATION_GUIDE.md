@@ -2365,20 +2365,27 @@ const { data, error } = await supabase.functions.invoke('send-chat-message', {
 **cron 설정 방법** (2가지):
 
 ```sql
--- 방법 1: Supabase pg_cron 확장 (권장)
+-- 방법 1: Supabase pg_cron + Vault (권장, 실제 적용 완료)
+-- Step 1: Vault에 시크릿 저장
+SELECT vault.create_secret('https://ieeodlkvfnjikdpcumfa.supabase.co', 'project_url');
+SELECT vault.create_secret('실제_SERVICE_ROLE_KEY', 'service_role_key');
+
+-- Step 2: cron Job 등록 (Vault에서 시크릿 참조)
 SELECT cron.schedule(
   'scheduler-every-5min',
   '*/5 * * * *',
   $$
   SELECT net.http_post(
-    url := current_setting('app.settings.supabase_url') || '/functions/v1/scheduler',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url') || '/functions/v1/scheduler',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key')
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key')
     ),
     body := '{}'::jsonb
-  );
+  ) AS request_id;
   $$
 );
+-- 상세: sql/47_01_scheduler_cron_setup.sql 참조
 ```
 
 ```bash
@@ -2810,3 +2817,4 @@ yarn remove @tosspayments/widget-sdk-react-native
 | 2026-04-18 | **R5 본문 작성** — §15 결제/예약 전환 (15-1~15-7: 현재↔전환 후 결제 흐름 비교 다이어그램, #34 inicis-callback — WebView P_RETURN_URL 변경·P_NOTI 파라미터·앱 호출 삭제, #35 set_inicis_approval 삭제 — inicis-callback 내부 흡수·앱 3단계→1단계, #36 create-reservation EF — 예약 생성+채팅방 자동 생성+FCM 원자적 처리·생성/업데이트 통합, #39 complete-care EF — 양측 하원 확인 로직·auto_complete, WebView 콜백 URL 변경 상세·P_MID 환경변수 분리, 테스트/상용 MID 전환 가이드). §16 Edge Function 인터페이스 (16-1~16-8: 앱 호출/서버 전용 EF 분류표, 공통 호출 패턴 2종 — JSON body·FormData, HTTP 에러 코드 매핑표, inicis-callback 입력 11필드+HTML 출력 스펙, send-chat-message 8단계 처리 흐름, create-reservation 생성 8단계+업데이트 모드 3분기, complete-care 8단계 처리+auto_complete, send-alimtalk Auth SMS 훅 연동, send-push 범용 FCM — 멀티캐스트+토큰 cleanup, scheduler 5개 처리 항목+알림 중복 방지+pg_cron 설정 예시). 총 4개 API TODO 해소 + 7개 EF 인터페이스 확정 |
 | 2026-04-18 | **R6 본문 작성** — 부록 A 타입 정의 변경 총정리 (A-1 UserType: Session 통합·mb_* 매핑 13개, A-2 PetType: wr_*→정규 컬럼 15개·boolean/배열 변환, A-3 KindergartenType: 가격 12개 분리·KindergartenDetailResponse 구조, A-4 ReservationType: 날짜 통합·결제/환불 테이블 분리, A-5 ChatRoomType/ChatMessageType: WebSocket→Realtime 필드 매핑·opponent 구조화, A-6 SettlementSummaryResponse: 4파트 구조, A-7 ReviewType: GuardianReviewsResponse/KindergartenReviewsResponse 태그 집계). 부록 B 환경변수/패키지 체크리스트 완성 (B-1 env 6개·B-2 패키지 4개·B-3 삭제 파일 3개·B-4 신규 파일 3개·B-5 전환 검증 체크리스트 15항목). CODE §9~12 (15개 API) 동시 작성 — 즐겨찾기 #46~#49 UPSERT/UPDATE 패턴, 알림 #50~#52 FCM UPSERT/SELECT/DELETE, 콘텐츠 #53~#57 공개 읽기 패턴·.single() 주의·임베디드 JOIN, 차단 #58~#60 INSERT/DELETE 토글·.maybeSingle()·members JOIN |
 | 2026-04-18 | **R6 리뷰 반영 (수정 1~5)** — 수정 1: CODE.md #60 RLS 경고 헤더 추가 + 전환 방식 `자동 API` → `RPC app_get_blocked_list` 변경 + 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동 + After 코드 RPC 호출로 교체 + 응답 매핑 플랫 구조 반영. 수정 2: GUIDE.md §7-2 신설 — `members` RLS 제약 설명 + RPC 전환 방향·SECURITY DEFINER·internal VIEW 사용 근거·Step 4 구현 시점 명시 + §7 표 #60 행 업데이트. 수정 3: MIGRATION_PLAN.md Step 4 표에 4-10 행 추가 (`app_get_blocked_list`, 난이도 하, RLS 제약 사유). 수정 4: RPC_PHP_MAPPING.md #15 행 추가 (`app_get_blocked_list`, `get_blocked_list.php`→SECURITY DEFINER + internal VIEW), 제목 15→16개, 섹션명 변경, 변경 이력 추가. 수정 5: DB_MAPPING_REFERENCE.md §3-1에 `member_blocks` 컬럼 상세 테이블 추가 (5컬럼 + RLS 정책 4개 + RLS 제약 사항 설명). Phase A/B API 수 교정 (Phase A: 44→43, Phase B: 14→15, #60 이동). B-5 체크리스트 RPC 수 14→15 교정 |
+| 2026-04-19 | **Step 4 R5 배포 반영** — §16-8 cron 설정 방법을 Vault 방식으로 교체 (기존 `current_setting` 방식 → `vault.create_secret` + `vault.decrypted_secrets` 조회). `sql/47_01_scheduler_cron_setup.sql` 참조 추가. scheduler EF 배포 완료·pg_cron 등록 완료·실행 확인 완료 반영 |
