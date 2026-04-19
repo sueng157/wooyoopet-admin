@@ -29,7 +29,7 @@
 | 4-10 | `app_get_blocked_list` (차단 목록) | RPC | 하 | — | ✅ R1 SQL 실행 완료 |
 | 4-8 | `app_create_chat_room` (채팅방 생성) | RPC | 상 | — | ✅ R2 구현 완료 |
 | 4-9 | `app_get_chat_rooms` (채팅방 목록) | RPC | 상 | 4-8 | ✅ R2 구현 완료 |
-| 4-2 | `send-chat-message` (채팅 메시지) | EF | 상 | 4-6 | ⬜ 예정 |
+| 4-2 | `send-chat-message` (채팅 메시지) | EF | 상 | 4-6 | ✅ R3 배포 완료 |
 | 4-1 | `inicis-callback` (결제 콜백) | EF | 상 | — | ⬜ 예정 |
 | 4-3 | `create-reservation` (예약 생성) | EF | 상 | 4-6, 4-8 | ⬜ 예정 |
 | 4-4 | `complete-care` (돌봄 완료) | EF | 중 | 4-6 | ⬜ 예정 |
