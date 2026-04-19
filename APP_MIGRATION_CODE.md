@@ -5826,8 +5826,15 @@ const fetchBlockedList = async () => {
       Alert.alert('오류', error.message)
       return
     }
-    setBlockedUsers(data)
-    // data[].blocked_id, data[].nickname, data[].profile_image, data[].blocked_at
+
+    // RPC 응답: { success, data: [{ blocked_id, nickname, profile_image, blocked_at }] }
+    if (!data?.success) {
+      Alert.alert('오류', data?.error ?? '차단 목록을 불러올 수 없습니다')
+      return
+    }
+
+    setBlockedUsers(data.data)
+    // data.data[].blocked_id, data.data[].nickname, data.data[].profile_image, data.data[].blocked_at
   } catch (error) {
     Alert.alert('오류', '차단 목록을 불러올 수 없습니다')
   }
@@ -5861,17 +5868,18 @@ const { data, error } = await supabase
 - `mb_id` 파라미터 **제거** — RPC 내부에서 `auth.uid()`로 `blocker_id` 자동 필터
 - ~~임베디드 JOIN~~ → **RPC `app_get_blocked_list`**: `member_blocks` + `internal.members_public_profile` VIEW를 SECURITY DEFINER RPC 내부에서 JOIN. RLS 제약을 안전하게 우회하여 차단 대상의 공개 프로필(nickname, profile_image)만 반환
 - **SECURITY DEFINER 사용 이유**: `members` 테이블 RLS(`id = auth.uid()`)가 타인 행 SELECT를 차단하므로, RPC 내부에서 `internal.members_public_profile` VIEW(공개 필드만 포함)를 통해 조회. 금융 정보·주소 상세 등 민감 정보는 VIEW에서 제외되어 비노출
-- RPC 예상 반환 구조: `{ blocked_id, nickname, profile_image, blocked_at }[]` — 중첩 객체가 아닌 **플랫 구조** (기존 #17, #19, #23, #41과 동일 패턴)
+- RPC 반환 구조: `{ success: true, data: [{ blocked_id, nickname, profile_image, blocked_at }] }` — `success`/`data` 래핑 + 내부 배열은 플랫 구조 (기존 #17, #19, #23, #41과 동일 패턴)
+- ⚠️ `data?.success` 체크 필수: 다른 모든 RPC와 동일하게, Supabase 전송 에러(`error`)와 비즈니스 에러(`data.success===false`)를 구분하여 이중 체크 수행
 
 **응답 매핑**:
 
 | PHP 응답 필드 | Supabase RPC 응답 필드 | 변환 필요 |
 |---|---|---|
-| `result` (`'Y'`/`'N'`) | `error` (`null`이면 성공) | 예 |
-| `data[].mb_id` (폰번호) | `data[].blocked_id` (UUID) | 예 — 키·타입 변경 |
-| `data[].mb_nick` | `data[].nickname` | 예 — 키 변경 (플랫 구조) |
-| `data[].mb_profile1` (파일명) | `data[].profile_image` (전체 URL) | 예 — 키 변경 + URL 형식 |
-| — | `data[].blocked_at` | — (신규: 차단 일시) |
+| `result` (`'Y'`/`'N'`) | `data.success` (boolean) | 예 |
+| `data[].mb_id` (폰번호) | `data.data[].blocked_id` (UUID) | 예 — 키·타입 변경 |
+| `data[].mb_nick` | `data.data[].nickname` | 예 — 키 변경 (플랫 구조) |
+| `data[].mb_profile1` (파일명) | `data.data[].profile_image` (전체 URL) | 예 — 키 변경 + URL 형식 |
+| — | `data.data[].blocked_at` | — (신규: 차단 일시) |
 
 ---
 

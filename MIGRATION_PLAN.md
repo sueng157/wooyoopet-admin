@@ -1,6 +1,6 @@
 # 우유펫 모바일 앱 백엔드 마이그레이션 설계서
 
-> 최종 업데이트: 2026-04-19 (Step 4 R5 scheduler 배포 + pg_cron 설정 완료)
+> 최종 업데이트: 2026-04-19 (Step 4 전체 완료 — EF 7개 + RPC 3개 구현·배포·검증 완료)
 > 목적: PHP/MariaDB → Supabase 전환을 위한 상세 설계 및 작업 추적
 > 관련 문서: `HANDOVER.md` (Phase 5), `MOBILE_APP_ANALYSIS.md` (앱 소스 분석), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
 
@@ -253,7 +253,7 @@ TODO placeholder 112개(GUIDE 45 + CODE 67)를 실제 내용으로 채우는 작
 > ■ 작업 브랜치: genspark_ai_developer (main 절대 금지, PR은 별도 요청 시에만)
 > ```
 >
-> **완료**: R1~R6 본문 작성 + 전체 리뷰 반영 완료. GUIDE §1~16 + 부록 A·B + CODE §1~§13 전체 확정. 66개 API 전환 코드 완성, RPC 16개 확정 (Step 2.5: 13개 + Step 4 추가: 3개).
+> **완료**: R1~R6 본문 작성 + 전체 리뷰 반영 완료. GUIDE §1~16 + 부록 A·B + CODE §1~§13 전체 확정. 66개 API 전환 코드 완성, RPC 16개 확정 (Step 2.5: 13개 + Step 4 추가: 3개). **Step 4 완료**: EF 7개 + RPC 3개 구현·배포·검증 완료. R6 크로스체크 PASS (Step 3 가이드 정합성 확인 완료).
 
 #### 전환 권장 순서 (외주 개발자 실제 작업 순서)
 
@@ -271,22 +271,24 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
   → inicis_payment, set_payment_request, set_care_complete 등
 ```
 
-### Step 4: Edge Functions 구현 ⬜ 예정
+### Step 4: Edge Functions + RPC 구현 ✅ 완료
 
-**목표**: 앱에서 직접 처리할 수 없는 서버 사이드 로직을 Supabase Edge Functions로 구현한다.
+**목표**: 앱에서 직접 처리할 수 없는 서버 사이드 로직을 Supabase Edge Functions(Deno TypeScript)와 추가 RPC(PostgreSQL)로 구현한다.
 
-| # | 기능 | 상태 | 난이도 | 이유 |
+> **완료 (2026-04-19)**: R1~R5 구현·배포 + R6 크로스체크 PASS. 상세 작업계획·인터페이스 체크리스트는 `STEP4_WORK_PLAN.md` 참조.
+
+| # | 기능 | 상태 | 난이도 | 비고 |
 |---|------|------|--------|------|
-| 4-1 | inicis-callback (이니시스 결제 콜백) | ⬜ 예정 | 상 | PG사 → 서버 직접 호출 |
-| 4-2 | send-chat-message (채팅 메시지 전송) | ⬜ 예정 | 상 | Storage + Realtime + FCM 복합 |
-| 4-3 | create-reservation (예약 생성) | ⬜ 예정 | 상 | 예약 + 채팅방 + 시스템 메시지 + FCM |
-| 4-4 | complete-care (돌봄 완료) | ⬜ 예정 | 중 | 상태 변경 + 시스템 메시지 + FCM |
-| 4-5 | send-alimtalk (카카오 알림톡) | ⬜ 예정 | 중 | 외부 API 키 보호 |
-| 4-6 | send-push (FCM 푸시) | ⬜ 예정 | 중 | Firebase Admin SDK 서버 전용 |
-| 4-7 | scheduler (스케줄러) | ✅ 배포 완료 | 상 | 자동 상태 변경 + 알림 (cron). EF 배포 + pg_cron 등록 + Vault 시크릿 + scheduler_history 실행 확인 완료 (2026-04-19) |
-| 4-8 | app_create_chat_room (채팅방 생성 RPC) | ⬜ 예정 | 상 | `SECURITY DEFINER` — `chat_room_members` INSERT에 RLS 정책 없음 (RPC 전용 설계), 중복 방 검사·나간 방 복원 로직 포함. §9-1 SECURITY DEFINER 예외 사유 참조 |
-| 4-9 | app_get_chat_rooms (채팅방 목록 RPC) | ⬜ 예정 | 상 | 미읽음 카운트 서브쿼리 (`created_at` 타임스탬프 비교, UUID v4 순서 미보장 → `cm.id >` 비교 사용 금지), 상대방 프로필 JOIN, `chat_room_reservations` COUNT |
-| 4-10 | app_get_blocked_list (차단 목록 RPC) | ⬜ 예정 | 하 | `members` 테이블 RLS(`id = auth.uid()`)로 임베디드 JOIN 시 타인 프로필 `null` 반환 → `SECURITY DEFINER` RPC + `internal.members_public_profile` VIEW 필수. #17, #19, #23, #41과 동일 패턴 |
+| 4-1 | inicis-callback (이니시스 결제 콜백) | ✅ R4 배포 완료 | 상 | PG사 → 서버 직접 호출. `--no-verify-jwt` 배포. `parseAuthDt`, `raw_response` jsonb |
+| 4-2 | send-chat-message (채팅 메시지 전송) | ✅ R3 배포 완료 | 상 | Storage + Realtime + FCM 복합. `sql/45_01` 한글→영문 CHECK 전환 |
+| 4-3 | create-reservation (예약 생성) | ✅ R4 배포 완료 | 상 | 예약 + 채팅방 + 시스템 메시지 + FCM. `ALLOWED_TRANSITIONS`, `dbStatus` 매핑 |
+| 4-4 | complete-care (돌봄 완료) | ✅ R4 배포 완료 | 중 | 양측 하원 확인 + `auto_complete_scheduled_at` + FCM |
+| 4-5 | send-alimtalk (카카오 알림톡) | ✅ R1 배포 완료 | 중 | Supabase Auth SMS Hook + 루나소프트 API. `--no-verify-jwt` 배포 |
+| 4-6 | send-push (FCM 푸시) | ✅ R1 배포 완료 | 중 | FCM v1 HTTP API 멀티캐스트 + 만료 토큰 정리 + `notifications` INSERT |
+| 4-7 | scheduler (스케줄러) | ✅ R5 배포 완료 | 상 | 5개 Task + CAS-style UPDATE + pg_cron (`*/5 * * * *`) + Vault 시크릿 |
+| 4-8 | app_create_chat_room (채팅방 생성 RPC) | ✅ R2 SQL 실행 완료 | 상 | `SECURITY DEFINER` + UNIQUE(guardian_id, kindergarten_id) + 방 복원 + race condition 처리 |
+| 4-9 | app_get_chat_rooms (채팅방 목록 RPC) | ✅ R2 SQL 실행 완료 | 상 | `SECURITY INVOKER` + 미읽음 `created_at` 비교 + 상대방 프로필 FK 도출 + `reservation_count` |
+| 4-10 | app_get_blocked_list (차단 목록 RPC) | ✅ R1 SQL 실행 완료 | 하 | `SECURITY DEFINER` + `internal.members_public_profile` VIEW JOIN |
 
 > **변경 사항 (2026-04-14)**:
 > - ~~address-proxy~~ 삭제: 앱에서 카카오 주소 API를 직접 호출하고 있으며(`kakao-address.php`는 단순 프록시), 네이버 역지오코딩은 앱에서 미사용 확인. 카카오 주소 검색은 앱 클라이언트에서 JavaScript API로 직접 처리 가능.
@@ -977,3 +979,4 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-18 | **Step 3 R6 리뷰 반영** — #60 `get_blocked_list.php` 임베디드 JOIN → RPC `app_get_blocked_list` 전환 필수 확인 (`members` RLS `id=auth.uid()` 제약으로 타인 프로필 null 반환). Step 4 표에 4-10 행 추가 (SECURITY DEFINER + internal.members_public_profile VIEW, 난이도 하). RPC_PHP_MAPPING.md #15 행 추가 (15→16개). DB_MAPPING_REFERENCE.md member_blocks 컬럼 상세 추가. GUIDE/CODE Phase A/B API 수 교정 (44→43, 14→15) |
 | 2026-04-18 | **Step 3 전수 검수 완료 + 이슈 수정** — REVIEW_REPORT.md 작성 (4대 점검: 코드 명확성·일관성 R1~R6·DB 스키마 정합성·Step 4 함수 추적). 발견 이슈 [치명] 3건 + [중요] 2건 전체 수정 완료: C1(#62 education_completions UPSERT 전면 재작성 — member_id/topic_id → kindergarten_id/topic_details JSONB), C2(#63 banks is_active → use_yn), C3(#43 settlement_infos onConflict member_id → kindergarten_id), I1(#57 term_versions version → version_number), I3(#42 응답 매핑 복붙 가능 코드 예시 추가). I2(terms slug 오보) 제거. [경미] 3건 + [제안] 4건은 현행 유지 |
 | 2026-04-19 | **Step 4 R5 scheduler 배포 + pg_cron 설정 완료** — scheduler EF 배포 (`--no-verify-jwt`), pg_cron·pg_net 확장 활성화, `sql/47_01_scheduler_cron_setup.sql` 실행 (Vault 방식 시크릿 관리), cron Job 등록 확인 (scheduler-every-5min, jobid=1, active=true). scheduler_history 정상 실행 확인 (care_start 1건 + care_end 2건 처리, 중복 방지 정상). Step 4 표 4-7 상태 ✅ 배포 완료로 업데이트 |
+| 2026-04-19 | **Step 4 전체 완료** — EF 7개 (send-push, send-alimtalk, send-chat-message, inicis-callback, create-reservation, complete-care, scheduler) + RPC 3개 (app_get_blocked_list, app_create_chat_room, app_get_chat_rooms) 구현·배포·검증 완료. R6 크로스체크 PASS: EF/RPC 명칭·파라미터·JSON 구조·에러 패턴·GUIDE §14~16 설계·§7-2 상세 설계 정합성 전수 검증. Step 3 가이드 (APP_MIGRATION_GUIDE.md, APP_MIGRATION_CODE.md) 와의 정합성 확인 완료. 경미 수정 1건 (CODE.md #60 `data?.success` 체크 추가). Step 4 표 전항 ✅ 완료로 업데이트. `STEP4_R6_CROSSCHECK_REPORT.md` 별도 보고서 불필요 — 검증 결과는 본 문서 및 STEP4_WORK_PLAN.md 변경 이력에 기록 |

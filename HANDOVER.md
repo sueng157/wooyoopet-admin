@@ -33,7 +33,8 @@
   - Step 2 SQL 실행 완료 → 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개 (PR #123)
   - Step 2.5 앱용 RPC 완료 → RPC 13개 + VIEW 3개 + DDL ALTER 1개, 총 15개 SQL 파일 (PR #133~#137)
   - Step 3 앱 API 전환 가이드 완료 → APP_MIGRATION_GUIDE.md (2,804줄) + APP_MIGRATION_CODE.md (6,374줄), 66개 API Before/After 코드 + 전수 검수 REVIEW_REPORT.md
-  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 66개 + Edge Functions 7개 + 앱용 RPC 13개 + Step 4 예정 RPC 3개·EF 7개
+  - Step 4 Edge Functions 구현 완료 → EF 7개 배포 + RPC 3개 SQL 실행 + R6 크로스체크 검증 PASS (Step 3 가이드 정합성 확인 완료)
+  - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 66개 + Edge Functions 7개 + 앱용 RPC 16개 (Step 2.5: 13개 + Step 4: 3개)
   ↓
 [예정] Phase 6: 기존 서버 해지 및 정리
 ```
@@ -44,7 +45,7 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~2 완료, Step 2.5 완료, Step 3 완료, PR #118~#137)
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~4 완료, Step 5 통합테스트 예정)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
 - **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
@@ -1118,7 +1119,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 ### Phase 5: 모바일 앱 백엔드 전환
 
-> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계), `DB_MAPPING_REFERENCE.md` (DB 전체 매핑 대조표), `DB_FUNCTIONS.md` (Supabase RPC 함수 목록), `RPC_PHP_MAPPING.md` (RPC↔PHP 대응표 16개), `APP_MIGRATION_GUIDE.md` (앱 전환 가이드 66개 API), `APP_MIGRATION_CODE.md` (앱 전환 코드 66개 API), `REVIEW_REPORT.md` (Step 3 전수 검수 보고서), `legacy_php_api_all.txt` (PHP API 소스 전문 8,034줄)
+> 참조 문서: `MOBILE_APP_ANALYSIS.md` (앱 소스 분석 보고서), `MIGRATION_PLAN.md` (마이그레이션 상세 설계), `DB_MAPPING_REFERENCE.md` (DB 전체 매핑 대조표), `DB_FUNCTIONS.md` (Supabase RPC 함수 목록), `RPC_PHP_MAPPING.md` (RPC↔PHP 대응표 16개), `APP_MIGRATION_GUIDE.md` (앱 전환 가이드 66개 API), `APP_MIGRATION_CODE.md` (앱 전환 코드 66개 API), `REVIEW_REPORT.md` (Step 3 전수 검수 보고서), `STEP4_WORK_PLAN.md` (Step 4 작업계획서·EF/RPC 인터페이스), `legacy_php_api_all.txt` (PHP API 소스 전문 8,034줄)
 
 #### 수집 자료 현황
 
@@ -1152,7 +1153,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-7a | 외주개발자 PHP 용도 확인 | ✅ 확인 완료 | RPC_PHP_MAPPING.md 전달 → 확인 완료 (2026-04-17). 확인 내용 대로 Step 2.5 작업 반영 완료 |
 | 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ✅ 완료 | APP_MIGRATION_GUIDE.md (2,804줄, §0~16 + 부록 A·B) + APP_MIGRATION_CODE.md (6,374줄, §1~13 + 부록). 66개 API Before/After 코드 완성, TODO 0건. R1~R6 6라운드 작성 + 라운드별 리뷰 반영 |
 | 5-8a | Step 3 전수 검수 (REVIEW_REPORT) | ✅ 완료 | REVIEW_REPORT.md 작성. 4대 점검(코드 명확성, 일관성 R1~R6, DB 스키마 정합성, Step 4 함수 추적) 완료. 발견 이슈: [치명] 3건 + [중요] 2건 → 전체 수정 완료. DDL 대조 컬럼 불일치 5건 교정, 응답 매핑 보강 |
-| 5-9 | Edge Functions 구현 (Step 4) | ⬜ 예정 | 7개: inicis-callback, send-chat-message, create-reservation, complete-care, send-alimtalk, send-push, scheduler |
+| 5-9 | Edge Functions + RPC 구현 (Step 4) | ✅ 완료 | EF 7개 (send-push, send-alimtalk, send-chat-message, inicis-callback, create-reservation, complete-care, scheduler) + RPC 3개 (app_get_blocked_list, app_create_chat_room, app_get_chat_rooms). R1~R5 구현·배포 완료 (2026-04-18~19). R6 크로스체크 PASS — Step 3 가이드 정합성 검증 완료. `STEP4_WORK_PLAN.md` 참조 |
 | 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
 | 5-11 | 채팅 전환 | ⬜ 예정 | 카페24 WebSocket → Supabase Realtime |
 | 5-12 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
@@ -1167,7 +1168,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 > - APP_MIGRATION_CODE.md (6,374줄): 66개 API Before/After 코드 + 응답 매핑 테이블 + 부록(Storage 업로드 공통 유틸)
 > - REVIEW_REPORT.md: 4대 점검 완료 — [치명] 3건 + [중요] 2건 전체 수정 완료 (C1: #62 education_completions UPSERT 재작성, C2: #63 banks use_yn 교정, C3: #43 settlement_infos onConflict 교정, I1: #57 term_versions version_number 교정, I3: #42 응답 매핑 코드 예시 추가)
 > - R1~R6 6라운드 작성 + 라운드별 리뷰 반영, TODO 0건, 외주 개발자 복사-붙여넣기 가능 수준 확인
-> - 다음 단계: Step 4 (Edge Functions 7개 + RPC 3개 구현) → Step 4 완료 후 Step 3 문서 크로스체크 예정
+> **Step 4 완료 (2026-04-19)**: EF 7개 + RPC 3개 구현·배포 완료. R6 크로스체크 PASS (Step 3 가이드 정합성 검증 완료). 다음 단계: Step 5 통합 테스트
 
 #### Phase 5 진행 이력
 
@@ -1186,6 +1187,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #135 | SQL 7개 + RLS 보강 + 문서 3개 | **Step 2.5 추가 6개 RPC + 문서 갱신** — sql/44_05(예약목록 보호자), sql/44_05b(예약목록 유치원, 신규 분리), sql/44_06(예약상세 + refunds), sql/44_09(보호자 후기 + 태그집계), sql/44_10(정산요약, get_settlement_list.php 흡수), sql/44_12(유치원 후기 + is_guardian_only). sql/43_01 settlements RLS 보강. 총 RPC 12→13개(#5b 추가), 10/13 완료 |
 | #136 | SQL 3개 + VIEW 리팩터링 | **Step 2.5 #3 보호자 상세 + #4 보호자 목록 + VIEW/RPC 일괄 리팩터링** — sql/44_03, sql/44_04 생성. members_public_profile VIEW 11→9컬럼(name, nickname_tag, created_at 제거, address_building_dong 추가). 기존 RPC 6개에서 owner→operator JSON 키 변경, 불필요 컬럼 제거 |
 | #137 | SQL 2개 | **Step 2.5 #7 회원 탈퇴 + DDL ALTER** — sql/44_07 app_withdraw_member(soft delete: status→'탈퇴', pets.deleted=true, kindergartens.registration_status='withdrawn'). sql/44_00a DDL ALTER(pets.deleted 컬럼 추가, kindergartens CHECK 제약 변경). **Step 2.5 RPC 13/13 전체 완료** |
+| — | Step 3 문서 6개 (GUIDE+CODE+REVIEW) | **Step 3 앱 API 전환 가이드 전체 완료** — R1~R6 6라운드 작성 + 라운드별 리뷰 반영. APP_MIGRATION_GUIDE.md (2,804줄) + APP_MIGRATION_CODE.md (6,374줄) + REVIEW_REPORT.md. 66개 API Before/After 코드 + 전수 검수 완료 |
+| — | Step 4 EF 7개 + RPC 3개 + SQL 3개 + 공통모듈 3개 + STEP4_WORK_PLAN.md | **Step 4 Edge Functions + RPC 전체 완료 (2026-04-18~19)** — R1: send-push + send-alimtalk + app_get_blocked_list. R2: app_create_chat_room + app_get_chat_rooms. R3: send-chat-message. R4: inicis-callback + create-reservation + complete-care. R5: scheduler (pg_cron + Vault). R6: 크로스체크 PASS (Step 3 가이드 정합성 검증 완료). 산출물: `supabase/functions/` 7개 EF + `_shared/` 공통모듈 3개 + `sql/44_13~15` RPC 3개 + `sql/45_01, 46_01, 47_01` 마이그레이션 3개 |
 
 ---
 
