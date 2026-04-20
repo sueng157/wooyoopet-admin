@@ -47,7 +47,7 @@
 | **타입 정의 위치** | `types/` 디렉토리 (기존 구조 유지) | `types/petType.ts` |
 | **hook 파일 위치** | `hooks/` 디렉토리 (기존 구조 유지) | `hooks/usePetList.ts` |
 | **유틸리티 위치** | `utils/` 디렉토리 (기존 구조 유지) | `utils/fetchPartnerList.ts` |
-| **상태 관리** | Jotai atom + MMKV 유지 | `states/userAtom.ts` |
+| **상태 관리** | Jotai atom + AsyncStorage (MMKV에서 전환) | `states/userAtom.ts` |
 | **타입 선언** | `interface` 사용 (기존 앱 코드 관례) | `interface PetType { ... }` |
 | **에러 처리** | `try/catch` + `Alert.alert()` (기존 패턴 유지) | — |
 | **환경 변수 접두사** | `EXPO_PUBLIC_` (Expo 규칙) | `EXPO_PUBLIC_SUPABASE_URL` |
@@ -108,26 +108,22 @@ const { data, error } = await supabase.from('table').select('*');
 // 파일: lib/supabase.ts (신규 생성)
 import 'react-native-url-polyfill/auto'
 import { createClient } from '@supabase/supabase-js'
-import { storage } from '@/storage/storage'  // 기존 MMKV storage 인스턴스
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 
-// MMKV → Supabase Auth storage 어댑터
-// Supabase Auth는 웹 표준(localStorage) 인터페이스를 요구하지만,
-// MMKV는 getString/set/delete 메서드를 사용하므로 이름을 변환해준다.
-const mmkvStorageAdapter = {
-  getItem: (key: string) => storage.getString(key) ?? null,
-  setItem: (key: string, value: string) => storage.set(key, value),
-  removeItem: (key: string) => storage.delete(key),
-}
-
+// AsyncStorage를 Supabase Auth storage로 직접 사용
+// AsyncStorage는 getItem/setItem/removeItem 인터페이스를 이미 지원하므로
+// 별도 어댑터 없이 바로 전달 가능하다.
+// ※ 기존 앱의 MMKV(react-native-mmkv)는 Expo Go 환경에서
+//   JSI/TurboModules 미지원으로 빌드 오류가 발생하여 AsyncStorage로 전환함.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: mmkvStorageAdapter,  // MMKV 어댑터 사용
+    storage: AsyncStorage,         // AsyncStorage 직접 사용 (어댑터 불필요)
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,    // React Native에서는 false
+    detectSessionInUrl: false,     // React Native에서는 false
   },
 })
 ```
@@ -244,7 +240,7 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 │          │ ──────────────→ │ set_join.php     │  ← members UPSERT (가입/주소 업데이트)
 │          │                  │ (POST, FormData) │
 │          │   ④ 로그인 완료   │                  │
-│          │ ←────────────── │ {"result":"Y"}   │  → userAtom에 mb_id(폰번호) 저장 (MMKV)
+│          │ ←────────────── │ {"result":"Y"}   │  → userAtom에 mb_id(폰번호) 저장 (AsyncStorage)
 └─────────┘                  └─────────────────┘
 
 ⚠️ 문제점:
@@ -264,7 +260,7 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 │          │                    │                            │
 │          │   ③ JWT 세션 수신   │                            │
 │          │ ←────────────────  │ { session, user }          │  → access_token + refresh_token
-│          │                    │                            │     MMKV에 자동 저장 (어댑터)
+│          │                    │                            │     AsyncStorage에 자동 저장
 │          │   ④ 회원정보 확인   │                            │
 │          │ ──────────────→   │ members UPSERT             │  ← 신규 회원이면 INSERT
 │          │                    │ (자동 API, JWT 포함)        │     기존 회원이면 SELECT
@@ -347,7 +343,9 @@ yarn remove react-use-websocket   // WebSocket → Supabase Realtime
 
 기존 앱은 `userAtom` (Jotai atom + MMKV)에 `mb_id`(폰번호)를 저장하고, 앱 재시작 시 MMKV에서 복원하여 자동 로그인합니다.
 
-전환 후에는 **Supabase Auth 세션이 MMKV에 자동 저장**됩니다 (§0-4의 MMKV 어댑터).
+전환 후에는 **Supabase Auth 세션이 AsyncStorage에 자동 저장**됩니다 (§0-4 참조).
+
+> ⚠️ **MMKV → AsyncStorage 전환 필요**: 기존 앱의 `react-native-mmkv`(v4.x)는 JSI/TurboModules를 필수로 요구하여 Expo Go 시뮬레이터에서 빌드 오류가 발생합니다. 따라서 영구 저장소를 `@react-native-async-storage/async-storage`(이미 package.json에 설치됨)로 교체합니다. 변경 대상 파일은 `storage/mmkvStorage.ts`, `states/userAtom.ts`, `states/fcmTokenAtom.ts`, `states/notificationConfigAtom.ts` 총 4개이며, 나머지 175개 소스 파일은 수정 불필요합니다.
 
 **기존 userAtom 구조** (추정):
 
@@ -427,7 +425,7 @@ useEffect(() => {
 - `mb_5` → `current_mode`: 값 형태도 변경 (`'1'`→`'보호자'`, `'2'`→`'유치원'`)
 - `mb_profile1` (파일명) → `profile_image` (Storage 전체 URL)
 - `mb_no` (정수) → `id` (UUID): PK 타입 자체가 변경
-- 기존에는 MMKV에 직접 `mb_id`를 저장/복원했으나, 전환 후에는 Supabase Auth 세션이 MMKV 어댑터를 통해 자동 관리됨
+- 기존에는 MMKV에 직접 `mb_id`를 저장/복원했으나, 전환 후에는 Supabase Auth 세션이 AsyncStorage를 통해 자동 관리됨
 
 ### 1-6. 인증 전환 후 영향 범위
 
@@ -459,7 +457,7 @@ const { data, error } = await supabase
 | 데이터 접근 제어 | 없음 (mb_id만 알면 접근 가능) | RLS 정책으로 본인 데이터만 접근 | **자동** |
 | 세션 만료 | 없음 (영구) | access_token 1시간 → refresh_token으로 자동 갱신 | **자동** |
 | 로그아웃 | MMKV에서 mb_id 삭제 | `supabase.auth.signOut()` | 로그아웃 화면 |
-| 앱 재시작 | MMKV에서 mb_id 복원 | MMKV 어댑터가 세션 자동 복원 | **자동** |
+| 앱 재시작 | MMKV에서 mb_id 복원 | AsyncStorage에서 세션 자동 복원 | **자동** |
 
 > **작업 순서 권장**: 인증 전환(§1)과 apiClient 교체(§2)를 가장 먼저 완료하면, 이후 모든 API 전환 작업에서 `supabase` 클라이언트를 사용할 수 있습니다. 이 두 작업은 `apiClient.ts`와 `lib/supabase.ts`가 공존하는 형태로 점진적 전환이 가능합니다 (§2-3 참조).
 
@@ -2752,14 +2750,19 @@ interface KindergartenReviewsResponse {
 |--------|------|------|
 | `@supabase/supabase-js` | **추가** | 핵심 의존성 (v2.x) |
 | `react-native-url-polyfill` | **추가** | Supabase JS 필수 (React Native에서 URL 지원) |
+| `react-native-mmkv` | **제거** (Phase A) | Expo Go 빌드 오류 원인 — AsyncStorage로 전환 (§0-4 참조) |
 | `react-use-websocket` | **제거** (전환 완료 후) | Supabase Realtime으로 대체 (Phase C 완료 후) |
 | `@tosspayments/widget-sdk-react-native` | **제거** | 미사용 확인 (이니시스 확정) |
 
 ```bash
 # 추가 설치
 yarn add @supabase/supabase-js react-native-url-polyfill
+# ※ @react-native-async-storage/async-storage는 이미 설치되어 있음 (^2.2.0)
 
-# 제거 (전환 완료 후)
+# Phase A 시작 시 제거 (MMKV → AsyncStorage 전환)
+yarn remove react-native-mmkv
+
+# 전환 완료 후 제거
 yarn remove react-use-websocket
 yarn remove @tosspayments/widget-sdk-react-native
 ```
@@ -2769,6 +2772,7 @@ yarn remove @tosspayments/widget-sdk-react-native
 | 파일 | 이유 | 삭제 시점 |
 |------|------|---------|
 | `utils/apiClient.ts` | Supabase JS로 완전 대체 | Phase D 완료 후 |
+| `storage/mmkvStorage.ts` | AsyncStorage로 전환하면서 교체 (§0-4 참조) | Phase A |
 | `tossPay/` 디렉토리 | 미사용 (이니시스 확정) | 즉시 가능 |
 | `app/payment/tossPay.tsx` | 미사용 | 즉시 가능 |
 
@@ -2782,6 +2786,7 @@ yarn remove @tosspayments/widget-sdk-react-native
 
 ### B-5. 전환 완료 검증 체크리스트
 
+- [ ] **코드 검색**: 전체 소스에서 `react-native-mmkv` import → **0건** 확인 (MMKV 전환 완료)
 - [ ] **코드 검색**: 전체 소스에서 `apiClient` import → **0건** 확인
 - [ ] **코드 검색**: 전체 소스에서 `EXPO_PUBLIC_API_URL` 참조 → **0건** 확인
 - [ ] **코드 검색**: 전체 소스에서 `EXPO_PUBLIC_WEBSOCKET_URL` 참조 → **0건** 확인
@@ -2818,3 +2823,4 @@ yarn remove @tosspayments/widget-sdk-react-native
 | 2026-04-18 | **R6 본문 작성** — 부록 A 타입 정의 변경 총정리 (A-1 UserType: Session 통합·mb_* 매핑 13개, A-2 PetType: wr_*→정규 컬럼 15개·boolean/배열 변환, A-3 KindergartenType: 가격 12개 분리·KindergartenDetailResponse 구조, A-4 ReservationType: 날짜 통합·결제/환불 테이블 분리, A-5 ChatRoomType/ChatMessageType: WebSocket→Realtime 필드 매핑·opponent 구조화, A-6 SettlementSummaryResponse: 4파트 구조, A-7 ReviewType: GuardianReviewsResponse/KindergartenReviewsResponse 태그 집계). 부록 B 환경변수/패키지 체크리스트 완성 (B-1 env 6개·B-2 패키지 4개·B-3 삭제 파일 3개·B-4 신규 파일 3개·B-5 전환 검증 체크리스트 15항목). CODE §9~12 (15개 API) 동시 작성 — 즐겨찾기 #46~#49 UPSERT/UPDATE 패턴, 알림 #50~#52 FCM UPSERT/SELECT/DELETE, 콘텐츠 #53~#57 공개 읽기 패턴·.single() 주의·임베디드 JOIN, 차단 #58~#60 INSERT/DELETE 토글·.maybeSingle()·members JOIN |
 | 2026-04-18 | **R6 리뷰 반영 (수정 1~5)** — 수정 1: CODE.md #60 RLS 경고 헤더 추가 + 전환 방식 `자동 API` → `RPC app_get_blocked_list` 변경 + 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동 + After 코드 RPC 호출로 교체 + 응답 매핑 플랫 구조 반영. 수정 2: GUIDE.md §7-2 신설 — `members` RLS 제약 설명 + RPC 전환 방향·SECURITY DEFINER·internal VIEW 사용 근거·Step 4 구현 시점 명시 + §7 표 #60 행 업데이트. 수정 3: MIGRATION_PLAN.md Step 4 표에 4-10 행 추가 (`app_get_blocked_list`, 난이도 하, RLS 제약 사유). 수정 4: RPC_PHP_MAPPING.md #15 행 추가 (`app_get_blocked_list`, `get_blocked_list.php`→SECURITY DEFINER + internal VIEW), 제목 15→16개, 섹션명 변경, 변경 이력 추가. 수정 5: DB_MAPPING_REFERENCE.md §3-1에 `member_blocks` 컬럼 상세 테이블 추가 (5컬럼 + RLS 정책 4개 + RLS 제약 사항 설명). Phase A/B API 수 교정 (Phase A: 44→43, Phase B: 14→15, #60 이동). B-5 체크리스트 RPC 수 14→15 교정 |
 | 2026-04-19 | **Step 4 R5 배포 반영** — §16-8 cron 설정 방법을 Vault 방식으로 교체 (기존 `current_setting` 방식 → `vault.create_secret` + `vault.decrypted_secrets` 조회). `sql/47_01_scheduler_cron_setup.sql` 참조 추가. scheduler EF 배포 완료·pg_cron 등록 완료·실행 확인 완료 반영 |
+| 2026-04-20 | **MMKV → AsyncStorage 전환 반영** — §0-2 상태 관리 표기 변경, §0-4 Supabase 클라이언트 초기화 코드를 AsyncStorage 직접 전달 방식으로 전면 교체 (mmkvStorageAdapter 제거), §1 인증 흐름 다이어그램 2곳 수정 (MMKV→AsyncStorage), §1-5 userAtom 설명에 MMKV→AsyncStorage 전환 배경·영향 범위 안내 추가 (대상 파일 4개 명시), §1-6 영향 범위 표 1행 수정. 부록 B-2 패키지 변경에 `react-native-mmkv` 제거 행 추가 + yarn 명령어 보강, B-3 삭제 파일에 `storage/mmkvStorage.ts` 추가, B-5 체크리스트에 MMKV import 0건 확인 항목 추가. 전환 사유: `react-native-mmkv` v4.x가 JSI/TurboModules 필수 요구 → Expo Go 시뮬레이터 빌드 오류 발생 → `@react-native-async-storage/async-storage`(이미 package.json에 ^2.2.0 설치됨)로 교체. 서버 사이드(RPC 13개, EF 7개) 수정 없음 확인 완료 |
