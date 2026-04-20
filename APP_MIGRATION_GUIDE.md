@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 가이드
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R6 리뷰 반영 — #60 RLS 제약 확인·RPC 전환 필수, app_get_blocked_list RPC 추가)
+> **최종 업데이트**: 2026-04-21 (create-reservation kindergarten_id 매핑 오류 수정 반영, 부록 A-8 PendingCareRequestType 추가)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **전제 조건**: Supabase 프로젝트 설정 완료, Step 2.5 RPC 13개 배포 완료
 > **관련 문서**: `MIGRATION_PLAN.md` (설계서), `APP_MIGRATION_CODE.md` (코드 예시), `RPC_PHP_MAPPING.md` (RPC 매핑), `DB_MAPPING_REFERENCE.md` (테이블 대조표)
@@ -1887,7 +1887,7 @@ WHERE cm.chat_room_id = crm.chat_room_id
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `kindergarten_id` | UUID | ✅ | 유치원 ID |
+| `kindergarten_id` | UUID | ✅ | 유치원 ID — `kindergartens` 테이블 PK |
 | `pet_id` | UUID | ✅ | 반려동물 ID |
 | `checkin_scheduled` | timestamptz | ✅ | 등원 예정 일시 |
 | `checkout_scheduled` | timestamptz | ✅ | 하원 예정 일시 |
@@ -1895,6 +1895,8 @@ WHERE cm.chat_room_id = crm.chat_room_id
 | `pickup_requested` | boolean | ✅ | 픽드랍 요청 여부 |
 | `payment_id` | UUID | ✅ | 결제 ID (`inicis-callback`에서 반환) |
 | `room_id` | UUID | ❌ | 기존 채팅방 ID (없으면 자동 생성) |
+
+> ⚠️ **`kindergarten_id` 값 주의**: `kindergartens` 테이블의 PK(UUID)를 전달해야 합니다. 유치원 운영자의 `members.id`(UUID)가 **아닙니다**. 앱에서는 `useKinderGarten()` 훅의 `kindergarten?.partner?.id` 값을 사용하세요. (`PendingCareRequestType.kindergartenId` 필드에 저장됨. 기존 `kindergartenMemberId`는 운영자 members UUID이므로 혼동 주의)
 
 **출력 필드**:
 
@@ -2196,7 +2198,7 @@ const { data, error } = await supabase.functions.invoke('send-chat-message', {
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `kindergarten_id` | UUID | ✅ | 유치원 ID |
+| `kindergarten_id` | UUID | ✅ | 유치원 ID — `kindergartens` 테이블 PK (§15-4 주의사항 참조) |
 | `pet_id` | UUID | ✅ | 반려동물 ID |
 | `checkin_scheduled` | string (ISO 8601) | ✅ | 등원 예정 (`'2026-04-20T09:00:00+09:00'`) |
 | `checkout_scheduled` | string (ISO 8601) | ✅ | 하원 예정 |
@@ -2727,6 +2729,44 @@ interface KindergartenReviewsResponse {
 }
 ```
 
+### A-8. PendingCareRequestType 변경 (앱 내부 State — Jotai Atom)
+
+> `states/pendingCareRequestAtom.ts` — 결제/예약 생성 흐름에서 사용되는 앱 내부 상태 타입.
+> DB 테이블 타입은 아니지만, `create-reservation` EF에 전달하는 `kindergarten_id` 값의 출처이므로 기록합니다.
+
+| 기존 필드 | 전환 후 필드 | 변경 유형 | 비고 |
+|---|---|---|---|
+| `kindergartenMemberId` | `kindergartenMemberId` | **유지** | 유치원 운영자 `members.id` (UUID) — 채팅 등 기타 용도 |
+| — (신규) | `kindergartenId` | **추가** | `kindergartens` 테이블 PK (UUID) — EF `create-reservation`에 전달 |
+| `to_mb_id` (참조) | — | **제거** | `payment/index.tsx`에서 잘못 참조하던 필드. `kindergartenId`로 대체 |
+
+```typescript
+// states/pendingCareRequestAtom.ts (전환 후)
+interface PendingCareRequestType {
+  memberId: string
+  kindergartenId: string        // kindergartens 테이블 PK UUID (EF create-reservation 전달용)
+  kindergartenMemberId: string  // 유치원 운영자 members UUID (채팅 등 기타 용도)
+  pet_id: number
+  start_date: string
+  start_time: string
+  end_date: string
+  end_time: string
+  walk_count: number
+  pickup_dropoff: 0 | 1
+  special_request: string
+  price: string
+  roomId: string
+  // ... 표시용 필드 생략
+}
+```
+
+> ⚠️ **관련 수정 파일 (5개)**:
+> - `states/pendingCareRequestAtom.ts` — `kindergartenId` 필드 추가
+> - `app/payment/request.tsx` — `kindergartenId: partner?.id` 저장
+> - `app/payment/index.tsx` — `pendingCare?.to_mb_id` → `pendingCare?.kindergartenId` 교체
+> - `app/payment/approval.tsx` — `pendingCare.kindergartenMemberId` → `pendingCare.kindergartenId` 교체
+> - `app/payment/inicisApproval.tsx` — 동일 교체
+
 ---
 
 ## 부록 B. 환경 변수 / 패키지 체크리스트
@@ -2824,3 +2864,4 @@ yarn remove @tosspayments/widget-sdk-react-native
 | 2026-04-18 | **R6 리뷰 반영 (수정 1~5)** — 수정 1: CODE.md #60 RLS 경고 헤더 추가 + 전환 방식 `자동 API` → `RPC app_get_blocked_list` 변경 + 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동 + After 코드 RPC 호출로 교체 + 응답 매핑 플랫 구조 반영. 수정 2: GUIDE.md §7-2 신설 — `members` RLS 제약 설명 + RPC 전환 방향·SECURITY DEFINER·internal VIEW 사용 근거·Step 4 구현 시점 명시 + §7 표 #60 행 업데이트. 수정 3: MIGRATION_PLAN.md Step 4 표에 4-10 행 추가 (`app_get_blocked_list`, 난이도 하, RLS 제약 사유). 수정 4: RPC_PHP_MAPPING.md #15 행 추가 (`app_get_blocked_list`, `get_blocked_list.php`→SECURITY DEFINER + internal VIEW), 제목 15→16개, 섹션명 변경, 변경 이력 추가. 수정 5: DB_MAPPING_REFERENCE.md §3-1에 `member_blocks` 컬럼 상세 테이블 추가 (5컬럼 + RLS 정책 4개 + RLS 제약 사항 설명). Phase A/B API 수 교정 (Phase A: 44→43, Phase B: 14→15, #60 이동). B-5 체크리스트 RPC 수 14→15 교정 |
 | 2026-04-19 | **Step 4 R5 배포 반영** — §16-8 cron 설정 방법을 Vault 방식으로 교체 (기존 `current_setting` 방식 → `vault.create_secret` + `vault.decrypted_secrets` 조회). `sql/47_01_scheduler_cron_setup.sql` 참조 추가. scheduler EF 배포 완료·pg_cron 등록 완료·실행 확인 완료 반영 |
 | 2026-04-20 | **MMKV → AsyncStorage 전환 반영** — §0-2 상태 관리 표기 변경, §0-4 Supabase 클라이언트 초기화 코드를 AsyncStorage 직접 전달 방식으로 전면 교체 (mmkvStorageAdapter 제거), §1 인증 흐름 다이어그램 2곳 수정 (MMKV→AsyncStorage), §1-5 userAtom 설명에 MMKV→AsyncStorage 전환 배경·영향 범위 안내 추가 (대상 파일 4개 명시), §1-6 영향 범위 표 1행 수정. 부록 B-2 패키지 변경에 `react-native-mmkv` 제거 행 추가 + yarn 명령어 보강, B-3 삭제 파일에 `storage/mmkvStorage.ts` 추가, B-5 체크리스트에 MMKV import 0건 확인 항목 추가. 전환 사유: `react-native-mmkv` v4.x가 JSI/TurboModules 필수 요구 → Expo Go 시뮬레이터 빌드 오류 발생 → `@react-native-async-storage/async-storage`(이미 package.json에 ^2.2.0 설치됨)로 교체. 서버 사이드(RPC 13개, EF 7개) 수정 없음 확인 완료 |
+| 2026-04-21 | **`create-reservation` kindergarten_id 매핑 오류 수정 반영** — §15-4 입력 필드 `kindergarten_id` 설명에 ⚠️ 주의사항 추가 (`kindergartens` 테이블 PK vs 운영자 `members.id` 혼동 방지), §16-4 입력 스펙 테이블에 동일 주의 문구 추가 (§15-4 참조). 부록 A-8 `PendingCareRequestType` 변경 신설 — `kindergartenId` 필드 추가·`kindergartenMemberId` 유지·`to_mb_id` 참조 제거, 관련 수정 파일 5개 목록 기재. CODE.md #36 동시 수정 (코드 주석 보완·변환 포인트 추가·응답 매핑 비고란 교정) |

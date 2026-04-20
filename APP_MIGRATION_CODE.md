@@ -1,7 +1,7 @@
 # 우유펫 모바일 앱 API 전환 코드 예시
 
 > **작성일**: 2026-04-17
-> **최종 업데이트**: 2026-04-18 (R6 완료 — §9~12 즐겨찾기·알림·콘텐츠·차단 15개 API Before/After 코드 완성, 전체 66개 API 코드 확정)
+> **최종 업데이트**: 2026-04-21 (#36 create-reservation kindergarten_id 매핑 오류 수정 반영)
 > **대상 독자**: 외주 개발자 (React Native/Expo 앱 코드 수정 담당)
 > **관련 문서**: `APP_MIGRATION_GUIDE.md` (전환 가이드 — 규칙/표기법/아키텍처 설명), `MIGRATION_PLAN.md` (설계서)
 > **표기 규칙**: `APP_MIGRATION_GUIDE.md §0`의 규칙을 따릅니다
@@ -3538,7 +3538,7 @@ const createReservation = async (paymentId: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('create-reservation', {
       body: {
-        kindergarten_id: kindergartenId,      // 유치원 UUID
+        kindergarten_id: kindergartenId,      // kindergartens 테이블 PK UUID (⚠️ 운영자 members.id가 아님 — partner?.id에서 저장)
         pet_id: selectedPetId,                // 반려동물 UUID
         checkin_scheduled: `${startDate}T${startTime}:00+09:00`,  // ISO 8601
         checkout_scheduled: `${endDate}T${endTime}:00+09:00`,
@@ -3612,6 +3612,7 @@ const updateReservation = async (
 **변환 포인트**:
 - **FormData → JSON body**: `formData.append()` 반복 → `supabase.functions.invoke()` JSON body 1회. `apiClient.post` 제거
 - **`mb_id`/`to_mb_id` 제거**: JWT `auth.uid()`로 자동 식별. `to_mb_id`(유치원 운영자 폰번호) → `kindergarten_id`(유치원 UUID)
+- **`kindergarten_id` 값 출처 변경**: `PendingCareRequestType`에 `kindergartenId` 필드 추가 (`kindergartens` 테이블 PK). 기존 `kindergartenMemberId`(운영자 `members.id`)와 분리. `useKinderGarten()` 훅의 `kindergarten?.partner?.id` 값을 저장하여 사용. 기존 `pendingCare?.to_mb_id` 참조는 `pendingCare?.kindergartenId`로 교체
 - **날짜 형식 통합**: `start_date`(`'2026-04-20'`) + `start_time`(`'09:00'`) 2개 필드 → `checkin_scheduled`(`'2026-04-20T09:00:00+09:00'`) ISO 8601 1개 필드
 - **`pickup_dropoff`**: `'1'`/`'0'` 문자열 → `true`/`false` boolean
 - **`price` 제거**: 결제 금액은 `payments` 테이블에 이미 저장됨 (`payment_id`로 연결). 앱에서 금액을 파라미터로 전달하지 않음 (변조 방지)
@@ -6503,3 +6504,4 @@ export const uploadImages = async (
 | 2026-04-18 | **R6 본문 작성** — §9 즐겨찾기 (#46~#49: UPSERT onConflict 패턴 4개 — 유치원/반려동물 찜 추가 UPSERT·해제 UPDATE is_favorite=false, 용어 변경 partner→kindergarten/animal→pet), §10 알림/FCM (#50: fcm_tokens UPSERT member_id+token UNIQUE, #51: notifications SELECT RLS 자동 필터·type/data jsonb 신규 필드, #52: notifications DELETE 단건+전체·전체 삭제 시 .neq 더미 조건 패턴), §11 콘텐츠 (#53: banners visibility='노출중'·display_order, #54: notices visibility='공개'·is_pinned 우선·.range() 페이지네이션, #55: notices .single() 필수·PGRST116 에러·content HTML, #56: faqs .or() 복합 검색·display_order·category, #57: terms+term_versions 임베디드 JOIN·버전 관리 구조), §12 차단 (#58: member_blocks INSERT/DELETE 분리·23505 중복 무시, #59: .maybeSingle() 차단 여부 확인, #60: members 임베디드 JOIN blocked:members!blocked_id·RLS 주의사항). 총 R6에서 15개 API 코드 완성 — 전체 66개 API 코드 확정 |
 | 2026-04-18 | **R6 리뷰 반영** — #60 전환 방식 `자동 API (임베디드 JOIN)` → `RPC app_get_blocked_list` 변경. `members` 테이블 RLS(`id = auth.uid()`) 제약으로 타인 프로필 임베디드 JOIN 시 `null` 반환 확인 → SECURITY DEFINER RPC + `internal.members_public_profile` VIEW 패턴 적용 (#17, #19, #23, #41과 동일). RLS 경고 헤더 추가, 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동, After 코드 RPC 호출로 교체, 응답 매핑 플랫 구조(중첩 객체 제거) 반영 |
 | 2026-04-18 | **RPC 전수조사 조건부 합격 2건 반영** — M1: #4 `app_withdraw_member` After 코드에 `data?.success` 비즈니스 에러 체크 추가 (ALREADY_WITHDRAWN, HAS_ACTIVE_RESERVATIONS 등 HTTP 200으로 반환되는 에러 누락 방지), 변환 포인트에 이중 체크 필수 항목 추가, 응답 매핑 테이블을 SQL 실제 응답(`data.success`, `data.error`, `data.code`, `data.withdrawn_at`)에 맞게 교체. M2: #16 `app_set_representative_pet` 변환 포인트에 `code` 필드 추가, `reset_count` 최상위 키 위치 설명 주석 보강, `data?.success` 이중 체크 패턴 주석 추가 |
+| 2026-04-21 | **#36 `create-reservation` kindergarten_id 매핑 오류 수정 반영** — After 코드 `kindergarten_id` 주석 보강 (`kindergartens` 테이블 PK UUID임을 명시, 운영자 `members.id` 혼동 방지 경고 추가). 변환 포인트에 `kindergarten_id` 값 출처 변경 항목 추가 (`PendingCareRequestType.kindergartenId` 필드 신설, 기존 `kindergartenMemberId`와 분리, `pendingCare?.to_mb_id` 참조 교체 설명) |
