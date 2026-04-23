@@ -47,7 +47,7 @@
     var filters = opts.filters || [];
     // order 파라미터: string(orderBy) 또는 object({ column, ascending }) 모두 지원
     var orderBy = opts.orderBy || (opts.order && opts.order.column) || 'created_at';
-    var ascending = (opts.ascending === true) || (opts.order && opts.order.ascending === true);
+    var ascending = opts.ascending !== undefined ? opts.ascending === true : !!(opts.order && opts.order.ascending);
     var page = opts.page || 1;
     var perPage = opts.perPage || 20;
     var from = (page - 1) * perPage;
@@ -104,7 +104,7 @@
     var filters = opts.filters || [];
     // order 파라미터: string(orderBy) 또는 object({ column, ascending }) 모두 지원
     var orderBy = opts.orderBy || (opts.order && opts.order.column) || 'created_at';
-    var ascending = (opts.ascending === true) || (opts.order && opts.order.ascending === true);
+    var ascending = opts.ascending !== undefined ? opts.ascending === true : !!(opts.order && opts.order.ascending);
 
     var query = sb.from(table).select(select);
 
