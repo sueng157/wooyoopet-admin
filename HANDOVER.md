@@ -492,15 +492,13 @@ USING (bucket_id = 'notice-attachments');
 | `review-images` | ✅ | author insert/update/delete, all select | `{member_id}/{review_id}/1.jpg` |
 | `chat-files` | ❌ | participants select/insert, admin delete | `{room_id}/{timestamp}_{file}` |
 | `address-docs` | ❌ | owner select/insert/delete | `{member_id}/doc.jpg` |
-| `member-images` | ✅ | owner insert/update/delete, all select | `{member_id}/파일명` |
-
 **기존 버킷 정책 변경**:
 - `education-images`: public insert/delete → **admin 전용** insert/delete (`is_admin()` 체크)
 - `banner-images`, `notice-attachments`: 변경 없음 (관리자 전용 유지)
 
-**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 24개 = 총 **10개 버킷, 24개 앱 정책**
+**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 20개 = 총 **9개 버킷, 20개 앱 정책**
 
-> 업데이트 (2026-04-24): member-images 버킷 추가 (외주개발자 생성 → 정책 정리 후 기존 컨벤션으로 교체, sql/48_03)
+> 업데이트 (2026-04-24): 외주개발자가 생성한 member-images 버킷은 기존 profile-images와 동일 용도(보호자 프로필 사진)로 확인되어 삭제 (sql/48_08). 프로필 사진 업로드는 profile-images 버킷 사용.
 
 ### 5-25. Phase 5 Step 2 SQL 파일 목록 (PR #123)
 
@@ -552,11 +550,12 @@ USING (bucket_id = 'notice-attachments');
 |---------|----------|----------|
 | `48_01_외주개발자_추가실행SQL_원본.sql` | 외주개발자 실행 SQL 원본 기록 (문제점 주석 포함) | ❌ 기록용 (실행 금지) |
 | `48_02_pet_images_policy_cleanup.sql` | pet-images 중복 Storage 정책 삭제 (2건) | ✅ 실행 완료 |
-| `48_03_member_images_policy_cleanup.sql` | member-images 정책 삭제(3건) + 기존 컨벤션 정책 생성(4건) | ✅ 실행 완료 |
+| `48_03_member_images_policy_cleanup.sql` | member-images 정책 삭제(3건) + 기존 컨벤션 정책 생성(4건) → 이후 48_08에서 버킷·정책 전체 삭제 | ✅ 실행 완료 |
 | `48_04_drop_duplicate_address_columns.sql` | address_verified, address_verify_image 중복 컬럼 삭제 (4개) | ✅ 실행 완료 |
 | `48_05_drop_duplicate_rls_policies.sql` | members/pets 중복 RLS 정책 삭제 (4건) | ✅ 실행 완료 |
 | `48_06_rename_new_rls_policies.sql` | members_insert_app, pets_delete_app 네이밍 교체 | ✅ 실행 완료 |
 | `48_07_address_sync_bidirectional_trigger.sql` | 주소인증 양방향 트리거 (members ↔ kindergartens) | ✅ 실행 완료 |
+| `48_08_drop_member_images_bucket.sql` | member-images 버킷 잔여 정책 삭제 (4건) — 버킷은 Dashboard에서 삭제 (profile-images와 중복) | ✅ 실행 완료 |
 
 ### 5-26. Phase 5 Step 2.5 SQL 파일 목록 (PR #133~#137)
 
@@ -1169,8 +1168,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6a | Supabase 신규 테이블 9개 추가 | ✅ 완료 | sql/41_01~41_09 (fcm_tokens, notifications, pet_breeds, banks, favorite_kindergartens, favorite_pets, chat_templates, chat_room_members, scheduler_history) |
 | 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 양방향 동기화 트리거) |
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
-| 5-6d | Storage 버킷 7개 + 정책 24개 | ✅ 완료 | sql/43_02 + sql/48_03 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs, member-images |
-| 5-6g | 외주개발자 추가실행 SQL 검토/정리 | ✅ 완료 | sql/48_01~48_07 — 중복 정책/컬럼 삭제, 네이밍 교체, 양방향 트리거 |
+| 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (member-images는 profile-images 중복으로 삭제, sql/48_08) |
+| 5-6g | 외주개발자 추가실행 SQL 검토/정리 | ✅ 완료 | sql/48_01~48_08 — 중복 정책/컬럼 삭제, 네이밍 교체, 양방향 트리거, member-images 중복 버킷 삭제 |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 13개 설계 삽입 (리뷰 2분리 + 예약목록 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
 | 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ✅ 13/13 완료 | sql/44_00 (VIEW 3개) + sql/44_00a (DDL ALTER) + sql/44_01~44_12 + sql/44_05b — 앱용 RPC 13개 전체 완료. PR #133(초기 4개), #135(추가 6개), #136(#3,#4 + 리팩터링), #137(#7 + DDL). RLS 충돌 해결: VIEW 방식(방안 A) 확정. settlements RLS 보강(sql/43_01) |
