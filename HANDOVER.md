@@ -492,12 +492,15 @@ USING (bucket_id = 'notice-attachments');
 | `review-images` | ✅ | author insert/update/delete, all select | `{member_id}/{review_id}/1.jpg` |
 | `chat-files` | ❌ | participants select/insert, admin delete | `{room_id}/{timestamp}_{file}` |
 | `address-docs` | ❌ | owner select/insert/delete | `{member_id}/doc.jpg` |
+| `member-images` | ✅ | owner insert/update/delete, all select | `{member_id}/파일명` |
 
 **기존 버킷 정책 변경**:
 - `education-images`: public insert/delete → **admin 전용** insert/delete (`is_admin()` 체크)
 - `banner-images`, `notice-attachments`: 변경 없음 (관리자 전용 유지)
 
-**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 20개 = 총 **9개 버킷, 20개 앱 정책**
+**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 24개 = 총 **10개 버킷, 24개 앱 정책**
+
+> 업데이트 (2026-04-24): member-images 버킷 추가 (외주개발자 생성 → 정책 정리 후 기존 컨벤션으로 교체, sql/48_03)
 
 ### 5-25. Phase 5 Step 2 SQL 파일 목록 (PR #123)
 
@@ -523,7 +526,7 @@ USING (bucket_id = 'notice-attachments');
 | `42_02_kindergartens_add_columns.sql` | kindergartens | 3개 | latitude, longitude, registration_status |
 | `42_03_reservations_add_scheduler_columns.sql` | reservations | 4개 | reminder_start/end_sent_at, care_start/end_sent_at + 4개 partial index |
 | `42_04_pets_verify_columns.sql` | pets | 0개(검증) | 기존 14개 컬럼 매핑 확인, DDL 변경 없음 |
-| `42_05_address_doc_urls_sync_trigger.sql` | members→kindergartens | 트리거 | address_doc_urls 동기화 트리거 + 일괄 동기화 |
+| `42_05_address_doc_urls_sync_trigger.sql` | members↔kindergartens | 트리거 | address_doc_urls, address_auth_status, address_auth_date 양방향 동기화 트리거 (48_07에서 양방향 확장) |
 | `42_06_pets_add_draft_birth_columns.sql` | pets | 2개 | is_birth_date_unknown, is_draft + idx_pets_draft 인덱스 |
 
 **Step 2-C: RLS 정책 + Storage** (sql/43_01~43_02)
@@ -534,6 +537,26 @@ USING (bucket_id = 'notice-attachments');
 | `43_02_app_storage_policies.sql` | 318 | Storage 버킷 6개 생성 + 정책 20개, education-images 정책 admin 전용 전환 |
 
 > 총 17개 SQL 파일, 약 2,200줄. 전체 Supabase SQL Editor에서 실행 완료.
+
+### 5-25a. 외주개발자 추가실행 SQL 검토 및 정리 (2026-04-24)
+
+> 외주개발자가 모바일앱 백엔드 연결 작업 중 SQL Editor에서 직접 실행한 SQL을 검토하고 보완/수정한 내역
+
+**발견된 문제점:**
+- Storage 정책: pet-images INSERT 중복 추가 (본인 폴더 제한 없어 기존 보안 무력화), member-images 정책 본인 폴더 제한 누락
+- 테이블 RLS: members SELECT/UPDATE, pets SELECT/UPDATE 기존 정책과 중복 추가
+- 중복 컬럼: address_verified, address_verify_image (기존 address_auth_status, address_doc_urls와 동일 용도)
+- 누락 정책: members INSERT, pets DELETE (필요한 정책이지만 네이밍 컨벤션 불일치)
+
+| SQL 파일 | 주요 내용 | 실행 여부 |
+|---------|----------|----------|
+| `48_01_외주개발자_추가실행SQL_원본.sql` | 외주개발자 실행 SQL 원본 기록 (문제점 주석 포함) | ❌ 기록용 (실행 금지) |
+| `48_02_pet_images_policy_cleanup.sql` | pet-images 중복 Storage 정책 삭제 (2건) | ✅ 실행 완료 |
+| `48_03_member_images_policy_cleanup.sql` | member-images 정책 삭제(3건) + 기존 컨벤션 정책 생성(4건) | ✅ 실행 완료 |
+| `48_04_drop_duplicate_address_columns.sql` | address_verified, address_verify_image 중복 컬럼 삭제 (4개) | ✅ 실행 완료 |
+| `48_05_drop_duplicate_rls_policies.sql` | members/pets 중복 RLS 정책 삭제 (4건) | ✅ 실행 완료 |
+| `48_06_rename_new_rls_policies.sql` | members_insert_app, pets_delete_app 네이밍 교체 | ✅ 실행 완료 |
+| `48_07_address_sync_bidirectional_trigger.sql` | 주소인증 양방향 트리거 (members ↔ kindergartens) | ✅ 실행 완료 |
 
 ### 5-26. Phase 5 Step 2.5 SQL 파일 목록 (PR #133~#137)
 
@@ -1144,9 +1167,10 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-4 | 개발자 관리자페이지 공유 | ✅ 완료 | dev@wooyoopet.com 계정, admin.wooyoopet.com |
 | 5-5 | 전수 분석 & 매핑 설계 | ✅ 완료 | PHP API 95개 전수 읽기 완료 + DB 매핑 (24기존+9신규) + API 전환 매핑 66개 (전수조사 교정) + Edge Functions 7개 설계 → MIGRATION_PLAN.md |
 | 5-6a | Supabase 신규 테이블 9개 추가 | ✅ 완료 | sql/41_01~41_09 (fcm_tokens, notifications, pet_breeds, banks, favorite_kindergartens, favorite_pets, chat_templates, chat_room_members, scheduler_history) |
-| 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 동기화 트리거) |
+| 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 양방향 동기화 트리거) |
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
-| 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (318줄) |
+| 5-6d | Storage 버킷 7개 + 정책 24개 | ✅ 완료 | sql/43_02 + sql/48_03 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs, member-images |
+| 5-6g | 외주개발자 추가실행 SQL 검토/정리 | ✅ 완료 | sql/48_01~48_07 — 중복 정책/컬럼 삭제, 네이밍 교체, 양방향 트리거 |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 13개 설계 삽입 (리뷰 2분리 + 예약목록 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
 | 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ✅ 13/13 완료 | sql/44_00 (VIEW 3개) + sql/44_00a (DDL ALTER) + sql/44_01~44_12 + sql/44_05b — 앱용 RPC 13개 전체 완료. PR #133(초기 4개), #135(추가 6개), #136(#3,#4 + 리팩터링), #137(#7 + DDL). RLS 충돌 해결: VIEW 방식(방안 A) 확정. settlements RLS 보강(sql/43_01) |
@@ -1189,6 +1213,7 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | #137 | SQL 2개 | **Step 2.5 #7 회원 탈퇴 + DDL ALTER** — sql/44_07 app_withdraw_member(soft delete: status→'탈퇴', pets.deleted=true, kindergartens.registration_status='withdrawn'). sql/44_00a DDL ALTER(pets.deleted 컬럼 추가, kindergartens CHECK 제약 변경). **Step 2.5 RPC 13/13 전체 완료** |
 | — | Step 3 문서 6개 (GUIDE+CODE+REVIEW) | **Step 3 앱 API 전환 가이드 전체 완료** — R1~R6 6라운드 작성 + 라운드별 리뷰 반영. APP_MIGRATION_GUIDE.md (2,804줄) + APP_MIGRATION_CODE.md (6,374줄) + REVIEW_REPORT.md. 66개 API Before/After 코드 + 전수 검수 완료 |
 | — | Step 4 EF 7개 + RPC 3개 + SQL 3개 + 공통모듈 3개 + STEP4_WORK_PLAN.md | **Step 4 Edge Functions + RPC 전체 완료 (2026-04-18~19)** — R1: send-push + send-alimtalk + app_get_blocked_list. R2: app_create_chat_room + app_get_chat_rooms. R3: send-chat-message. R4: inicis-callback + create-reservation + complete-care. R5: scheduler (pg_cron + Vault). R6: 크로스체크 PASS (Step 3 가이드 정합성 검증 완료). 산출물: `supabase/functions/` 7개 EF + `_shared/` 공통모듈 3개 + `sql/44_13~15` RPC 3개 + `sql/45_01, 46_01, 47_01` 마이그레이션 3개 |
+| — | SQL 7개 + 문서 2개 (DB_FUNCTIONS, HANDOVER) | **외주개발자 추가실행 SQL 검토 및 정리 (2026-04-24)** — sql/48_01~07. 외주개발자가 모바일앱 백엔드 연결 중 SQL Editor에서 실행한 SQL 검토. 중복 Storage 정책 삭제(pet-images, member-images), 중복 RLS 정책 삭제(members/pets), 중복 컬럼 삭제(address_verified/address_verify_image), 누락 정책 네이밍 교체(members_insert_app, pets_delete_app), 주소인증 양방향 트리거 완성(members ↔ kindergartens) |
 
 ---
 

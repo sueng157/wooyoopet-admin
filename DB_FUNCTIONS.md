@@ -1,6 +1,6 @@
 # 우유펫(WOOYOOPET) DB 함수 목록
 
-> 최종 업데이트: 2026-04-17 (Step 2.5 앱용 RPC 13개 + VIEW 3개 + DDL 추가)
+> 최종 업데이트: 2026-04-24 (주소인증 양방향 동기화 트리거 추가, 외주개발자 추가분 정리)
 
 ---
 
@@ -44,6 +44,8 @@
 | `update_updated_at` | 레코드 수정 시 `updated_at` 자동 갱신 | `trigger` | 연결된 모든 테이블의 `updated_at` 컬럼 | **거의 모든 테이블에 트리거로 연결됨** (아래 트리거 현황 참조) |
 | `set_pet_size_class` | 반려동물 등록/수정 시 `size_class` 자동 계산 | `trigger` | `pets(weight, size_class)` | **weight 기준 자동 계산** — 10kg 미만 = 소형, 10~25kg = 중형, 25kg 이상 = 대형. weight가 NULL이면 size_class도 NULL |
 | `rls_auto_enable` | public 스키마에 테이블 생성 시 RLS 자동 활성화 | `event_trigger` | — | **`CREATE TABLE` 이벤트 트리거.** public 스키마에 테이블 생성 시 자동으로 RLS enable |
+| `sync_address_doc_urls_to_kindergartens` | members 주소인증 변경 시 kindergartens 자동 동기화 | `trigger` | `members(address_doc_urls, address_auth_status, address_auth_date)` → `kindergartens` | **양방향 동기화의 정방향.** address_doc_urls, address_auth_status, address_auth_date 3개 컬럼을 `IS DISTINCT FROM` 조건으로 변경분만 동기화. `SECURITY DEFINER` |
+| `sync_address_status_to_members` | kindergartens 주소인증 변경 시 members 자동 동기화 | `trigger` | `kindergartens(address_doc_urls, address_auth_status, address_auth_date)` → `members` | **양방향 동기화의 역방향.** address_doc_urls, address_auth_status, address_auth_date 3개 컬럼을 `IS DISTINCT FROM` 조건으로 변경분만 동기화. `SECURITY DEFINER`. 무한루프 방지: 값이 동일하면 UPDATE 미실행 |
 
 ---
 
@@ -81,6 +83,18 @@
 | 트리거명 | 테이블명 |
 |----------|----------|
 | `trg_set_pet_size_class` | `pets` |
+
+### `sync_address_doc_urls_to_kindergartens` 트리거 (AFTER UPDATE — 양방향 정방향)
+
+| 트리거명 | 테이블명 | 동기화 방향 |
+|----------|----------|------------|
+| `trg_sync_address_doc_urls` | `members` | members → kindergartens |
+
+### `sync_address_status_to_members` 트리거 (AFTER UPDATE — 양방향 역방향)
+
+| 트리거명 | 테이블명 | 동기화 방향 |
+|----------|----------|------------|
+| `trg_sync_address_to_members` | `kindergartens` | kindergartens → members |
 
 ### `rls_auto_enable` 이벤트 트리거
 
@@ -154,3 +168,5 @@
 | 2026-04-15 | **Step 2.5 시작** — internal 스키마 공개 VIEW 3개 생성 (`members_public_profile`, `pets_public_info`, `settlement_infos_public`). RPC #8 `app_set_representative_pet`, #11 `app_get_education_with_progress`, #1 `app_get_kindergarten_detail`, #2 `app_get_kindergartens` 완료 (PR #133) | `sql/44_00`, `sql/44_01`, `sql/44_02`, `sql/44_08`, `sql/44_11` |
 | 2026-04-16 | Step 2.5 RPC 대량 완성 (10/13) — #5 `app_get_reservations`, #5b `app_get_reservations_kindergarten`(신규 분리), #6 `app_get_reservation_detail`, #9 `app_get_guardian_reviews`(태그 집계 7개), #10 `app_get_settlement_summary`(get_settlement_list.php 흡수), #12 `app_get_kindergarten_reviews`(is_guardian_only 필터) 완료. settlements RLS 보강 (PR #135) | `sql/44_05`, `sql/44_05b`, `sql/44_06`, `sql/44_09`, `sql/44_10`, `sql/44_12`, `sql/43_01` |
 | 2026-04-17 | **Step 2.5 완료 (13/13)** — #3 `app_get_guardian_detail`, #4 `app_get_guardians`, #7 `app_withdraw_member` 완료. DDL ALTER: pets.deleted 컬럼 추가, kindergartens.registration_status CHECK 제약에 'withdrawn' 추가 (PR #136, #137) | `sql/44_03`, `sql/44_04`, `sql/44_07`, `sql/44_00a` |
+| 2026-04-24 | **외주개발자 추가실행 SQL 검토 및 정리** — pet-images 중복 Storage 정책 삭제, member-images 정책 삭제 후 컨벤션 정책 교체, members/pets 중복 RLS 정책 삭제, members_insert_app·pets_delete_app 네이밍 교체 | `sql/48_01`~`sql/48_06` |
+| 2026-04-24 | **주소인증 양방향 트리거 동기화** — 기존 `sync_address_doc_urls_to_kindergartens` 함수에 address_auth_status·address_auth_date 동기화 추가. 역방향 `sync_address_status_to_members` 함수 + `trg_sync_address_to_members` 트리거 신규 생성. members ↔ kindergartens 양방향 완성 | `sql/48_07` |
