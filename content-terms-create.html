@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="css/common.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/contents.css">
+  <!-- Quill 에디터 -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 </head>
 <body>
 <div class="layout">
@@ -45,49 +47,78 @@
 
     <div class="content">
 
+      <!-- 상단 액션바 -->
       <div class="detail-top">
         <a href="contents.html#tab-terms" class="btn-back">← 약관 목록으로</a>
         <div class="detail-actions">
-          
+          <button class="btn-action btn-action--primary" id="btnTermsRegister">등록</button>
         </div>
       </div>
 
+      <!-- Block 1: 약관 기본정보 -->
       <div class="detail-card" id="detailTermsCreate">
-        <div class="detail-card__header"><span class="detail-card__title">새 약관 등록</span></div>
+        <div class="detail-card__header"><span class="detail-card__title">약관 기본정보</span></div>
         <div class="info-grid">
+          <span class="info-grid__label">고유번호</span>
+          <span class="info-grid__value" style="color:var(--text-weak);">(저장 시 자동 생성)</span>
+
           <span class="info-grid__label">약관 제목</span>
-          <span class="info-grid__value"><input type="text" class="form-input" placeholder="약관 제목을 입력하세요"></span>
+          <span class="info-grid__value"><input type="text" class="form-input" id="termsTitle" placeholder="약관 제목을 입력하세요"></span>
 
           <span class="info-grid__label">필수 여부</span>
           <span class="info-grid__value">
-            <select class="form-select"><option>필수</option><option>선택</option></select>
+            <select class="form-select" id="termsRequired">
+              <option value="필수">필수</option>
+              <option value="선택">선택</option>
+            </select>
           </span>
 
           <span class="info-grid__label">버전</span>
-          <span class="info-grid__value"><input type="text" class="form-input form-input--short" placeholder="v1.0"></span>
-
-          <span class="info-grid__label">시행일</span>
-          <span class="info-grid__value"><input type="date" class="form-input form-input--short"></span>
-
-          <span class="info-grid__label">공개 상태</span>
           <span class="info-grid__value">
-            <select class="form-select"><option>비공개</option><option>공개</option></select>
+            <input type="text" class="form-input form-input--short" id="termsVersion" value="v1" readonly style="background:var(--surface-base);color:var(--text-weak);">
           </span>
 
-          <span class="info-grid__label">약관 본문</span>
+          <span class="info-grid__label">시행일</span>
+          <span class="info-grid__value">
+            <input type="text" class="form-input form-input--short" value="공개 전환 시 자동 설정" disabled style="background:var(--surface-base);color:var(--text-weak);">
+          </span>
+
+          <span class="info-grid__label">공개 상태</span>
+          <span class="info-grid__value"><span class="badge badge--c-gray">비공개</span></span>
+        </div>
+      </div>
+
+      <!-- Block 2: 약관 본문 -->
+      <div class="detail-card" style="margin-top:24px;">
+        <div class="detail-card__header"><span class="detail-card__title">약관 본문</span></div>
+        <div class="info-grid">
+          <span class="info-grid__label">본문 내용</span>
           <span class="info-grid__value cnt-full-width">
-            <textarea class="form-textarea form-textarea--tall" rows="16" placeholder="약관 본문을 입력하세요"></textarea>
+            <div id="termsEditorContainer" style="height:400px;"></div>
           </span>
         </div>
       </div>
 
-      <div class="detail-bottom-actions">
-        <button class="btn-action btn-action--primary">등록</button>
-      </div>
     </div>
   </div>
 </div>
 
+<!-- 등록 확인 모달 -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--primary);">약관 등록</div>
+    <div class="modal__message">
+      약관을 등록하시겠습니까?<br>
+      비공개 상태로 저장되며, 이후 상세화면에서 공개 전환할 수 있습니다.
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--confirm-primary" id="btnTermsCreateConfirm">등록</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>

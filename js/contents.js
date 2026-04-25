@@ -125,6 +125,11 @@
     return '<span class="badge badge--c-green">공개</span>';
   }
 
+  function requiredBadge(isRequired) {
+    if (isRequired) return '<span style="color:var(--danger);font-weight:600;">필수</span>';
+    return '<span style="color:var(--text-weak);">선택</span>';
+  }
+
   // ── 배너 ──
   async function loadBannerList() {
     if (!bannerBody) return;
@@ -2426,6 +2431,76 @@
         faqCreateSaved = true;
         alert('FAQ가 등록되었습니다.');
         location.href = 'contents.html#tab-faq';
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // F-2. 약관 등록 (content-terms-create.html)
+  // ══════════════════════════════════════════
+
+  var termsCreateQuill = null;
+
+  async function initTermsCreate() {
+    // Quill 에디터 초기화
+    var editorContainer = document.getElementById('termsEditorContainer');
+    if (editorContainer) {
+      termsCreateQuill = new Quill(editorContainer, {
+        theme: 'snow',
+        placeholder: '약관 본문을 입력하세요',
+        modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ list: 'ordered' }, { list: 'bullet' }], [{ indent: '-1' }, { indent: '+1' }], [{ color: [] }, { background: [] }], ['link'], ['clean']] }
+      });
+    }
+
+    // 등록 버튼 → 필수값 검증 후 모달 열기
+    var btnRegister = document.getElementById('btnTermsRegister');
+    if (btnRegister) {
+      btnRegister.addEventListener('click', function () {
+        var titleEl = document.getElementById('termsTitle');
+        if (!titleEl || !titleEl.value.trim()) {
+          alert('약관 제목을 입력하세요.');
+          if (titleEl) titleEl.focus();
+          return;
+        }
+
+        var contentText = termsCreateQuill ? termsCreateQuill.getText().trim() : '';
+        if (!contentText) {
+          alert('약관 본문을 입력하세요.');
+          return;
+        }
+
+        var modal = document.getElementById('registerModal');
+        if (modal) modal.classList.add('active');
+      });
+    }
+
+    // 등록 모달 확인 버튼
+    var btnConfirm = document.getElementById('btnTermsCreateConfirm');
+    if (btnConfirm) {
+      btnConfirm.addEventListener('click', async function () {
+        var titleEl = document.getElementById('termsTitle');
+        var requiredEl = document.getElementById('termsRequired');
+        var contentHtml = termsCreateQuill ? termsCreateQuill.root.innerHTML : '';
+
+        var data = {
+          title: titleEl.value.trim(),
+          is_required: requiredEl ? requiredEl.value === '필수' : true,
+          current_version: 'v1',
+          effective_date: null,
+          visibility: '비공개',
+          content: contentHtml
+        };
+
+        var res = await api.insertRecord('terms', data);
+        if (res.error) {
+          alert('약관 등록 실패: ' + (res.error.message || '알 수 없는 오류'));
+          return;
+        }
+
+        var newId = (res.data && res.data[0]) ? res.data[0].id : null;
+        if (newId) await api.insertAuditLog('약관등록', 'terms', newId, {});
+        alert('약관이 등록되었습니다.');
+        location.href = 'contents.html#tab-terms';
       });
     }
   }
