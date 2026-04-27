@@ -68,6 +68,7 @@
         <div class="detail-actions">
           <button class="btn-action btn-action--danger" id="btnSuspend">이용정지</button>
           <button class="btn-action btn-action--success" id="btnRelease">정지해제</button>
+          <button class="btn-action btn-action--filled-danger" id="btnDeleteMember">삭제</button>
         </div>
       </div>
 
@@ -394,6 +395,24 @@
     </div>
   </div>
 </div>
+
+<!-- ========== 회원 삭제 확인 모달 ========== -->
+<div class="modal-overlay" id="modalDeleteMemberOverlay">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--danger);">회원 데이터 삭제</div>
+    <div class="modal__message">
+      이 회원과 관련된 <strong>모든 데이터</strong>(반려동물, 유치원, 예약, 결제, 정산, 후기, 채팅 등)가
+      DB에서 <strong style="color:var(--danger);">완전히 삭제</strong>됩니다.<br><br>
+      삭제된 데이터는 복구할 수 없습니다.<br>
+      정말로 삭제하시겠습니까?
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--delete" id="btnDeleteMemberConfirm">삭제</button>
+    </div>
+  </div>
+</div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>

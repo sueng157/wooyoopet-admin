@@ -1,6 +1,6 @@
 # 우유펫(WOOYOOPET) DB 함수 목록
 
-> 최종 업데이트: 2026-04-24 (주소인증 양방향 동기화 트리거 추가, 외주개발자 추가분 정리)
+> 최종 업데이트: 2026-04-27 (테스트 데이터 삭제용 RPC 2개 추가, 주소인증 양방향 동기화 트리거 추가, 외주개발자 추가분 정리)
 
 ---
 
@@ -147,6 +147,32 @@
 
 ---
 
+## 9. 테스트 데이터 삭제용 (관리자 전용)
+
+> **추가 (2026-04-27)**: 테스트 데이터 정리를 위한 완전 삭제 RPC. 운영 환경에서는 사용 주의 — hard delete이므로 복구 불가.
+> 보안 규칙: `SECURITY DEFINER` (관리자 페이지에서만 호출). 각 함수 내부에서 연관 테이블을 FK 의존 순서대로 삭제하며, 하나의 트랜잭션으로 실행되어 중간 실패 시 전체 롤백.
+
+| # | 함수명 | 용도 | 반환타입 | 삭제 대상 테이블 | SQL 파일 | 비고 |
+|---|--------|------|----------|-----------------|---------|------|
+| 1 | `delete_kindergarten_completely` | 유치원 + 모든 연관 데이터 완전 삭제 | `void` | report_logs, reports, chat_room_reservations, chat_messages, reservation_status_logs, noshow_records, settlement_info_logs, kindergarten_status_logs, chat_rooms, kindergarten_reviews, guardian_reviews, refunds, settlements, payments, reservations, education_completions, kindergarten_resident_pets, settlement_infos, favorite_kindergartens, **kindergartens** | `sql/49_delete_kindergarten.sql` | 간접 연관(채팅방→신고, 예약→로그) ID 사전 조회 후 순차 삭제. reviews를 reservations보다 먼저 삭제 (reservation_id FK) |
+| 2 | `delete_member_completely` | 회원 + 모든 연관 데이터 완전 삭제 | `void` | report_logs, reports, chat_room_reservations, chat_messages, chat_room_members, chat_rooms, reservation_status_logs, noshow_records, kindergarten_reviews, guardian_reviews, refunds, settlements, payments, reservations, settlement_info_logs, kindergarten_status_logs, education_completions, kindergarten_resident_pets, settlement_infos, favorite_kindergartens, kindergartens, favorite_pets, pets, member_blocks, member_term_agreements, member_status_logs, feedbacks, noshow_records, favorite_kindergartens, fcm_tokens, notifications, **members** | `sql/50_delete_member.sql` | 회원이 유치원 운영자인 경우 유치원+유치원 연관 데이터도 함께 삭제. 보호자로서+운영자로서 양쪽 모두 처리 |
+
+**삭제 순서 핵심 원칙:**
+- `guardian_reviews`, `kindergarten_reviews`는 `reservation_id` FK를 가지고 있으므로 `reservations`보다 **반드시 먼저** 삭제
+- `reports`는 `chat_room_id` FK를 가지므로 `chat_rooms`보다 먼저 삭제
+- `settlement_info_logs`는 `settlement_info_id` FK를 가지므로 `settlement_infos`보다 먼저 삭제
+
+**호출 패턴 (JS):**
+```javascript
+// 유치원 삭제
+await window.__supabase.rpc('delete_kindergarten_completely', { p_kg_id: kgId });
+
+// 회원 삭제
+await window.__supabase.rpc('delete_member_completely', { p_member_id: memberId });
+```
+
+---
+
 ## 변경 이력
 
 | 날짜 | 내용 | 관련 SQL 파일 |
@@ -170,3 +196,4 @@
 | 2026-04-17 | **Step 2.5 완료 (13/13)** — #3 `app_get_guardian_detail`, #4 `app_get_guardians`, #7 `app_withdraw_member` 완료. DDL ALTER: pets.deleted 컬럼 추가, kindergartens.registration_status CHECK 제약에 'withdrawn' 추가 (PR #136, #137) | `sql/44_03`, `sql/44_04`, `sql/44_07`, `sql/44_00a` |
 | 2026-04-24 | **외주개발자 추가실행 SQL 검토 및 정리** — pet-images 중복 Storage 정책 삭제, member-images 정책 삭제 후 컨벤션 정책 교체, members/pets 중복 RLS 정책 삭제, members_insert_app·pets_delete_app 네이밍 교체. member-images 버킷은 profile-images와 동일 용도로 확인되어 버킷·정책 전체 삭제 (48_08) | `sql/48_01`~`sql/48_08` |
 | 2026-04-24 | **주소인증 양방향 트리거 동기화** — 기존 `sync_address_doc_urls_to_kindergartens` 함수에 address_auth_status·address_auth_date 동기화 추가. 역방향 `sync_address_status_to_members` 함수 + `trg_sync_address_to_members` 트리거 신규 생성. members ↔ kindergartens 양방향 완성 | `sql/48_07` |
+| 2026-04-27 | **테스트 데이터 삭제용 RPC 2개 추가** — `delete_kindergarten_completely` (유치원 + 연관 20개 테이블 완전 삭제), `delete_member_completely` (회원 + 연관 약 30개 테이블 완전 삭제, 유치원 운영자 시 유치원 데이터 포함). 유치원 상세 페이지 "강제 비활성화" → "삭제" 버튼 교체, 회원 상세 페이지 "삭제" 버튼 신규 추가 | `sql/49_delete_kindergarten.sql`, `sql/50_delete_member.sql` |

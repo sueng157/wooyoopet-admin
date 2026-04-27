@@ -986,6 +986,52 @@
         window.location.href = 'settlements.html?kindergarten_id=' + encodeURIComponent(kgId) + '&tab=history';
       });
     }
+
+    // ──── 유치원 삭제 버튼 ────
+    var btnDeleteKg = document.getElementById('btnDeleteKg');
+    var modalDeleteOverlay = document.getElementById('modalDeleteKgOverlay');
+    var btnDeleteKgConfirm = document.getElementById('btnDeleteKgConfirm');
+
+    if (btnDeleteKg && modalDeleteOverlay) {
+      // [삭제] 버튼 클릭 → 모달 열기
+      btnDeleteKg.addEventListener('click', function () {
+        modalDeleteOverlay.classList.add('active');
+      });
+
+      // 오버레이 클릭 → 모달 닫기
+      modalDeleteOverlay.addEventListener('click', function (e) {
+        if (e.target === modalDeleteOverlay) modalDeleteOverlay.classList.remove('active');
+      });
+
+      // 모달 내 닫기 버튼 (data-modal-close) → common.js 공통 핸들러에서 처리
+
+      // 삭제 확인 버튼 → RPC 호출로 DB 완전 삭제
+      btnDeleteKgConfirm.addEventListener('click', async function () {
+        btnDeleteKgConfirm.disabled = true;
+        btnDeleteKgConfirm.textContent = '삭제 중...';
+
+        try {
+          var result = await api.callRpc('delete_kindergarten_completely', { p_kg_id: kgId });
+
+          if (result.error) {
+            alert('삭제 실패: ' + (result.error.message || '알 수 없는 오류'));
+            btnDeleteKgConfirm.disabled = false;
+            btnDeleteKgConfirm.textContent = '삭제';
+            return;
+          }
+
+          // 감사 로그 (유치원이 이미 삭제되었으므로 별도 테이블에 기록)
+          api.insertAuditLog('유치원삭제', 'kindergartens', kgId, { name: kg.name });
+
+          alert('유치원이 삭제되었습니다.');
+          window.location.href = 'kindergartens.html';
+        } catch (err) {
+          alert('삭제 중 오류가 발생했습니다: ' + err.message);
+          btnDeleteKgConfirm.disabled = false;
+          btnDeleteKgConfirm.textContent = '삭제';
+        }
+      });
+    }
   }
 
   // ══════════════════════════════════════════

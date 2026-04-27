@@ -139,7 +139,9 @@ webapp/
 │   ├── 40_faq_reorder_functions.sql  # FAQ 순서 관리 RPC
 │   ├── 41_01~41_09_app_*.sql    # [Phase 5] 신규 테이블 9개
 │   ├── 42_01~42_06_*.sql        # [Phase 5] 기존 테이블 컬럼 추가 6개
-│   └── 43_01~43_02_app_*.sql    # [Phase 5] 앱 RLS 79개 + Storage 버킷 6개
+│   ├── 43_01~43_02_app_*.sql    # [Phase 5] 앱 RLS 79개 + Storage 버킷 6개
+│   ├── 49_delete_kindergarten.sql  # 테스트 유치원 완전 삭제 RPC
+│   └── 50_delete_member.sql        # 테스트 회원 완전 삭제 RPC
 ├── MIGRATION_PLAN.md            # 모바일 앱 마이그레이션 설계서 (Phase 5)
 ├── DB_MAPPING_REFERENCE.md      # MariaDB↔Supabase 전체 매핑 대조표
 ├── MOBILE_APP_ANALYSIS.md       # 모바일 앱 소스 분석 보고서
@@ -175,7 +177,7 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 - **api.js** (842줄): Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한
 - **페이지전용 JS** (12개): dashboard(244), members(818), kindergartens(1,006), pets(516), reservations(523), payments(725), settlements(821), chats(974), reviews(679), educations(2,151), contents(2,482), settings(504)
 
-총 **13,068줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
+총 **13,241줄** (17 JS 파일). 인라인 JS 0건 — 모든 인터랙션은 외부 JS + `data-*` 속성으로 처리.
 
 ---
 

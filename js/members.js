@@ -795,6 +795,52 @@
         if (e.target === memberDocOverlay) memberDocOverlay.classList.remove('active');
       });
     }
+
+    // ──── 회원 삭제 버튼 ────
+    var btnDeleteMember = document.getElementById('btnDeleteMember');
+    var modalDeleteMemberOverlay = document.getElementById('modalDeleteMemberOverlay');
+    var btnDeleteMemberConfirm = document.getElementById('btnDeleteMemberConfirm');
+
+    if (btnDeleteMember && modalDeleteMemberOverlay) {
+      // [삭제] 버튼 클릭 → 모달 열기
+      btnDeleteMember.addEventListener('click', function () {
+        modalDeleteMemberOverlay.classList.add('active');
+      });
+
+      // 오버레이 클릭 → 모달 닫기
+      modalDeleteMemberOverlay.addEventListener('click', function (e) {
+        if (e.target === modalDeleteMemberOverlay) modalDeleteMemberOverlay.classList.remove('active');
+      });
+
+      // 모달 내 닫기 버튼 (data-modal-close) → common.js 공통 핸들러에서 처리
+
+      // 삭제 확인 버튼 → RPC 호출로 DB 완전 삭제
+      btnDeleteMemberConfirm.addEventListener('click', async function () {
+        btnDeleteMemberConfirm.disabled = true;
+        btnDeleteMemberConfirm.textContent = '삭제 중...';
+
+        try {
+          var result = await api.callRpc('delete_member_completely', { p_member_id: memberId });
+
+          if (result.error) {
+            alert('삭제 실패: ' + (result.error.message || '알 수 없는 오류'));
+            btnDeleteMemberConfirm.disabled = false;
+            btnDeleteMemberConfirm.textContent = '삭제';
+            return;
+          }
+
+          // 감사 로그
+          api.insertAuditLog('회원삭제', 'members', memberId, { name: member.name });
+
+          alert('회원이 삭제되었습니다.');
+          window.location.href = 'members.html';
+        } catch (err) {
+          alert('삭제 중 오류가 발생했습니다: ' + err.message);
+          btnDeleteMemberConfirm.disabled = false;
+          btnDeleteMemberConfirm.textContent = '삭제';
+        }
+      });
+    }
   }
 
   // ══════════════════════════════════════════
