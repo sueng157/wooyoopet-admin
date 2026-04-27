@@ -68,7 +68,7 @@
         <div class="detail-actions">
           <button class="btn-action btn-action--outline-danger" id="btnBizStatus">영업상태 변경</button>
           <button class="btn-action btn-action--outline-warning">신선도 조정</button>
-          <button class="btn-action btn-action--filled-danger">강제 비활성화</button>
+          <button class="btn-action btn-action--filled-danger" id="btnDeleteKg">삭제</button>
         </div>
       </div>
 
@@ -453,6 +453,24 @@
     </div>
     <div class="modal__footer">
       <button class="btn-action btn-action--outline-primary" data-modal-close>닫기</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== 유치원 삭제 확인 모달 ========== -->
+<div class="modal-overlay" id="modalDeleteKgOverlay">
+  <div class="modal">
+    <div class="modal__title" style="color:var(--danger);">유치원 데이터 삭제</div>
+    <div class="modal__message">
+      이 유치원과 관련된 <strong>모든 데이터</strong>(예약, 결제, 정산, 후기, 채팅 등)가
+      DB에서 <strong style="color:var(--danger);">완전히 삭제</strong>됩니다.<br><br>
+      삭제된 데이터는 복구할 수 없습니다.<br>
+      정말로 삭제하시겠습니까?
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" data-modal-close>취소</button>
+      <button class="modal__btn modal__btn--delete" id="btnDeleteKgConfirm">삭제</button>
     </div>
   </div>
 </div>

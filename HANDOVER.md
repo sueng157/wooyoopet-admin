@@ -557,6 +557,29 @@ USING (bucket_id = 'notice-attachments');
 | `48_07_address_sync_bidirectional_trigger.sql` | 주소인증 양방향 트리거 (members ↔ kindergartens) | ✅ 실행 완료 |
 | `48_08_drop_member_images_bucket.sql` | member-images 버킷 잔여 정책 삭제 (4건) — 버킷은 Dashboard에서 삭제 (profile-images와 중복) | ✅ 실행 완료 |
 
+### 5-27. 테스트 데이터 삭제 기능 (유치원·회원 상세 페이지)
+
+> **추가 (2026-04-27)**: 테스트 데이터 정리를 위한 완전 삭제(hard delete) 기능. 운영 데이터에는 사용 주의.
+
+**유치원 삭제** (`kindergarten-detail.html`):
+- 기존 "강제 비활성화" 버튼 → **"삭제"** 버튼으로 교체 (`#btnDeleteKg`)
+- 확인 모달(`#modalDeleteKgOverlay`): "이 유치원과 관련된 모든 데이터(예약, 결제, 정산, 후기, 채팅 등)가 DB에서 완전히 삭제됩니다" 경고
+- JS(`kindergartens.js`): 모달 열기 → `supabase.rpc('delete_kindergarten_completely', { p_kg_id })` 호출 → 감사로그 → 목록 이동
+- SQL(`sql/49_delete_kindergarten.sql`): `delete_kindergarten_completely(p_kg_id UUID)` — 연관 20개 테이블 순차 삭제 (단일 트랜잭션)
+
+**회원 삭제** (`member-detail.html`):
+- **"삭제"** 버튼 신규 추가 (`#btnDeleteMember`)
+- 확인 모달(`#modalDeleteMemberOverlay`): "이 회원과 관련된 모든 데이터가 DB에서 완전히 삭제됩니다" 경고
+- JS(`members.js`): 동일 패턴 — `supabase.rpc('delete_member_completely', { p_member_id })` 호출
+- SQL(`sql/50_delete_member.sql`): `delete_member_completely(p_member_id UUID)` — 유치원 운영자 시 유치원 데이터 포함 약 30개 테이블 삭제 (단일 트랜잭션)
+
+**삭제 순서 핵심**: `guardian_reviews`·`kindergarten_reviews`는 `reservation_id` FK 보유 → `reservations`보다 반드시 먼저 삭제
+
+| SQL 파일 | 주요 내용 | 실행 여부 |
+|---------|----------|----------|
+| `sql/49_delete_kindergarten.sql` | `delete_kindergarten_completely` RPC — 유치원 + 연관 데이터 완전 삭제 | ✅ 실행 완료 |
+| `sql/50_delete_member.sql` | `delete_member_completely` RPC — 회원 + 연관 데이터 완전 삭제 (유치원 운영자 시 유치원 포함) | ✅ 실행 완료 |
+
 ### 5-26. Phase 5 Step 2.5 SQL 파일 목록 (PR #133~#137)
 
 > **앱용 RPC 함수 13개 + 공개 VIEW 3개 + DDL ALTER 1개** — 총 15개 SQL 파일
@@ -841,23 +864,23 @@ css/login.css           194줄  (로그인 전용 — 중앙 카드 레이아웃
 
 ```
 js/supabase-client.js    20줄  (Supabase CDN 클라이언트 초기화, URL/anon-key 설정)
-js/auth.js              366줄  (로그인/로그아웃, 세션 체크, 사이드바·헤더 프로필 동적 표시, 메뉴 접근 권한 제어)
+js/auth.js              371줄  (로그인/로그아웃, 세션 체크, 사이드바·헤더 프로필 동적 표시, 메뉴 접근 권한 제어)
 js/common.js            167줄  (모달 시스템, 마스킹 토글, 소개글 토글, textarea→버튼 활성화, 필터 초기화)
 js/components.js        231줄  (탭 전환, 전체선택 체크박스, 순서 화살표, 버전 검증, 글자수 카운터, URL 해시 탭 복원)
 js/api.js               842줄  (Supabase CRUD 래퍼, 포매터, 배지, 페이지네이션, 엑셀, 감사로그, 마스킹, 권한)
 js/dashboard.js         244줄  (통계 카드, 승인 대기, 매출 요약, 활동 로그)
-js/members.js           812줄  (목록·상세, 이용정지/해제, 주소인증, 엑셀, 결제집계, 서류확인 모달)
-js/kindergartens.js    1004줄  (목록·상세, 영업상태, 서브몰, 노쇼, 보호자 돌봄후기, 태그집계, 주소인증, 정산연동)
+js/members.js           864줄  (목록·상세, 이용정지/해제, 주소인증, 엑셀, 결제집계, 서류확인 모달, 삭제)
+js/kindergartens.js    1052줄  (목록·상세, 영업상태, 서브몰, 노쇼, 보호자 돌봄후기, 태그집계, 주소인증, 정산연동, 삭제)
 js/pets.js              516줄  (목록·상세, 삭제, 닉네임조인, 돌봄횟수집계, 태그집계(7항목고정), 크로스링크)
-js/reservations.js      522줄  (목록·상세, 직권취소, 노쇼 — PR #57에서 async/await 리팩터링)
+js/reservations.js      523줄  (목록·상세, 직권취소, 노쇼 — PR #57에서 async/await 리팩터링)
 js/payments.js          725줄  (결제/환불 2탭, 결제 상세, 환불/위약금 상세, 위약금면제, search_payments·search_refunds RPC, FK 충돌 방지 별도 쿼리 분리)
-js/settlements.js       819줄  (정산정보/내역 2탭, search_settlement_infos+search_settlements RPC, 기간버튼, 요약동기화, 일괄정산, 엑셀)
+js/settlements.js       821줄  (정산정보/내역 2탭, search_settlement_infos+search_settlements RPC, 기간버튼, 요약동기화, 일괄정산, 엑셀)
 js/chats.js             974줄  (채팅/신고 2탭, search_chat_rooms·search_reports RPC, 채팅상세 DB 바인딩, 신고상세 DB 바인딩(admin 조인·report_logs), 비활성화, 제재/기각, 처리이력 로드)
 js/reviews.js           679줄  (보호자/유치원 2탭, search_guardian_reviews·search_kindergarten_reviews RPC, 기간퀵버튼(전체/당월/1개월/1주일), 숨김/해제)
 js/educations.js       2151줄  (교육 주제 CRUD + 이미지 Storage 관리 + 고아파일 정리 + 체크리스트/서약서 보기·편집·상태변경·삭제 + 이수현황 목록(RPC)+상세(동적 렌더링), 버전관리)
-js/contents.js         2482줄  (배너/공지/FAQ/약관 4탭, 배너 Storage 관리+고아정리+보기/편집 모드, 공지사항 Quill 에디터+다건 첨부파일(10개/10MB)+보기/편집 모드+Storage 관리+고아정리, FAQ 등록/상세(Quill 에디터+보기/편집 모드+RPC 순서관리+삭제), 약관 상세(읽기전용+버전 이력+Quill 편집+공개/비공개 전환+삭제)+버전등록(수정사유+Quill+terms 업데이트), 푸시발송)
+js/contents.js         2557줄  (배너/공지/FAQ/약관 4탭, 배너 Storage 관리+고아정리+보기/편집 모드, 공지사항 Quill 에디터+다건 첨부파일(10개/10MB)+보기/편집 모드+Storage 관리+고아정리, FAQ 등록/상세(Quill 에디터+보기/편집 모드+RPC 순서관리+삭제), 약관 상세(읽기전용+버전 이력+Quill 편집+공개/비공개 전환+삭제)+버전등록(수정사유+Quill+terms 업데이트), 푸시발송)
 js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규칙 추가/삭제)
-총 13,068줄  (Phase 3 완료 + DB 연결 보완·UI 개선 기준)
+총 13,241줄  (Phase 3 완료 + DB 연결 보완·UI 개선 + 테스트 데이터 삭제 기준)
 ```
 
 ---
