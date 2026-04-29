@@ -782,7 +782,7 @@ Phase D: 결제/예약 + Edge Functions (가장 마지막, 위험도 높음)
 #### 7-2-2. send-chat-message (채팅 메시지 전송)
 
 ```
-입력: room_id, member_id, content, message_type('text'|'image'|'file'), file(선택)
+입력: room_id, member_id, content, message_type('text'|'image'|'video'|'file'), file(선택)
 처리:
   1. 채팅방 멤버 검증
   2. 파일 있으면 Storage 업로드 → URL 획득

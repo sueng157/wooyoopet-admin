@@ -2717,7 +2717,7 @@ const sendImageMessage = async (roomId: string, imageFiles: ImagePickerAsset[]) 
 |---|---|---|---|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'video'`, `'file'` (사용자 전송용 4종, DB에는 영문 12종 저장) |
 | `image_files` | File[] | ❌ | 이미지/파일 (FormData 전송) |
 
 **Edge Function 출력 스펙**:
