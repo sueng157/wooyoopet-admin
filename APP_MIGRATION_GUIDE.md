@@ -1494,7 +1494,7 @@ useChat.ts (수정 후)
 | `status` | text | '활성' / '비활성' |
 | `last_message` | text | 마지막 메시지 내용 |
 | `last_message_at` | timestamptz | 마지막 메시지 시각 |
-| `last_message_type` | text | 마지막 메시지 타입 (text/image/file/reservation_request 등 영문 8종) |
+| `last_message_type` | text | 마지막 메시지 타입 (text/image/video/file/send_pet/reservation_request/reservation_confirmed/reservation_rejected/reservation_cancelled/care_start/care_end/review 영문 12종) |
 | `unread_count` | integer | 미읽음 메시지 수 |
 | `is_muted` | boolean | 알림 차단 여부 |
 | `opponent` | object | 상대방 프로필 (`id`, `nickname`, `profile_image`, `role`) |
@@ -1548,10 +1548,10 @@ useChat.ts (수정 후)
 |------|------|------|------|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 메시지 (이미지 전용이면 빈 문자열 가능) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'video'`, `'file'` (사용자 전송용 4종, DB에는 영문 12종 저장) |
 | `image_files` | File[] | ❌ | 이미지/파일 배열 (FormData 전송 시) |
 
-> ⚠️ **message_type DB 저장값**: DB에는 영문 8종(`text`, `image`, `file`, `reservation_request`, `reservation_confirmed`, `care_start`, `care_end`, `review`)으로 저장됩니다. `sender_type`만 한글(보호자/유치원/시스템) 유지.
+> ⚠️ **message_type DB 저장값**: DB에는 영문 12종(`text`, `image`, `video`, `file`, `send_pet`, `reservation_request`, `reservation_confirmed`, `reservation_rejected`, `reservation_cancelled`, `care_start`, `care_end`, `review`)으로 저장됩니다. `sender_type`만 한글(보호자/유치원/시스템) 유지.
 
 **출력 스펙**:
 
@@ -2163,7 +2163,7 @@ const { data, error } = await supabase.functions.invoke('send-chat-message', {
 |------|------|------|------|
 | `room_id` | UUID | ✅ | 채팅방 ID |
 | `content` | string | 조건부 | 텍스트 내용 (이미지 전용이면 빈 문자열) |
-| `message_type` | string | ✅ | `'text'`, `'image'`, `'file'` (사용자 전송용, DB에는 영문 8종 저장) |
+| `message_type` | string | ✅ | `'text'`, `'image'`, `'video'`, `'file'` (사용자 전송용 4종, DB에는 영문 12종 저장) |
 | `image_files` | File[] | ❌ | 이미지/파일 배열 (FormData로 전송) |
 
 **EF 내부 처리**:
