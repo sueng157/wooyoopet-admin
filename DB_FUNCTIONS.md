@@ -120,10 +120,10 @@
 | 6 | `app_get_reservation_detail` | 예약 상세 (단건) | `json` | reservations + payments + refunds + internal.pets_public_info + kindergartens + internal.members_public_profile | `sql/44_06` | 결제/환불 정보 포함 |
 | 7 | `app_withdraw_member` | 회원 탈퇴 (soft delete) | `json` | members UPDATE (status→'탈퇴') + pets.deleted=true + kindergartens.registration_status='withdrawn' | `sql/44_07` | Auth 삭제는 Edge Function에서 후속 처리 |
 | 8 | `app_set_representative_pet` | 대표 반려동물 지정 | `json` | pets BATCH UPDATE (is_representative) | `sql/44_08` | RLS 충돌 없음 |
-| 9 | `app_get_guardian_reviews` | 보호자(반려동물) 후기 | `json` | guardian_reviews + 7개 기본태그 COUNT(CTE) + internal.pets_public_info + internal.members_public_profile | `sql/44_09` | json_agg ORDER BY ord |
+| 9 | `app_get_guardian_reviews` | 보호자(반려동물) 후기 | `json` | guardian_reviews + 7개 기본태그 COUNT(CTE → tag_counts CTE 분리) + internal.pets_public_info + internal.members_public_profile | `sql/44_09` | json_agg ORDER BY ord, 집계함수 중첩 수정(2026-04-30) |
 | 10 | `app_get_settlement_summary` | 정산 요약/내역 | `json` | settlements 집계(완료/예정/보류) + next_settlement + period_summary + details(페이지네이션 + 보호자 정보) | `sql/44_10` | get_settlement_list.php 기능 흡수 |
 | 11 | `app_get_education_with_progress` | 교육 + 이수현황 | `json` | education_topics + education_quizzes(JSON) + education_completions LEFT JOIN | `sql/44_11` | RLS 충돌 없음 |
-| 12 | `app_get_kindergarten_reviews` | 유치원 후기 | `json` | kindergarten_reviews + is_guardian_only 필터 + 7개 기본태그 COUNT(CTE) + internal.pets_public_info + internal.members_public_profile + kindergartens | `sql/44_12` | json_agg ORDER BY ord |
+| 12 | `app_get_kindergarten_reviews` | 유치원 후기 | `json` | kindergarten_reviews + is_guardian_only 필터 + 7개 기본태그 COUNT(CTE → tag_counts CTE 분리) + internal.pets_public_info + internal.members_public_profile + kindergartens | `sql/44_12` | json_agg ORDER BY ord, 집계함수 중첩 수정(2026-04-30) |
 
 ## 7. 공개 VIEW (Step 2.5 — internal 스키마, 3개)
 
@@ -197,3 +197,4 @@ await window.__supabase.rpc('delete_member_completely', { p_member_id: memberId 
 | 2026-04-24 | **외주개발자 추가실행 SQL 검토 및 정리** — pet-images 중복 Storage 정책 삭제, member-images 정책 삭제 후 컨벤션 정책 교체, members/pets 중복 RLS 정책 삭제, members_insert_app·pets_delete_app 네이밍 교체. member-images 버킷은 profile-images와 동일 용도로 확인되어 버킷·정책 전체 삭제 (48_08) | `sql/48_01`~`sql/48_08` |
 | 2026-04-24 | **주소인증 양방향 트리거 동기화** — 기존 `sync_address_doc_urls_to_kindergartens` 함수에 address_auth_status·address_auth_date 동기화 추가. 역방향 `sync_address_status_to_members` 함수 + `trg_sync_address_to_members` 트리거 신규 생성. members ↔ kindergartens 양방향 완성 | `sql/48_07` |
 | 2026-04-27 | **테스트 데이터 삭제용 RPC 2개 추가** — `delete_kindergarten_completely` (유치원 + 연관 20개 테이블 완전 삭제), `delete_member_completely` (회원 + 연관 약 30개 테이블 완전 삭제, 유치원 운영자 시 유치원 데이터 포함). 유치원 상세 페이지 "강제 비활성화" → "삭제" 버튼 교체, 회원 상세 페이지 "삭제" 버튼 신규 추가 | `sql/49_delete_kindergarten.sql`, `sql/50_delete_member.sql` |
+| 2026-04-30 | **후기 RPC 태그 집계 집계함수 중첩 오류 수정** — `app_get_guardian_reviews`(#9), `app_get_kindergarten_reviews`(#12) 태그 집계 쿼리에서 `json_agg` 내부에 `COUNT` 직접 중첩 → PostgreSQL 'aggregate function calls cannot be nested' 오류. `tag_counts` CTE를 추가하여 COUNT를 먼저 완료한 후 json_agg에서 참조하도록 수정 | `sql/44_09`, `sql/44_12` |

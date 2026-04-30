@@ -185,8 +185,8 @@
 | 5 | 5 | `app_get_reservations_guardian` | ★★★ | ✅ | ✅ 완료 — 보호자용, 4테이블 JOIN, 상태 필터 |
 | 5b | 5b | `app_get_reservations_kindergarten` | ★★★ | ✅ | ✅ 완료 — 유치원용, #5에서 분리 (보호자/유치원 비대칭) |
 | 6 | 6 | `app_get_reservation_detail` | ★★★ | ✅ | ✅ 완료 — 단건 + payments + refunds JOIN |
-| 7 | 9 | `app_get_guardian_reviews` | ★★★ | ✅ | ✅ 완료 — 태그 집계(7 positive), json_agg ORDER BY ord |
-| 8 | 12 | `app_get_kindergarten_reviews` | ★★★ | ✅ | ✅ 완료 — is_guardian_only 필터, 태그 집계(7 positive) |
+| 7 | 9 | `app_get_guardian_reviews` | ★★★ | ✅ | ✅ 완료 — 태그 집계(7 positive), json_agg ORDER BY ord, 집계함수 중첩 수정(tag_counts CTE 분리, 2026-04-30) |
+| 8 | 12 | `app_get_kindergarten_reviews` | ★★★ | ✅ | ✅ 완료 — is_guardian_only 필터, 태그 집계(7 positive), 집계함수 중첩 수정(tag_counts CTE 분리, 2026-04-30) |
 | 9 | 10 | `app_get_settlement_summary` | ★★☆ | ✅ | ✅ 완료 — 정산 집계 + period_summary + RLS 보강 |
 | 10 | 3 | `app_get_guardian_detail` | ★★☆ | ❌ | ✅ 완료 — PHP 소스 없음, 구조 추론 → 외주개발자 확인 완료 |
 | 11 | 4 | `app_get_guardians` | ★★☆ | ❌ | ✅ 완료 — PHP 소스 없음, 목록 버전 |
@@ -980,3 +980,4 @@ const inicisMid = Deno.env.get('INICIS_MID');
 | 2026-04-18 | **Step 3 전수 검수 완료 + 이슈 수정** — REVIEW_REPORT.md 작성 (4대 점검: 코드 명확성·일관성 R1~R6·DB 스키마 정합성·Step 4 함수 추적). 발견 이슈 [치명] 3건 + [중요] 2건 전체 수정 완료: C1(#62 education_completions UPSERT 전면 재작성 — member_id/topic_id → kindergarten_id/topic_details JSONB), C2(#63 banks is_active → use_yn), C3(#43 settlement_infos onConflict member_id → kindergarten_id), I1(#57 term_versions version → version_number), I3(#42 응답 매핑 복붙 가능 코드 예시 추가). I2(terms slug 오보) 제거. [경미] 3건 + [제안] 4건은 현행 유지 |
 | 2026-04-19 | **Step 4 R5 scheduler 배포 + pg_cron 설정 완료** — scheduler EF 배포 (`--no-verify-jwt`), pg_cron·pg_net 확장 활성화, `sql/47_01_scheduler_cron_setup.sql` 실행 (Vault 방식 시크릿 관리), cron Job 등록 확인 (scheduler-every-5min, jobid=1, active=true). scheduler_history 정상 실행 확인 (care_start 1건 + care_end 2건 처리, 중복 방지 정상). Step 4 표 4-7 상태 ✅ 배포 완료로 업데이트 |
 | 2026-04-19 | **Step 4 전체 완료** — EF 7개 (send-push, send-alimtalk, send-chat-message, inicis-callback, create-reservation, complete-care, scheduler) + RPC 3개 (app_get_blocked_list, app_create_chat_room, app_get_chat_rooms) 구현·배포·검증 완료. R6 크로스체크 PASS: EF/RPC 명칭·파라미터·JSON 구조·에러 패턴·GUIDE §14~16 설계·§7-2 상세 설계 정합성 전수 검증. Step 3 가이드 (APP_MIGRATION_GUIDE.md, APP_MIGRATION_CODE.md) 와의 정합성 확인 완료. 경미 수정 1건 (CODE.md #60 `data?.success` 체크 추가). Step 4 표 전항 ✅ 완료로 업데이트. `STEP4_R6_CROSSCHECK_REPORT.md` 별도 보고서 불필요 — 검증 결과는 본 문서 및 STEP4_WORK_PLAN.md 변경 이력에 기록 |
+| 2026-04-30 | **후기 RPC 태그 집계 집계함수 중첩 오류 수정** — #9 `app_get_guardian_reviews`, #12 `app_get_kindergarten_reviews` 태그 집계 쿼리에서 `json_agg` 내부에 `COUNT` 직접 중첩 → PostgreSQL 'aggregate function calls cannot be nested' 오류. `tag_counts` CTE를 추가하여 COUNT를 먼저 완료한 후 json_agg에서 참조하도록 수정. Supabase SQL Editor에서 실행 완료 |

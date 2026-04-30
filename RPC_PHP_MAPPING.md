@@ -28,10 +28,10 @@
 | 6 | sql/44_06 | `app_get_reservation_detail` | `get_payment_request_by_id.php` | `id`(예약ID) 받아 예약 1건 + 결제승인정보 + 반려동물 + 유치원 + 회원 JOIN 반환 | 결제/돌봄 상세 (`hooks/usePaymentRequest.ts`) |
 | 7 | sql/44_07 | `app_withdraw_member` | `set_member_leave.php` | `mb_id`+`reason` 받아 soft delete (status→'탈퇴', withdrawn_at 기록, pets.deleted=true, kindergartens.registration_status='withdrawn') + Auth 삭제는 Edge Function에서 후속 처리 | 회원 탈퇴 (`user/withdraw/index.tsx`) |
 | 8 | sql/44_08 | `app_set_representative_pet` | `set_first_animal_set.php` | `mb_id`+`wr_id`(동물ID) 받아 전체 `firstYN='N'` → 선택 건만 `firstYN='Y'` batch UPDATE | 대표 반려동물 설정 (`pet/default.tsx`) |
-| 9 | sql/44_09 | `app_get_guardian_reviews` | `get_review.php` (`type='pet'`) | `type='pet'`+`id`(pet_id) 받아 리뷰 목록 + 7개 긍정 태그별 COUNT 집계(CTE) + 반려동물/유치원/회원 JOIN 반환 | 보호자(반려동물) 리뷰 목록 (`hooks/useReviewList.ts`) |
+| 9 | sql/44_09 | `app_get_guardian_reviews` | `get_review.php` (`type='pet'`) | `type='pet'`+`id`(pet_id) 받아 리뷰 목록 + 7개 긍정 태그별 COUNT 집계(tag_counts CTE 분리) + 반려동물/유치원/회원 JOIN 반환 | 보호자(반려동물) 리뷰 목록 (`hooks/useReviewList.ts`) |
 | 10 | sql/44_10 | `app_get_settlement_summary` | `get_settlement.php` + `get_settlement_list.php` | `auth.uid()`→유치원 자동조회. summary(정산완료/예정/보류 누적) + next_settlement(최근 예정 합산+계좌) + period_summary(기간 합산) + details(페이지네이션+보호자정보). get_settlement_list.php 월별 집계·세부 명세 기능 흡수 | 정산 요약/내역 (`hooks/useSettlement.ts`) |
 | 11 | sql/44_11 | `app_get_education_with_progress` | `get_education.php` | `mb_id`+`ca_name`(선택) 받아 교육 주제 + 퀴즈 데이터(JSON 파싱) + 풀이 여부(solved) LEFT JOIN 반환 | 교육/튜토리얼 (`kindergarten/tutorial/index.tsx`) |
-| 12 | sql/44_12 | `app_get_kindergarten_reviews` | `get_review.php` (`type='partner'`) | `type='partner'`+`id`(partner_id) 받아 리뷰 목록 + 7개 긍정 태그별 COUNT 집계(CTE) + 반려동물/유치원/회원 JOIN 반환 | 유치원 리뷰 목록 (`hooks/useReviewList.ts`) |
+| 12 | sql/44_12 | `app_get_kindergarten_reviews` | `get_review.php` (`type='partner'`) | `type='partner'`+`id`(partner_id) 받아 리뷰 목록 + 7개 긍정 태그별 COUNT 집계(tag_counts CTE 분리) + 반려동물/유치원/회원 JOIN 반환 | 유치원 리뷰 목록 (`hooks/useReviewList.ts`) |
 
 ---
 

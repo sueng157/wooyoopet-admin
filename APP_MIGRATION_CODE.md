@@ -4457,7 +4457,7 @@ const fetchGuardianReviews = async (
 
     // data.data: { tags, reviews, meta }
     //
-    // tags: 7개 긍정 태그별 카운트 (순서 보장)
+    // tags: 7개 긍정 태그별 카운트 (순서 보장, 내부: tag_counts CTE로 COUNT 선집계 후 json_agg 변환)
     //   [{ tag: '상담이 친절하고 편안했어요', count: 12 }, ...]
     //
     // reviews: 후기 목록 (최신순)
@@ -4564,7 +4564,7 @@ const fetchKindergartenReviews = async (
 
     // data.data: { tags, reviews, meta }
     //
-    // tags: 7개 긍정 태그별 카운트 (전체 후기 기반, is_guardian_only 무관)
+    // tags: 7개 긍정 태그별 카운트 (전체 후기 기반, is_guardian_only 무관, 내부: tag_counts CTE로 COUNT 선집계 후 json_agg 변환)
     //   [{ tag: '사람을 좋아하고 애교가 많아요', count: 8 }, ...]
     //
     // reviews: 후기 목록 (최신순, is_guardian_only 분기 적용)
@@ -6505,3 +6505,4 @@ export const uploadImages = async (
 | 2026-04-18 | **R6 리뷰 반영** — #60 전환 방식 `자동 API (임베디드 JOIN)` → `RPC app_get_blocked_list` 변경. `members` 테이블 RLS(`id = auth.uid()`) 제약으로 타인 프로필 임베디드 JOIN 시 `null` 반환 확인 → SECURITY DEFINER RPC + `internal.members_public_profile` VIEW 패턴 적용 (#17, #19, #23, #41과 동일). RLS 경고 헤더 추가, 임베디드 JOIN 코드를 참고용 접힘(details)으로 이동, After 코드 RPC 호출로 교체, 응답 매핑 플랫 구조(중첩 객체 제거) 반영 |
 | 2026-04-18 | **RPC 전수조사 조건부 합격 2건 반영** — M1: #4 `app_withdraw_member` After 코드에 `data?.success` 비즈니스 에러 체크 추가 (ALREADY_WITHDRAWN, HAS_ACTIVE_RESERVATIONS 등 HTTP 200으로 반환되는 에러 누락 방지), 변환 포인트에 이중 체크 필수 항목 추가, 응답 매핑 테이블을 SQL 실제 응답(`data.success`, `data.error`, `data.code`, `data.withdrawn_at`)에 맞게 교체. M2: #16 `app_set_representative_pet` 변환 포인트에 `code` 필드 추가, `reset_count` 최상위 키 위치 설명 주석 보강, `data?.success` 이중 체크 패턴 주석 추가 |
 | 2026-04-21 | **#36 `create-reservation` kindergarten_id 매핑 오류 수정 반영** — After 코드 `kindergarten_id` 주석 보강 (`kindergartens` 테이블 PK UUID임을 명시, 운영자 `members.id` 혼동 방지 경고 추가). 변환 포인트에 `kindergarten_id` 값 출처 변경 항목 추가 (`PendingCareRequestType.kindergartenId` 필드 신설, 기존 `kindergartenMemberId`와 분리, `pendingCare?.to_mb_id` 참조 교체 설명) |
+| 2026-04-30 | **후기 RPC 태그 집계 집계함수 중첩 오류 수정** — #44(`app_get_guardian_reviews`), #44b(`app_get_kindergarten_reviews`) After 코드 tags 주석에 내부 구현 변경 반영 (tag_counts CTE로 COUNT 선집계 후 json_agg 변환). RPC 내부 SQL 수정이며 앱 호출 인터페이스 변경 없음 |
