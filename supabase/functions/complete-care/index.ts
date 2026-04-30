@@ -52,18 +52,6 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { corsHeaders, jsonResponse, errorResponse } from '../_shared/response.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
 
-// ─── C12: 시스템 메시지 미리보기 매핑 ──────────────────────────────
-// chat_rooms.last_message에 표시될 사용자 친화적 미리보기 텍스트
-const SYSTEM_MESSAGE_PREVIEW: Record<string, string> = {
-  reservation_request: '돌봄 예약이 요청되었습니다.',
-  reservation_confirmed: '예약이 확정되었습니다.',
-  reservation_rejected: '예약이 거절되었습니다.',
-  reservation_cancelled: '예약이 취소되었습니다.',
-  care_start: '돌봄이 시작되었습니다.',
-  care_end: '돌봄이 종료되었습니다.',
-  review: '후기를 작성해주세요.',
-}
-
 // ─── 헬퍼: send-push 내부 호출 ────────────────────────────────
 
 async function callSendPush(
@@ -113,7 +101,7 @@ async function insertSystemMessage(
   content: string,
 ): Promise<void> {
   const msgId = crypto.randomUUID()
-  const { data: msg, error } = await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('chat_messages')
     .insert({
       id: msgId,
@@ -124,33 +112,13 @@ async function insertSystemMessage(
       content,
       is_read: false,
     })
-    .select('id, created_at')
-    .single()
 
   if (error) {
     console.error(`[complete-care] 시스템 메시지(${messageType}) INSERT 실패:`, error)
-    return
   }
 
-  // C12: 사용자 친화적 미리보기 텍스트 (SYSTEM_MESSAGE_PREVIEW 맵 우선, fallback으로 content 앞 100자)
-  const preview = SYSTEM_MESSAGE_PREVIEW[messageType] ?? content.substring(0, 100)
-
-  // C11: chat_rooms last_message 업데이트 + total_message_count 증가
-  // 현재값 조회 후 +1 하여 업데이트 (Supabase JS client에 increment 없으므로 read-then-write)
-  const { data: room } = await supabaseAdmin
-    .from('chat_rooms')
-    .select('total_message_count')
-    .eq('id', chatRoomId)
-    .single()
-
-  await supabaseAdmin
-    .from('chat_rooms')
-    .update({
-      last_message: preview,
-      last_message_at: msg.created_at,
-      total_message_count: (room?.total_message_count ?? 0) + 1,
-    })
-    .eq('id', chatRoomId)
+  // chat_rooms 갱신(last_message, last_message_at, total_message_count)은
+  // DB 트리거 fn_update_chat_room_last_message 가 INSERT 시 자동 처리
 }
 
 // ─── 메인 핸들러 ──────────────────────────────────────────────
