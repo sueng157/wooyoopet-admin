@@ -141,7 +141,10 @@ webapp/
 │   ├── 42_01~42_06_*.sql        # [Phase 5] 기존 테이블 컬럼 추가 6개
 │   ├── 43_01~43_02_app_*.sql    # [Phase 5] 앱 RLS 79개 + Storage 버킷 6개
 │   ├── 49_delete_kindergarten.sql  # 테스트 유치원 완전 삭제 RPC
-│   └── 50_delete_member.sql        # 테스트 회원 완전 삭제 RPC
+│   ├── 50_delete_member.sql        # 테스트 회원 완전 삭제 RPC
+│   ├── 53_01_create_performance_indexes.sql  # DB 성능 최적화: 핵심 인덱스 5개 생성
+│   ├── 53_02_analyze_tables.sql              # DB 성능 최적화: 테이블 통계 갱신
+│   └── 53_03_remove_duplicate_rls_policies.sql # DB 성능 최적화: 중복 RLS 정책 12개 제거
 ├── MIGRATION_PLAN.md            # 모바일 앱 마이그레이션 설계서 (Phase 5)
 ├── DB_MAPPING_REFERENCE.md      # MariaDB↔Supabase 전체 매핑 대조표
 ├── MOBILE_APP_ANALYSIS.md       # 모바일 앱 소스 분석 보고서
