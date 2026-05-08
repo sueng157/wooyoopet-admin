@@ -544,7 +544,7 @@ const toggleMode = async (newMode: '보호자' | '유치원') => {
 
 **전환 방식**: 자동 API + Storage | **난이도**: 쉬움
 **관련 파일**: `app/protector/[id]/updateProfile.tsx` (보호자 프로필 수정)
-**Supabase 대응**: Storage `profile-images` 업로드 → `members` UPDATE
+**Supabase 대응**: Storage `member-images` 업로드 → `members` UPDATE
 **Supabase 테이블**: `members`
 
 **Before**:
@@ -602,7 +602,7 @@ const updateProfile = async (nickname: string, imageFile?: { uri: string }) => {
       const blob = await response.blob()
 
       const { error: uploadError } = await supabase.storage
-        .from('profile-images')
+        .from('member-images')
         .upload(filePath, blob, {
           contentType: 'image/jpeg',
           upsert: true,  // 기존 이미지 덮어쓰기
@@ -615,7 +615,7 @@ const updateProfile = async (nickname: string, imageFile?: { uri: string }) => {
 
       // 공개 URL 획득
       const { data: { publicUrl } } = supabase.storage
-        .from('profile-images')
+        .from('member-images')
         .getPublicUrl(filePath)
 
       profileImageUrl = publicUrl
@@ -652,11 +652,11 @@ const updateProfile = async (nickname: string, imageFile?: { uri: string }) => {
 ```
 
 **변환 포인트**:
-- FormData 이미지 → Storage `profile-images` 버킷 업로드 후 공개 URL 저장
+- FormData 이미지 → Storage `member-images` 버킷 업로드 후 공개 URL 저장
 - `mb_id` 제거 → `.eq('id', user.id)`
 - `mb_nick` → `nickname`, `mb_profile1` (파일명) → `profile_image` (전체 URL)
 - 이미지 업로드와 DB 업데이트가 2단계로 분리됨 (기존 PHP는 1회 요청으로 처리)
-- Storage 경로: `profile-images/{user.id}/profile.jpg` (사용자별 고정 경로, upsert로 덮어쓰기)
+- Storage 경로: `member-images/{user.id}/profile_{timestamp}.jpg` (사용자별 경로, 타임스탬프 기반 파일명)
 - `fetch()` → `blob()` 변환: React Native에서 Supabase Storage 업로드 시 필요
 
 **응답 매핑**:
@@ -6478,7 +6478,7 @@ export const uploadImages = async (
 
 | 버킷 | 용도 | 사용 API |
 |------|------|---------|
-| `profile-images` | 프로필 이미지 | #6 |
+| `member-images` | 프로필 이미지 | #6 |
 | `pet-images` | 반려동물 이미지 | #13, #14 |
 | `kindergarten-images` | 유치원 이미지 | #21 |
 | `chat-files` | 채팅 파일/이미지 | #25 |

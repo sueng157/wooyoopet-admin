@@ -143,7 +143,7 @@ CODE.md `.from('테이블명')`에서 사용된 모든 테이블명을 실제 DB
 | `education_completions` | ✅ | (컬럼 불일치 C1) |
 | `banks` | ✅ | (컬럼 불일치 C2) |
 | **Storage 버킷** | | |
-| `profile-images` | ✅ | |
+| `member-images` | ✅ | 기존 profile-images에서 전환 (2026-05-08, sql/54_02~03) |
 | `pet-images` | ✅ | |
 | `kindergarten-images` | ✅ | |
 | `chat-files` | ✅ | 코드에서는 미사용 (EF 내부 처리) |
