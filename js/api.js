@@ -706,22 +706,26 @@
    */
   /**
    * 주민등록번호 마스킹
-   * 원본 포맷: "XXXXXX-XXXXXXX" (13자리+하이픈) → "XXXXXX-X******"
-   * 하이픈 없는 포맷도 지원: "XXXXXXXXXXXXX" (13자리) → "XXXXXXX******"
-   * 기타 포맷: 뒤 6자리를 ****** 로 대체
+   * 지원 포맷:
+   *  1) 이미 마스킹된 값 (예: "1993-02-16-1******") → 그대로 반환
+   *  2) 생년월일-성별 포맷 (예: "1993-02-16-1234567") → "1993-02-16-1******" (마지막 하이픈 기준)
+   *  3) 표준 주민번호 (예: "830415-2345678") → "830415-2******" (마지막 하이픈 기준)
+   *  4) 하이픈 없는 13자리 (예: "8304152345678") → "8304152******"
    */
   function maskSsn(ssn) {
     if (!ssn) return '';
-    // 하이픈 포함 표준 포맷 (예: 830415-2345678)
-    var hyphenIdx = ssn.indexOf('-');
-    if (hyphenIdx > 0 && ssn.length > hyphenIdx + 1) {
-      return ssn.substring(0, hyphenIdx + 2) + '******';
+    // 이미 마스킹된 값은 그대로 반환
+    if (ssn.indexOf('*') >= 0) return ssn;
+    // 마지막 하이픈 기준 마스킹 (표준 6-7 및 생년월일-성별 포맷 모두 대응)
+    var lastHyphen = ssn.lastIndexOf('-');
+    if (lastHyphen > 0 && ssn.length > lastHyphen + 1) {
+      return ssn.substring(0, lastHyphen + 2) + '******';
     }
     // 하이픈 없는 숫자만 (예: 8304152345678)
     if (ssn.length >= 13) {
       return ssn.substring(0, 7) + '******';
     }
-    // 기타 (이미 부분 마스킹된 값 등) → 그대로 반환
+    // 기타 → 그대로 반환
     return ssn;
   }
 

@@ -586,7 +586,7 @@
       // 영역 2: 사업자 정보
       var biz = document.getElementById('detailStlBiz');
       if (biz) {
-        var ssnValue = (r.business_type === '비사업자' && r.operator_ssn_masked)
+        var ssnValue = r.operator_ssn_masked
           ? api.renderMaskedField(api.maskSsn(r.operator_ssn_masked), r.operator_ssn_masked, 'settlement_infos', r.id, 'ssn', { requireRole: true })
           : '—';
         api.setHtml(biz, [
