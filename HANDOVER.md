@@ -47,7 +47,7 @@
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
 - **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~4 완료, Step 5 통합테스트 예정)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
-- **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
+- **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (작업 완료 파일 저장 및 개발 완료·테스트용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
 - **Pages 기본 주소**: `https://wooyoopet-admin.pages.dev`
 - **스펙 문서**: `full_spec_with_tables.md` (루트에 위치, 대메뉴 0~11번 전체 명세)
@@ -906,7 +906,7 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 42개)의 사이드바를 동기화
 5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
 6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
-7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `develop`으로
+7. **커밋 → 푸시**: `develop` 브랜치에 직접 커밋·푸시 (main으로의 PR은 사용자가 직접 수행)
 8. **사용자 확인 후 머지** (develop에 머지 — 배포 안 됨)
 
 > **배포 흐름**: 사용자가 `develop → main` PR을 직접 만들어 머지할 때만 Cloudflare Pages 자동 배포가 실행됩니다.
@@ -920,23 +920,16 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 # 1. develop 동기화
 git checkout develop && git pull origin develop
 
-# 2. 작업 브랜치 전환 + develop 기반 리베이스
-git checkout genspark_ai_developer && git rebase origin/develop
-
-# 3. 작업 후 커밋
+# 2. 작업 후 커밋
 git add [files] && git commit -m "feat(xxx): 설명"
 
-# 4. PR 전 동기화 확인
-git fetch origin develop && git rebase origin/develop
-
-# 5. 커밋이 여러 개면 스쿼시
+# 3. 커밋이 여러 개면 스쿼시
 git reset --soft HEAD~N && git commit -m "종합 메시지"
 
-# 6. 푸시 + PR 생성 (develop으로)
-git push -f origin genspark_ai_developer
-gh pr create --base develop --head genspark_ai_developer --title "..." --body "..."
+# 4. 푸시 (develop으로)
+git push origin develop
 
-# 7. 배포 (사용자가 직접 수행)
+# 5. 배포 (사용자가 직접 수행)
 # develop → main PR 생성 & 머지 → Cloudflare Pages 자동 배포
 ```
 

@@ -211,8 +211,6 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 
 - `main` — 배포 전용 (Cloudflare Pages 자동 배포, `admin.wooyoopet.com`)
 - `develop` — 개발 완료·테스트 브랜치 (AI 작업 결과 머지 대상)
-- `genspark_ai_developer` — AI 작업 브랜치 (PR은 `develop`으로)
-
 ---
 
 ## 현재 진행 상황 및 다음 단계
