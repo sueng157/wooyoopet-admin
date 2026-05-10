@@ -78,7 +78,7 @@
 **R2 주요 설계 결정**:
 - `app_create_chat_room`: 역할 판별은 `members.current_mode`로 수행, guardian_id는 보호자 members.id, kindergarten_id는 kindergartens.id(FK)
 - `app_get_chat_rooms`: SECURITY INVOKER 유지 — `chat_room_members` RLS가 상대방 행을 차단하므로 `chat_rooms.guardian_id/kindergarten_id` + `kindergartens.member_id`로 상대방 도출
-- `last_message_type`: chat_rooms 테이블에 컬럼 부재 → chat_messages 서브쿼리로 가장 최근 비시스템 메시지의 message_type 조회 (영문 10종: text/image/file/reservation_request/reservation_confirmed/reservation_rejected/reservation_cancelled/care_start/care_end/review)
+- `last_message_type`: chat_rooms 테이블에 컬럼 부재 → chat_messages 서브쿼리로 가장 최근 비시스템 메시지의 message_type 조회 (영문 12종: text/image/video/file/send_pet/reservation_request/reservation_confirmed/reservation_rejected/reservation_cancelled/care_start/care_end/review)
 
 ### R3: 채팅 EF (1개)
 
@@ -94,7 +94,7 @@
 - `chat_messages` INSERT + `chat_rooms` UPDATE
 - `send-push` 내부 호출 (`await` + `try/catch`, is_muted 체크)
 - `notifications` INSERT
-- `message_type` 영문 8종 DB 직접 저장 (`MESSAGE_TYPE_MAP` 제거)
+- `message_type` 영문 12종 DB 직접 저장 (`MESSAGE_TYPE_MAP` 제거)
 - `file` 타입 미리보기 분기 (`'동영상을 보냈습니다.'`)
 
 **R3 배포 기록** (2026-04-19):
@@ -455,7 +455,7 @@ Step 4에서 구현하는 서버 코드의 입출력은 Step 3 CODE.md에서 약
 
 #### `send-chat-message` (4-2)
 - **CODE.md #25**: `supabase.functions.invoke('send-chat-message', { body })`
-- **입력**: `{ room_id: UUID, content: string, message_type: 'text'|'image'|'file', image_files?: File[] }` (DB에는 영문 8종 저장, 사용자 전송용 3종)
+- **입력**: `{ room_id: UUID, content: string, message_type: 'text'|'image'|'video'|'file', image_files?: File[] }` (DB에는 영문 12종 저장, 사용자 전송용 4종)
 - **출력**: `{ success: true, data: { message_id: UUID, image_urls?: string[] } }` 또는 `{ success: false, error: string }`
 
 #### `inicis-callback` (4-1)

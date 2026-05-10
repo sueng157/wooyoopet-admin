@@ -45,10 +45,11 @@
 | **파일 저장** | 서버 로컬 | **Supabase Storage** | 무료 플랜: 1GB |
 | **채팅** | 카페24 서버 | **Supabase Realtime** | 카페24 서버 대체 |
 
-> **Supabase Storage 사용 현황 (9개 버킷)**:
+> **Supabase Storage 사용 현황 (8개 버킷)**:
 > - **관리자 전용**: `education-images` (admin 전용 insert/delete, PR #123에서 public→admin 변경), `banner-images` (PR #104), `notice-attachments` (public, PR #107, PDF·DOC·DOCX·HWP·JPG·JPEG·PNG, 최대 10개/10MB)
-> - **앱+관리자 공용 (PR #123)**: `profile-images` (public), `pet-images` (public), `kindergarten-images` (public), `review-images` (public), `chat-files` (private), `address-docs` (private)
-> - Storage RLS 정책: 관리자(is_admin) + 앱 사용자(auth.uid() 기반) 분리 적용. 앱 정책 20개 (sql/43_02).
+> - **앱+관리자 공용 (PR #123)**: `member-images` (public), `pet-images` (public), `kindergarten-images` (public), `review-images` (public), `chat-files` (private), `address-docs` (private)
+> - Storage RLS 정책: 관리자(is_admin) + 앱 사용자(auth.uid() 기반) 분리 적용. 앱 정책 24개 (sql/43_02 + sql/54_01~54_04).
+> - 업데이트 (2026-05-08): profile-images 삭제 → member-images 전환. SELECT 정책 누락으로 인한 업로드 400 에러 수정 (sql/54_01~04).
 | **관리자 페이지 호스팅** | 스마일서브 | **Cloudflare Pages** | ✅ 배포 완료 (`admin.wooyoopet.com`) |
 | **도메인** | 스마일서브 (연 ₩18,000) | 스마일서브 유지 (Phase 6에서 Cloudflare 이전 예정) | 서브도메인 CNAME만 추가 |
 | **DNS/보안** | 스마일서브 | **Cloudflare** | DDoS 보호 무료 포함 |

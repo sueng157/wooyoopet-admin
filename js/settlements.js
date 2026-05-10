@@ -586,8 +586,8 @@
       // 영역 2: 사업자 정보
       var biz = document.getElementById('detailStlBiz');
       if (biz) {
-        var ssnValue = (r.business_type === '비사업자' && r.operator_ssn_masked)
-          ? api.renderMaskedField(api.maskSsn(r.operator_ssn_masked), r.operator_ssn_masked, 'settlement_infos', r.id, 'ssn')
+        var ssnValue = r.operator_ssn_masked
+          ? api.renderMaskedField(api.maskSsn(r.operator_ssn_masked), r.operator_ssn_masked, 'settlement_infos', r.id, 'ssn', { requireRole: true })
           : '—';
         api.setHtml(biz, [
           ['사업자 유형', api.autoBadge(r.business_type || '', { '개인사업자': 'pink', '법인사업자': 'blue', '비사업자': 'brown' })],
@@ -633,60 +633,171 @@
         ]);
       }
 
-      // 영역 6: 처리 이력
-      var log = document.getElementById('detailStlLog');
-      if (log && r.status_logs && r.status_logs.length > 0) {
-        log.innerHTML = '<thead><tr><th>변경일시</th><th>이전 상태</th><th>변경 상태</th><th>처리 주체</th><th>비고</th></tr></thead><tbody>' +
-          r.status_logs.map(function (l) {
-            return '<tr>' +
-              '<td>' + api.formatDate(l.changed_at) + '</td>' +
-              '<td>' + (l.prev_status ? api.autoBadge(l.prev_status) : '—') + '</td>' +
-              '<td>' + api.autoBadge(l.new_status) + '</td>' +
-              '<td>' + api.autoBadge(l.actor || '', { '시스템': 'gray', '관리자': 'red' }) + '</td>' +
-              '<td>' + api.escapeHtml(l.note || '') + '</td>' +
-              '</tr>';
-          }).join('') +
-          '</tbody>';
-      }
+      // 영역 6: 처리 이력 — settlement_info_logs 테이블 조회
+      loadInfoStatusLogs(id);
 
     }).catch(function (err) { console.error('[settlements] info detail error:', err); });
   }
 
+  /** 처리이력 로드 (settlement_info_logs 테이블) */
+  async function loadInfoStatusLogs(settlementInfoId) {
+    var log = document.getElementById('detailStlLog');
+    if (!log) return;
+
+    try {
+      var result = await window.__supabase
+        .from('settlement_info_logs')
+        .select('*')
+        .eq('settlement_info_id', settlementInfoId)
+        .order('created_at', { ascending: false });
+
+      var rows = (result.data && result.data.length > 0) ? result.data : [];
+
+      var theadHtml = '<thead><tr><th>변경일시</th><th>이전 상태</th><th>변경 상태</th><th>처리 주체</th><th>비고</th></tr></thead>';
+
+      if (!rows.length) {
+        log.innerHTML = theadHtml +
+          '<tbody><tr><td colspan="5" style="text-align:center;padding:20px 0;color:var(--text-weak);">처리 이력이 없습니다.</td></tr></tbody>';
+        return;
+      }
+
+      var STATUS_BADGE = { '완료': 'green', '요청중': 'blue', '실패': 'red', '미등록': 'gray' };
+      var ACTOR_BADGE  = { '시스템': 'gray', '관리자': 'red' };
+
+      log.innerHTML = theadHtml + '<tbody>' +
+        rows.map(function (l) {
+          return '<tr>' +
+            '<td>' + api.formatDate(l.created_at) + '</td>' +
+            '<td>' + (l.prev_status ? api.autoBadge(l.prev_status, STATUS_BADGE) : '—') + '</td>' +
+            '<td>' + api.autoBadge(l.new_status, STATUS_BADGE) + '</td>' +
+            '<td>' + api.autoBadge(l.processor || '', ACTOR_BADGE) + '</td>' +
+            '<td>' + api.escapeHtml(l.note || '') + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody>';
+    } catch (err) {
+      console.error('[settlements] info status logs error:', err);
+    }
+  }
+
+  /**
+   * settlement_info_logs에 상태 변경 이력 INSERT
+   * @param {string} settlementInfoId - settlement_infos.id
+   * @param {string} prevStatus - 이전 상태
+   * @param {string} newStatus - 변경 상태
+   * @param {string} processor - 처리 주체 (예: '관리자', '시스템')
+   * @param {string} note - 비고
+   */
+  async function insertInfoStatusLog(settlementInfoId, prevStatus, newStatus, processor, note) {
+    try {
+      await window.__supabase.from('settlement_info_logs').insert({
+        settlement_info_id: settlementInfoId,
+        prev_status: prevStatus,
+        new_status: newStatus,
+        processor: processor || '관리자',
+        note: note || '',
+        created_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('[settlements] info status log insert error:', err);
+    }
+  }
+
+  /**
+   * kindergartens 테이블 동기화 (settlement_infos의 kindergarten_id로 조회 후 업데이트)
+   * @param {string} settlementInfoId - settlement_infos.id
+   * @param {object} kgUpdate - kindergartens에 적용할 업데이트 데이터
+   */
+  async function syncKindergarten(settlementInfoId, kgUpdate) {
+    try {
+      // settlement_infos에서 kindergarten_id 조회
+      var siResult = await window.__supabase
+        .from('settlement_infos')
+        .select('kindergarten_id')
+        .eq('id', settlementInfoId)
+        .single();
+
+      if (siResult.error || !siResult.data || !siResult.data.kindergarten_id) {
+        console.warn('[settlements] kindergarten_id not found for settlement_info:', settlementInfoId);
+        return;
+      }
+
+      var kgId = siResult.data.kindergarten_id;
+      await api.updateRecord('kindergartens', kgId, kgUpdate);
+    } catch (err) {
+      console.warn('[settlements] kindergarten sync error:', err);
+    }
+  }
+
+  /**
+   * 현재 settlement_infos의 inicis_status를 조회 (이력 기록용)
+   */
+  async function getCurrentInicisStatus(id) {
+    try {
+      var result = await window.__supabase
+        .from('settlement_infos')
+        .select('inicis_status')
+        .eq('id', id)
+        .single();
+      return (result.data && result.data.inicis_status) || '미등록';
+    } catch (err) {
+      return '미등록';
+    }
+  }
+
   function bindInfoDetailModals() {
+    // 이니시스 재등록
     var reRegBtn = document.querySelector('#reRegisterModal .modal__btn--confirm-primary');
     if (reRegBtn) {
-      reRegBtn.addEventListener('click', function () {
+      reRegBtn.addEventListener('click', async function () {
         var id = api.getParam('id');
-        api.updateRecord('settlement_infos', id, { inicis_status: '요청중' }).then(function () {
-          api.insertAuditLog('이니시스재등록요청', 'settlement_infos', id, {});
-          location.reload();
-        });
+        var prevStatus = await getCurrentInicisStatus(id);
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var processorName = admin ? admin.name + ' (관리자)' : '관리자';
+
+        await api.updateRecord('settlement_infos', id, { inicis_status: '요청중' });
+        await insertInfoStatusLog(id, prevStatus, '요청중', processorName, '관리자 이니시스 재등록 요청');
+        await syncKindergarten(id, { inicis_status: '등록요청중' });
+        api.insertAuditLog('이니시스재등록요청', 'settlement_infos', id, {});
+        location.reload();
       });
     }
 
+    // 강제 승인
     var approveBtn = document.getElementById('approveBtn');
     if (approveBtn) {
-      approveBtn.addEventListener('click', function () {
+      approveBtn.addEventListener('click', async function () {
         var reason = document.getElementById('approveReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('settlement_infos', id, { inicis_status: '완료' }).then(function () {
-          api.insertAuditLog('관리자강제승인', 'settlement_infos', id, { reason: reason });
-          location.reload();
-        });
+        var prevStatus = await getCurrentInicisStatus(id);
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var processorName = admin ? admin.name + ' (관리자)' : '관리자';
+
+        await api.updateRecord('settlement_infos', id, { inicis_status: '완료' });
+        await insertInfoStatusLog(id, prevStatus, '완료', processorName, '관리자 강제 승인: ' + reason);
+        await syncKindergarten(id, { settlement_status: '승인', inicis_status: '등록완료' });
+        api.insertAuditLog('관리자강제승인', 'settlement_infos', id, { reason: reason });
+        location.reload();
       });
     }
 
+    // 강제 거절
     var rejectBtn = document.getElementById('rejectBtn');
     if (rejectBtn) {
-      rejectBtn.addEventListener('click', function () {
+      rejectBtn.addEventListener('click', async function () {
         var reason = document.getElementById('rejectReason').value;
         if (!reason) return;
         var id = api.getParam('id');
-        api.updateRecord('settlement_infos', id, { inicis_status: '실패', inicis_fail_reason: reason }).then(function () {
-          api.insertAuditLog('관리자강제거절', 'settlement_infos', id, { reason: reason });
-          location.reload();
-        });
+        var prevStatus = await getCurrentInicisStatus(id);
+        var admin = window.__auth ? window.__auth.getAdmin() : null;
+        var processorName = admin ? admin.name + ' (관리자)' : '관리자';
+
+        await api.updateRecord('settlement_infos', id, { inicis_status: '실패', inicis_fail_reason: reason });
+        await insertInfoStatusLog(id, prevStatus, '실패', processorName, '관리자 강제 거절: ' + reason);
+        await syncKindergarten(id, { settlement_status: '거절', inicis_status: '등록실패' });
+        api.insertAuditLog('관리자강제거절', 'settlement_infos', id, { reason: reason });
+        location.reload();
       });
     }
   }

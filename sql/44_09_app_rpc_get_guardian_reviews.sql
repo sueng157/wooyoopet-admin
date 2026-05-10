@@ -165,15 +165,19 @@ BEGIN
     FROM guardian_reviews gr
     WHERE gr.kindergarten_id = p_kindergarten_id
       AND gr.is_hidden = false
+  ),
+  tag_counts AS (
+    SELECT bt.ord, bt.tag, COUNT(rt.tag) AS cnt
+    FROM base_tags bt
+    LEFT JOIN review_tags rt ON bt.tag = rt.tag
+    GROUP BY bt.ord, bt.tag
   )
   SELECT COALESCE(json_agg(
-    json_build_object('tag', bt.tag, 'count', COUNT(rt.tag))
-    ORDER BY bt.ord
+    json_build_object('tag', tc.tag, 'count', tc.cnt)
+    ORDER BY tc.ord
   ), '[]'::json)
   INTO v_tags_json
-  FROM base_tags bt
-  LEFT JOIN review_tags rt ON bt.tag = rt.tag
-  GROUP BY bt.ord, bt.tag;
+  FROM tag_counts tc;
 
   -- ──────────────────────────────────────────────────────
   -- 4. 총 건수 (is_hidden = false 기준)

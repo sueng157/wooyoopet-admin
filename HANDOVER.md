@@ -486,19 +486,21 @@ USING (bucket_id = 'notice-attachments');
 
 | 버킷 | Public | 앱 사용자 권한 | 경로 규칙 |
 |------|--------|--------------|----------|
-| `profile-images` | ✅ | owner insert/update/delete, all select | `{member_id}/avatar.jpg` |
-| `pet-images` | ✅ | owner insert/update/delete, all select | `{member_id}/{pet_id}/1.jpg` |
-| `kindergarten-images` | ✅ | owner insert/update/delete, all select | `{member_id}/{kindergarten_id}/1.jpg` |
-| `review-images` | ✅ | author insert/update/delete, all select | `{member_id}/{review_id}/1.jpg` |
+| `member-images` | ✅ | owner select/insert/update/delete | `{member_id}/profile_{timestamp}.jpg` |
+| `pet-images` | ✅ | owner select/insert/update/delete | `{member_id}/{pet_id}/1.jpg` |
+| `kindergarten-images` | ✅ | owner select/insert/update/delete | `{member_id}/{kindergarten_id}/1.jpg` |
+| `review-images` | ✅ | author select/insert/update/delete | `{member_id}/{review_id}/1.jpg` |
 | `chat-files` | ❌ | participants select/insert, admin delete | `{room_id}/{timestamp}_{file}` |
 | `address-docs` | ❌ | owner select/insert/delete | `{member_id}/doc.jpg` |
 **기존 버킷 정책 변경**:
 - `education-images`: public insert/delete → **admin 전용** insert/delete (`is_admin()` 체크)
 - `banner-images`, `notice-attachments`: 변경 없음 (관리자 전용 유지)
 
-**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 20개 = 총 **9개 버킷, 20개 앱 정책**
+**Storage RLS 정책 총합**: 기존 관리자 전용 정책 + 앱 사용자 정책 24개 = 총 **8개 버킷, 24개 앱 정책**
 
 > 업데이트 (2026-04-24): 외주개발자가 생성한 member-images 버킷은 기존 profile-images와 동일 용도(보호자 프로필 사진)로 확인되어 삭제 (sql/48_08). 프로필 사진 업로드는 profile-images 버킷 사용.
+>
+> 업데이트 (2026-05-08): 앱 소스코드가 실제로는 member-images 버킷을 사용하는 것으로 확인. profile-images 버킷 및 정책 삭제 (sql/54_03), member-images 버킷 재생성 후 RLS 정책 4개 추가 (sql/54_02). pet-images·kindergarten-images·review-images에 누락된 SELECT 정책 추가 (sql/54_01, 54_04) — SELECT 정책 부재가 업로드 시 400 에러의 원인이었음.
 
 ### 5-25. Phase 5 Step 2 SQL 파일 목록 (PR #123)
 
@@ -555,7 +557,18 @@ USING (bucket_id = 'notice-attachments');
 | `48_05_drop_duplicate_rls_policies.sql` | members/pets 중복 RLS 정책 삭제 (4건) | ✅ 실행 완료 |
 | `48_06_rename_new_rls_policies.sql` | members_insert_app, pets_delete_app 네이밍 교체 | ✅ 실행 완료 |
 | `48_07_address_sync_bidirectional_trigger.sql` | 주소인증 양방향 트리거 (members ↔ kindergartens) | ✅ 실행 완료 |
-| `48_08_drop_member_images_bucket.sql` | member-images 버킷 잔여 정책 삭제 (4건) — 버킷은 Dashboard에서 삭제 (profile-images와 중복) | ✅ 실행 완료 |
+| `48_08_drop_member_images_bucket.sql` | member-images 버킷 잔여 정책 삭제 (4건) — 버킷은 Dashboard에서 삭제 (profile-images와 중복) | ✅ 실행 완료 → 이후 54_02에서 member-images 재활용 |
+
+### 5-25b. Storage 업로드 에러 수정 및 버킷 정리 (2026-05-08)
+
+> 앱에서 이미지 업로드 시 400 에러("new row violates row-level security policy") 발생 → 원인: public 버킷의 INSERT 시 Supabase 내부 SELECT가 RLS에 차단됨 (SELECT 정책 누락). profile-images → member-images 버킷 전환 반영.
+
+| SQL 파일 | 주요 내용 | 실행 여부 |
+|---------|----------|----------|
+| `54_01_add_storage_select_policies.sql` | pet-images, kindergarten-images SELECT 정책 추가 (업로드 400 에러 해결) | ✅ 실행 완료 |
+| `54_02_add_member_images_storage_policies.sql` | member-images SELECT/INSERT/UPDATE/DELETE 정책 4개 추가 (프로필 이미지 업로드 활성화) | ✅ 실행 완료 |
+| `54_03_drop_profile_images_bucket_and_policies.sql` | profile-images RLS 정책 3개 삭제 — 버킷은 Dashboard에서 수동 삭제 (SQL 직접 삭제 불가) | ✅ 실행 완료 |
+| `54_04_add_review_images_select_policy.sql` | review-images SELECT 정책 추가 (동일 에러 예방) | ✅ 실행 완료 |
 
 ### 5-27. 테스트 데이터 삭제 기능 (유치원·회원 상세 페이지)
 
@@ -666,7 +679,7 @@ USING (bucket_id = 'notice-attachments');
 - **사업자 유형 3분류**: `개인사업자`/`법인사업자`/`비사업자` (기존 `사업자`/`개인`에서 변경, CHECK 제약 포함)
 - **사업자 유형별 배지 색상**: 개인사업자(pink), 법인사업자(blue), 비사업자(brown)
 - **정산정보 상세 항목 배치**: 운영자 기본정보(4항목: 성명/생년월일/핸드폰/회원번호), 사업자 정보(6항목: 유형/주민등록번호/사업자등록번호/상호명/업종·업태/이메일)
-- **주민등록번호**: 비사업자만 표시 (개인사업자/법인사업자는 `—`), DB에 원본 저장 → JS에서 마스킹 후 전체보기 토글. ※ 런칭 전 암호화 저장(pgcrypto) 전환 필요
+- **주민등록번호**: `operator_ssn_masked` 값이 있으면 표시 (값 없으면 `—`), 뒤 6자리 마스킹 + 전체보기 토글(최고관리자/일반관리자만). ※ 앱에서 비사업자 선택 시 `business_type='비사업자'` INSERT 누락 이슈 별도 수정 필요. ※ 런칭 전 암호화 저장(pgcrypto) 전환 필요
 - **정산내역 상세 관련 링크**: 환불번호 컬럼 삭제 (정산 대상은 정상결제+정상예약완료 건이므로 환불 링크 불필요)
 
 ### 5-7. 채팅관리 특이사항
@@ -1191,8 +1204,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-6a | Supabase 신규 테이블 9개 추가 | ✅ 완료 | sql/41_01~41_09 (fcm_tokens, notifications, pet_breeds, banks, favorite_kindergartens, favorite_pets, chat_templates, chat_room_members, scheduler_history) |
 | 5-6b | 기존 테이블 컬럼 추가 6개 | ✅ 완료 | sql/42_01~42_06 (members 10컬럼, kindergartens 3컬럼, reservations 4컬럼, pets 검증+2컬럼, address_doc_urls 양방향 동기화 트리거) |
 | 5-6c | 앱 사용자 RLS 정책 79개 | ✅ 완료 | sql/43_01 — 39개 테이블에 77개 app + 2개 admin 정책 (661줄) |
-| 5-6d | Storage 버킷 6개 + 정책 20개 | ✅ 완료 | sql/43_02 — profile-images, pet-images, kindergarten-images, chat-files, review-images, address-docs (member-images는 profile-images 중복으로 삭제, sql/48_08) |
-| 5-6g | 외주개발자 추가실행 SQL 검토/정리 | ✅ 완료 | sql/48_01~48_08 — 중복 정책/컬럼 삭제, 네이밍 교체, 양방향 트리거, member-images 중복 버킷 삭제 |
+| 5-6d | Storage 버킷 6개 + 정책 24개 | ✅ 완료 | sql/43_02 — member-images, pet-images, kindergarten-images, chat-files, review-images, address-docs. profile-images 삭제 → member-images로 전환 (sql/54_02~03). SELECT 정책 누락 수정 (sql/54_01, 54_04) |
+| 5-6g | 외주개발자 추가실행 SQL 검토/정리 | ✅ 완료 | sql/48_01~48_08 — 중복 정책/컬럼 삭제, 네이밍 교체, 양방향 트리거. member-images 버킷은 이후 앱 실제 사용 확인으로 재활용 (sql/54_02) |
 | 5-6e | Supabase Secrets 등록 | ✅ 완료 | 8개 전체 등록 완료: KAKAO_ALIMTALK_API_KEY, KAKAO_ALIMTALK_USER_ID, FIREBASE_SERVICE_ACCOUNT_JSON, JUSO_CONFM_KEY, NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, INICIS_MID. INICIS_SIGN_KEY는 불필요 확인 → `MIGRATION_PLAN.md` 섹션 9-5 참조 |
 | 5-6f | API 전수조사 + Step 2.5 설계 | ✅ 완료 | 앱 소스 실제 호출 60개 대조 → 미사용 19개 제거, 누락 3개 추가, API 매핑 66개 재정렬. 앱용 RPC 함수 13개 설계 삽입 (리뷰 2분리 + 예약목록 2분리). Edge Functions 8→7개 교정 (PR #128, #130) |
 | 5-7 | 앱용 RPC 함수 SQL 작성 (Step 2.5) | ✅ 13/13 완료 | sql/44_00 (VIEW 3개) + sql/44_00a (DDL ALTER) + sql/44_01~44_12 + sql/44_05b — 앱용 RPC 13개 전체 완료. PR #133(초기 4개), #135(추가 6개), #136(#3,#4 + 리팩터링), #137(#7 + DDL). RLS 충돌 해결: VIEW 방식(방안 A) 확정. settlements RLS 보강(sql/43_01) |
@@ -1236,6 +1249,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | — | Step 3 문서 6개 (GUIDE+CODE+REVIEW) | **Step 3 앱 API 전환 가이드 전체 완료** — R1~R6 6라운드 작성 + 라운드별 리뷰 반영. APP_MIGRATION_GUIDE.md (2,804줄) + APP_MIGRATION_CODE.md (6,374줄) + REVIEW_REPORT.md. 66개 API Before/After 코드 + 전수 검수 완료 |
 | — | Step 4 EF 7개 + RPC 3개 + SQL 3개 + 공통모듈 3개 + STEP4_WORK_PLAN.md | **Step 4 Edge Functions + RPC 전체 완료 (2026-04-18~19)** — R1: send-push + send-alimtalk + app_get_blocked_list. R2: app_create_chat_room + app_get_chat_rooms. R3: send-chat-message. R4: inicis-callback + create-reservation + complete-care. R5: scheduler (pg_cron + Vault). R6: 크로스체크 PASS (Step 3 가이드 정합성 검증 완료). 산출물: `supabase/functions/` 7개 EF + `_shared/` 공통모듈 3개 + `sql/44_13~15` RPC 3개 + `sql/45_01, 46_01, 47_01` 마이그레이션 3개 |
 | — | SQL 7개 + 문서 2개 (DB_FUNCTIONS, HANDOVER) | **외주개발자 추가실행 SQL 검토 및 정리 (2026-04-24)** — sql/48_01~07. 외주개발자가 모바일앱 백엔드 연결 중 SQL Editor에서 실행한 SQL 검토. 중복 Storage 정책 삭제(pet-images, member-images), 중복 RLS 정책 삭제(members/pets), 중복 컬럼 삭제(address_verified/address_verify_image), 누락 정책 네이밍 교체(members_insert_app, pets_delete_app), 주소인증 양방향 트리거 완성(members ↔ kindergartens) |
+| — | SQL 4개 + 문서 6개 | **Storage 업로드 에러 수정 및 버킷 정리 (2026-05-08)** — sql/54_01~54_04. 앱 이미지 업로드 400 에러 해결 (SELECT 정책 누락). profile-images 삭제 → member-images 전환 (정책 4개 추가). pet-images·kindergarten-images·review-images SELECT 정책 추가. 관련 문서 6개 업데이트 (HANDOVER, TECH_DECISION, APP_MIGRATION_CODE, APP_MIGRATION_GUIDE, DB_FUNCTIONS, REVIEW_REPORT) |
+| — | SQL 3개 + 문서 3개 (README, HANDOVER, DB_FUNCTIONS) | **DB 성능 최적화 (2026-05-06)** — sql/53_01~53_03. Supabase Dashboard 테이블 로딩 수십 초, 모바일 앱 데이터 로드 지연 문제 해결. 원인: 인덱스 부재(admin_accounts Seq Scan 84,145회, reservations 26,028회) + RLS 정책 중복. 조치: (1) 핵심 인덱스 5개 생성(admin_accounts.auth_user_id, kindergartens.member_id, reservations.member_id/kindergarten_id, pets.member_id), (2) 고빈도 테이블 11개 ANALYZE, (3) 12개 테이블에서 _all_admin(FOR ALL)과 중복되는 _select_admin(FOR SELECT) 정책 12개 제거. chat_room_members는 UNIQUE constraint 존재하여 인덱스 불필요 |
 
 ---
 
