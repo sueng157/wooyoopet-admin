@@ -704,20 +704,61 @@
    * @param {string} targetId - 감사로그용 대상 ID
    * @param {string} fieldName - 감사로그용 필드명
    */
-  /** 주민등록번호 마스킹: 앞7자리 유지 + 뒤6자리 ****** (예: 830415-2345678 → 830415-2******) */
+  /**
+   * 주민등록번호 마스킹
+   * 원본 포맷: "XXXXXX-XXXXXXX" (13자리+하이픈) → "XXXXXX-X******"
+   * 하이픈 없는 포맷도 지원: "XXXXXXXXXXXXX" (13자리) → "XXXXXXX******"
+   * 기타 포맷: 뒤 6자리를 ****** 로 대체
+   */
   function maskSsn(ssn) {
-    if (!ssn || ssn.length < 8) return ssn || '';
-    return ssn.substring(0, ssn.length - 6) + '******';
+    if (!ssn) return '';
+    // 하이픈 포함 표준 포맷 (예: 830415-2345678)
+    var hyphenIdx = ssn.indexOf('-');
+    if (hyphenIdx > 0 && ssn.length > hyphenIdx + 1) {
+      return ssn.substring(0, hyphenIdx + 2) + '******';
+    }
+    // 하이픈 없는 숫자만 (예: 8304152345678)
+    if (ssn.length >= 13) {
+      return ssn.substring(0, 7) + '******';
+    }
+    // 기타 (이미 부분 마스킹된 값 등) → 그대로 반환
+    return ssn;
   }
 
-  function renderMaskedField(masked, raw, targetType, targetId, fieldName) {
-    return '<span class="masked-field">' +
+  /**
+   * 마스킹 필드 HTML 생성 (상세 페이지용)
+   * @param {string} masked - 마스킹된 값
+   * @param {string} raw - 원본 값
+   * @param {string} targetType - 감사로그용 대상 타입
+   * @param {string} targetId - 감사로그용 대상 ID
+   * @param {string} fieldName - 감사로그용 필드명
+   * @param {object} [options] - 추가 옵션
+   * @param {boolean} [options.requireRole] - true이면 최고관리자/일반관리자만 전체보기 가능
+   */
+  function renderMaskedField(masked, raw, targetType, targetId, fieldName, options) {
+    var opts = options || {};
+    var showToggle = true;
+
+    // 권한 제한: requireRole=true이면 조회전용 관리자는 전체보기 버튼 숨김
+    if (opts.requireRole) {
+      var admin = window.__auth ? window.__auth.getAdmin() : null;
+      if (!admin || (admin.role !== '최고관리자' && admin.role !== '일반관리자')) {
+        showToggle = false;
+      }
+    }
+
+    var html = '<span class="masked-field">' +
            '<span class="masked-field__value" data-masked="' + escapeHtml(masked) +
-           '" data-raw="' + escapeHtml(raw) + '">' + escapeHtml(masked) + '</span>' +
-           '<button class="masked-field__toggle" data-audit-target="' + escapeHtml(targetType) +
-           '" data-audit-id="' + escapeHtml(targetId) +
-           '" data-audit-field="' + escapeHtml(fieldName) + '">전체보기</button>' +
-           '</span>';
+           '" data-raw="' + escapeHtml(raw) + '">' + escapeHtml(masked) + '</span>';
+
+    if (showToggle) {
+      html += '<button class="masked-field__toggle" data-audit-target="' + escapeHtml(targetType) +
+              '" data-audit-id="' + escapeHtml(targetId) +
+              '" data-audit-field="' + escapeHtml(fieldName) + '">전체보기</button>';
+    }
+
+    html += '</span>';
+    return html;
   }
 
   /**
