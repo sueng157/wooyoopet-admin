@@ -1,9 +1,9 @@
 # 우유펫(WOOYOOPET) 관리자 대시보드
 
 반려동물 돌봄 플랫폼 **우유펫**의 관리자 백오피스 대시보드입니다.  
-소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. Supabase DB를 공유하며, 모바일 앱과의 연동은 Phase 5에서 진행 예정입니다.  
+소비자 서비스는 React Native 모바일 앱(프론트엔드)으로 별도 운영되며, 이 저장소는 **관리자용 백엔드 관리 도구**입니다. Supabase DB를 공유합니다.  
 **백엔드 구축 Phase 1~3 완료** (DB 스키마·인증·API 연결), **DB 연결 보완 및 UI 개선 완료** (PR #59~#112). 설정·대시보드는 모바일앱 백엔드 연결 후 후속진행 예정.  
-**Phase 5 Step 1~3 완료** — 전수 분석·매핑 설계 (PR #118~#121) + Supabase 스키마 보강 (PR #123) + API 전수조사 교정·Step 2.5 RPC 13개 완성 (PR #128~#137) + Step 3 앱 API 전환 가이드 66개 API 완성 + 전수 검수 완료 (REVIEW_REPORT.md). 다음: Step 4 Edge Functions 구현.  
+**Phase 5 전환 완료 / Phase 6 완료 (2026-05)** — 외주 개발자 통해 모바일앱 백엔드 Supabase 전환 완료 (인증/채팅/파일업로드/API), 현재 잔여 기능 오류 수정 중. 레거시 호스팅(카페24·스마일서브) 해지 및 도메인·DNS Cloudflare 이전 완료. 메인 사이트 `wooyoopet.com` 은 GitHub `sueng157/wooyoopet-web` (main) Cloudflare Pages 자동 배포로 교체. 다음: 모바일앱 최종 기능점검 및 런칭 테스트.  
 총 **HTML 43개**, **CSS 15개** (common + components + 메뉴별 12개 + login), **JS 17개** (공통 5개 + 페이지전용 12개, 총 13,068줄).  
 **CSS 리팩터링 Phase 1~6 전체 완료** — 7색 배지 시스템, 공통 컴포넌트 통합, 색상 변수 체계 확립 (총 3,430줄).  
 **UI 일관성 통일 완료** — 다운로드 버튼·테이블 링크/헤더 "상세" 통일, 상세 페이지 breadcrumb(`대메뉴 › 탭 › 상세`) + 뒤로가기(`← 탭이름 목록으로`) 전면 통일 (PR #37).  
@@ -230,12 +230,13 @@ supabase-js CDN → supabase-client.js → auth.js → common.js → components.
 
 ### 다음 단계
 8. **Phase 4: 관리자 페이지 배포** ✅ — Cloudflare Pages + `admin.wooyoopet.com` 서브도메인 연결 완료 (PR #114~#116)
-9. **Phase 5: 모바일 앱 백엔드 전환** — 진행중
+9. **Phase 5: 모바일 앱 백엔드 전환** — ✅ 전환 완료 / 🔄 잔여 기능 오류 수정 중
    - ✅ Step 1: 전수 분석 & 매핑 설계 (PR #118~#121) — PHP API 95개 전수 읽기, DB 매핑 24기존+9신규, API 전환 매핑 확정
    - ✅ Step 2: Supabase 스키마 보강 (PR #123) — 신규 테이블 9개 + 컬럼 추가 6개 + RLS 79개 + Storage 버킷 6개 (SQL 17파일)
    - ✅ API 전수조사 + Step 2.5 설계 (PR #128) — API 매핑 66개 교정, 앱용 RPC 함수 13개 설계, Edge Functions 7개
    - ✅ Step 2.5: 앱용 RPC 함수 SQL 작성 (PR #133~#137) — RPC 13/13 전체 완료, VIEW 3개, DDL ALTER 1개
    - ✅ Step 3: 앱 API 전환 가이드 — 66개 API Before/After 코드 완성 (APP_MIGRATION_GUIDE.md + APP_MIGRATION_CODE.md), 전수 검수 완료 (REVIEW_REPORT.md)
-   - ⬜ **Step 4: Edge Functions 구현** (RPC 3개 + EF 7개: 결제·채팅·예약·돌봄·알림톡·푸시·스케줄러) ← 다음 작업
-   - ⬜ Step 5: 통합 테스트 (+ Step 3 문서 크로스체크)
-10. **Phase 6: 기존 서버 해지** — 카페24·스마일서브 해지
+   - ✅ Step 4: Edge Functions 구현 — RPC 3개 + EF 7개 (결제·채팅·예약·돌봄·알림톡·푸시·스케줄러) 배포 완료
+   - ✅ Step 5: 모바일앱 백엔드 교체 — 외주 개발자가 인증/채팅/파일업로드/API 전환 완료 (2026-05). 🔄 잔여 기능 오류 수정 중
+10. **Phase 6: 기존 서버 해지 및 정리** — ✅ 완료 (2026-05) — 카페24·스마일서브 해지, 도메인 등록기관·네임서버 Cloudflare 이전, `wooyoopet.com` → GitHub `sueng157/wooyoopet-web` (main) Cloudflare Pages 자동 배포로 교체
+11. **다음 단계: 모바일앱 기능점검 및 런칭 테스트** — 잔여 오류 수정 완료 후 최종 점검 및 런칭
