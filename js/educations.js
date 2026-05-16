@@ -1967,6 +1967,22 @@
   }
 
   function bindChecklistCreate() {
+    // URL 쿼리에서 target 읽기 (?target=유치원|보호자) — 목록의 [새 버전 생성]에서 전달
+    var urlParams = new URLSearchParams(window.location.search);
+    var targetParam = urlParams.get('target');
+    if (targetParam !== '유치원' && targetParam !== '보호자') {
+      alert('잘못된 접근입니다. 목록에서 [새 버전 생성] 버튼으로 진입하세요.');
+      location.href = 'educations.html';
+      return;
+    }
+
+    // 상단 배지 렌더 (유치원=핑크, 보호자=갈색)
+    var badgeEl = document.getElementById('createTargetBadge');
+    if (badgeEl) {
+      var color = targetParam === '보호자' ? 'brown' : 'pink';
+      badgeEl.innerHTML = '<span class="badge badge--c-' + color + '">' + targetParam + '</span>';
+    }
+
     var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
     if (!saveBtn) return;
 
@@ -1987,10 +2003,11 @@
         items.push({ display_order: i + 1, content: content, is_active: isActive });
       }
 
-      // 다음 버전 번호 조회
+      // 다음 버전 번호 조회 — target별로 독립 채번
       var sb = window.__supabase;
       var maxRes = await sb.from('checklists')
         .select('version_number')
+        .eq('target', targetParam)
         .order('version_number', { ascending: false })
         .limit(1);
       var nextVersion = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].version_number + 1) : 1;
@@ -2001,6 +2018,7 @@
 
       // checklists INSERT — 미적용 상태로 생성 (기존 적용중 버전 건드리지 않음)
       var checkRes = await api.insertRecord('checklists', {
+        target: targetParam,
         version_number: nextVersion,
         apply_status: '미적용',
         item_count: items.length,
