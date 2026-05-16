@@ -28,7 +28,7 @@
     return !!document.getElementById('topicListBody');
   }
 
-  var topicBody, checklistBody, pledgeBody, statusBody;
+  var topicBody, checklistBody, guardianChecklistBody, pledgeBody, statusBody;
   var topicCount, statusCount;
   // 이수현황 DOM 캐시 (reviews.js 패턴)
   var s = {};
@@ -37,6 +37,7 @@
   function cacheListDom() {
     topicBody = document.getElementById('topicListBody');
     checklistBody = document.getElementById('checklistListBody');
+    guardianChecklistBody = document.getElementById('guardianChecklistListBody');
     pledgeBody = document.getElementById('pledgeListBody');
     statusBody = document.getElementById('statusListBody');
 
@@ -125,22 +126,29 @@
     });
   }
 
-  // 탭2: 체크리스트 + 서약서
-  async function loadChecklistList() {
-    if (!checklistBody) return;
-    api.showTableLoading(checklistBody, 6);
+  // 탭2: 체크리스트 (target 별: 유치원/보호자)
+  async function loadChecklistList(target) {
+    var body = (target === '보호자') ? guardianChecklistBody : checklistBody;
+    if (!body) return;
+    var COLS = 7; // 대상/버전/상태/항목수/작성자/작성일시/상세
+    api.showTableLoading(body, COLS);
     var result = await api.fetchList('checklists', {
       select: '*, admin:created_by(name)',
+      filters: [{ column: 'target', op: 'eq', value: target }],
       orderBy: 'version_number', ascending: false, perPage: 100
     });
-    if (result.error) { api.showTableEmpty(checklistBody, 6, '데이터 로드 실패'); return; }
-    if (!result.data.length) { api.showTableEmpty(checklistBody, 6); return; }
+    if (result.error) { api.showTableEmpty(body, COLS, '데이터 로드 실패'); return; }
+    if (!result.data.length) { api.showTableEmpty(body, COLS); return; }
+
+    var badgeColor = (target === '보호자') ? 'brown' : 'pink';
+    var targetBadge = '<span class="badge badge--c-' + badgeColor + '">' + target + '</span>';
 
     var html = '';
     for (var i = 0; i < result.data.length; i++) {
       var c = result.data[i];
       var adminInfo = c.admin || {};
       html += '<tr>' +
+        '<td>' + targetBadge + '</td>' +
         '<td>v' + c.version_number + '</td>' +
         '<td>' + api.autoBadge(c.apply_status) + '</td>' +
         '<td>' + (c.item_count || 0) + '개</td>' +
@@ -149,7 +157,7 @@
         '<td>' + api.renderDetailLink('education-checklist-detail.html', c.id) + '</td>' +
         '</tr>';
     }
-    checklistBody.innerHTML = html;
+    body.innerHTML = html;
   }
 
   async function loadPledgeList() {
@@ -381,7 +389,8 @@
     bindListEvents();
     api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.btn-add-new']);
     loadTopicList();
-    loadChecklistList();
+    loadChecklistList('보호자');
+    loadChecklistList('유치원');
     loadPledgeList();
     loadStatusList(1);
   }
@@ -820,9 +829,13 @@
     // 버전 정보 렌더링
     var basicEl = document.getElementById('detailCheckBasic');
     if (basicEl) {
+      var targetVal = _checkDetail.target || '유치원';
+      var targetColor = targetVal === '보호자' ? 'brown' : 'pink';
+      var targetBadge = '<span class="badge badge--c-' + targetColor + '">' + targetVal + '</span>';
       api.setHtml(basicEl,
         '<div class="detail-card__header"><h2 class="detail-card__title">버전 정보</h2></div>' +
         '<div class="info-grid">' +
+        '<span class="info-grid__label">대상</span><span class="info-grid__value">' + targetBadge + '</span>' +
         '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + _checkDetail.version_number + '</span>' +
         '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(_checkDetail.apply_status) + '</span>' +
         '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (_checkDetail.item_count || 0) + '개</span>' +
@@ -863,11 +876,13 @@
         var sb = window.__supabase;
         var newStatus = (_checkDetail.apply_status === '현재 적용중') ? '미적용' : '현재 적용중';
 
-        // 현재 적용중으로 변경 시 → 다른 적용중 버전을 미적용으로
+        // 현재 적용중으로 변경 시 → 같은 target의 다른 적용중 버전을 미적용으로
+        // (유치원/보호자는 각각 독립적으로 "현재 적용중" 1개를 유지)
         if (newStatus === '현재 적용중') {
           await sb.from('checklists')
             .update({ apply_status: '미적용' })
-            .eq('apply_status', '현재 적용중');
+            .eq('apply_status', '현재 적용중')
+            .eq('target', _checkDetail.target);
         }
 
         var upd = await api.updateRecord('checklists', id, { apply_status: newStatus });
@@ -1967,6 +1982,22 @@
   }
 
   function bindChecklistCreate() {
+    // URL 쿼리에서 target 읽기 (?target=유치원|보호자) — 목록의 [새 버전 생성]에서 전달
+    var urlParams = new URLSearchParams(window.location.search);
+    var targetParam = urlParams.get('target');
+    if (targetParam !== '유치원' && targetParam !== '보호자') {
+      alert('잘못된 접근입니다. 목록에서 [새 버전 생성] 버튼으로 진입하세요.');
+      location.href = 'educations.html';
+      return;
+    }
+
+    // 상단 배지 렌더 (유치원=핑크, 보호자=갈색)
+    var badgeEl = document.getElementById('createTargetBadge');
+    if (badgeEl) {
+      var color = targetParam === '보호자' ? 'brown' : 'pink';
+      badgeEl.innerHTML = '<span class="badge badge--c-' + color + '">' + targetParam + '</span>';
+    }
+
     var saveBtn = document.querySelector('#saveModal .modal__btn--confirm-primary');
     if (!saveBtn) return;
 
@@ -1987,10 +2018,11 @@
         items.push({ display_order: i + 1, content: content, is_active: isActive });
       }
 
-      // 다음 버전 번호 조회
+      // 다음 버전 번호 조회 — target별로 독립 채번
       var sb = window.__supabase;
       var maxRes = await sb.from('checklists')
         .select('version_number')
+        .eq('target', targetParam)
         .order('version_number', { ascending: false })
         .limit(1);
       var nextVersion = (maxRes.data && maxRes.data.length > 0) ? (maxRes.data[0].version_number + 1) : 1;
@@ -2001,6 +2033,7 @@
 
       // checklists INSERT — 미적용 상태로 생성 (기존 적용중 버전 건드리지 않음)
       var checkRes = await api.insertRecord('checklists', {
+        target: targetParam,
         version_number: nextVersion,
         apply_status: '미적용',
         item_count: items.length,

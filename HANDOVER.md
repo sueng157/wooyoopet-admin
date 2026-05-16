@@ -26,7 +26,7 @@
   ↓
 [완료] Phase 4: 관리자 페이지 배포 (Cloudflare Pages + admin.wooyoopet.com)
   ↓
-[진행중] Phase 5: 모바일 앱 백엔드 전환
+[완료] Phase 5: 모바일 앱 백엔드 전환 — 새 DB(Supabase) 전환 완료, 외주 개발자 통해 잔여 기능 오류 수정 중
   - 자료 수집 완료 (PHP API 109파일 + MariaDB 131테이블 + 채팅서버)
   - 전수 분석 & 마이그레이션 설계 완료 → MIGRATION_PLAN.md (Step 1 완료)
   - 교차 검증 완료 → DB_MAPPING_REFERENCE.md (PR #118~#121)
@@ -35,8 +35,11 @@
   - Step 3 앱 API 전환 가이드 완료 → APP_MIGRATION_GUIDE.md (2,804줄) + APP_MIGRATION_CODE.md (6,374줄), 66개 API Before/After 코드 + 전수 검수 REVIEW_REPORT.md
   - Step 4 Edge Functions 구현 완료 → EF 7개 배포 + RPC 3개 SQL 실행 + R6 크로스체크 검증 PASS (Step 3 가이드 정합성 확인 완료)
   - 확정: 기존 24테이블 + 신규 9테이블 + 신규 19컬럼 + API 66개 + Edge Functions 7개 + 앱용 RPC 16개 (Step 2.5: 13개 + Step 4: 3개)
+  - Step 5 모바일앱 백엔드 교체 완료 → 외주 개발자가 인증/채팅/파일업로드/API 전환 완료, 현재 잔여 기능 오류 수정 중
   ↓
-[예정] Phase 6: 기존 서버 해지 및 정리
+[완료] Phase 6: 기존 서버 해지 및 정리 — 카페24·스마일서브 해지, 도메인·DNS Cloudflare 이전, 메인 사이트 wooyoopet-web 교체 완료
+  ↓
+[예정] 모바일앱 기능점검 및 런칭 테스트
 ```
 
 > 세부 로드맵 (Phase 1~6)은 본 문서 **섹션 9 "백엔드 로드맵 및 진행 현황"** 참조.
@@ -45,9 +48,9 @@
 ### 1-3. 저장소 정보
 
 - **프로젝트**: 우유펫 관리자 백오피스 대시보드
-- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 진행중 (Step 1~4 완료, Step 5 통합테스트 예정)
+- **현재 단계**: Phase 1~3 완료 (PR #48~#57) → DB 연결 보완 및 UI 개선 완료 (PR #59~#112) → Phase 4 완료 (PR #114~#116) → Phase 5 전환 완료 (잔여 기능 오류 수정 중, 외주 개발자 진행) → Phase 6 완료 (카페24·스마일서브 해지, 도메인·DNS Cloudflare 이전, 메인 사이트 교체)
 - **저장소**: `https://github.com/sueng157/wooyoopet-admin.git`
-- **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (개발 완료·테스트용) / `genspark_ai_developer` (AI 작업용)
+- **브랜치 전략**: `main` (배포용, Cloudflare Pages 자동 배포) / `develop` (작업 완료 파일 저장 및 개발 완료·테스트용)
 - **배포 URL**: `https://admin.wooyoopet.com` (Cloudflare Pages)
 - **Pages 기본 주소**: `https://wooyoopet-admin.pages.dev`
 - **스펙 문서**: `full_spec_with_tables.md` (루트에 위치, 대메뉴 0~11번 전체 명세)
@@ -906,7 +909,7 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 4. **사이드바 링크 업데이트**: 기존 전체 HTML 파일(현재 42개)의 사이드바를 동기화
 5. **콘솔 검증**: Playwright로 JS 오류 없는지 확인
 6. **프리뷰 링크 제공**: 사용자가 직접 확인할 수 있도록 서비스 URL 공유
-7. **커밋 → PR 생성**: `genspark_ai_developer` 브랜치에서 작업, PR은 `develop`으로
+7. **커밋 → 푸시**: `develop` 브랜치에 직접 커밋·푸시 (main으로의 PR은 사용자가 직접 수행)
 8. **사용자 확인 후 머지** (develop에 머지 — 배포 안 됨)
 
 > **배포 흐름**: 사용자가 `develop → main` PR을 직접 만들어 머지할 때만 Cloudflare Pages 자동 배포가 실행됩니다.
@@ -920,23 +923,16 @@ js/settings.js          504줄  (앱설정6카드, 관리자CRUD, 피드백, 규
 # 1. develop 동기화
 git checkout develop && git pull origin develop
 
-# 2. 작업 브랜치 전환 + develop 기반 리베이스
-git checkout genspark_ai_developer && git rebase origin/develop
-
-# 3. 작업 후 커밋
+# 2. 작업 후 커밋
 git add [files] && git commit -m "feat(xxx): 설명"
 
-# 4. PR 전 동기화 확인
-git fetch origin develop && git rebase origin/develop
-
-# 5. 커밋이 여러 개면 스쿼시
+# 3. 커밋이 여러 개면 스쿼시
 git reset --soft HEAD~N && git commit -m "종합 메시지"
 
-# 6. 푸시 + PR 생성 (develop으로)
-git push -f origin genspark_ai_developer
-gh pr create --base develop --head genspark_ai_developer --title "..." --body "..."
+# 4. 푸시 (develop으로)
+git push origin develop
 
-# 7. 배포 (사용자가 직접 수행)
+# 5. 배포 (사용자가 직접 수행)
 # develop → main PR 생성 & 머지 → Cloudflare Pages 자동 배포
 ```
 
@@ -1157,21 +1153,19 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 4-4 | 커스텀 도메인 연결 | ✅ 완료 | `admin.wooyoopet.com` → Cloudflare Pages |
 | 4-5 | auth.js 배포 호환성 수정 | ✅ 완료 | Cloudflare Pages URL(.html 없는 경로) 대응 (PR #114) |
 
-**Phase 4 배포 전략 (변경됨):**
-- **기존 계획**: wooyoopet.com 도메인 전체를 Cloudflare Registrar로 이전
-- **변경된 계획**: 기존 서비스(wooyoopet.com, api/chat 서브도메인) 유지, `admin.wooyoopet.com` 서브도메인만 CNAME으로 Cloudflare Pages에 연결
-- **네임서버**: 스마일서브(iwinv) 유지 (Cloudflare로 이전하지 않음)
-- **도메인 전체 이전**: Phase 6에서 기존 서버 해지 시 진행 예정
+**Phase 4 → Phase 6 도메인 이전 이력:**
+- **초기(Phase 4)**: `admin.wooyoopet.com` 서브도메인만 CNAME으로 Cloudflare Pages에 연결, 네임서버는 스마일서브(iwinv) 유지
+- **확장(Phase 6, 2026-05)**: `wooyoopet.com` 도메인 등록기관을 스마일서브 → **Cloudflare Registrar**로 이전 완료, 네임서버도 Cloudflare로 전환, 기존 DNS 레코드 전체 복제 (불필요한 `mail.wooyoopet.com` 삭제). 카페24·스마일서브 호스팅 해지로 `api`/`chat` 서브도메인 제거. 메인 사이트는 GitHub `sueng157/wooyoopet-web` 저장소(main 브랜치)를 Cloudflare Pages에 연결하여 신규 사이트로 교체
 
-**현재 DNS 구조:**
+**현재 DNS 구조 (2026-05-16 기준):**
 
 | 도메인 | 대상 | 용도 |
 |--------|------|------|
-| `wooyoopet.com` | 115.68.168.218 (SmileServ) | 메인 사이트 |
-| `www.wooyoopet.com` | 115.68.168.218 (SmileServ) | 메인 사이트 |
-| `api.wooyoopet.com` | 1.226.82.192 | 모바일앱 API |
-| `chat.wooyoopet.com` | 1.226.82.192 | 채팅 서버 |
-| `admin.wooyoopet.com` | wooyoopet-admin.pages.dev (CNAME) | 관리자 페이지 (신규) |
+| `wooyoopet.com` | Cloudflare Pages (GitHub `sueng157/wooyoopet-web` main 자동 배포) | 메인 사이트 (신규 교체) |
+| `www.wooyoopet.com` | Cloudflare Pages (GitHub `sueng157/wooyoopet-web` main 자동 배포) | 메인 사이트 (신규 교체) |
+| `admin.wooyoopet.com` | Cloudflare Pages (GitHub `wooyoopet-admin` main 자동 배포) | 관리자 페이지 |
+
+> 도메인 등록기관·네임서버 모두 **Cloudflare**로 일원화. 카페24·스마일서브 해지 완료로 `api.wooyoopet.com` / `chat.wooyoopet.com` 레코드는 제거됨.
 
 ---
 
@@ -1213,10 +1207,10 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 | 5-8 | 앱 API 전환 가이드 작성 (Step 3) | ✅ 완료 | APP_MIGRATION_GUIDE.md (2,804줄, §0~16 + 부록 A·B) + APP_MIGRATION_CODE.md (6,374줄, §1~13 + 부록). 66개 API Before/After 코드 완성, TODO 0건. R1~R6 6라운드 작성 + 라운드별 리뷰 반영 |
 | 5-8a | Step 3 전수 검수 (REVIEW_REPORT) | ✅ 완료 | REVIEW_REPORT.md 작성. 4대 점검(코드 명확성, 일관성 R1~R6, DB 스키마 정합성, Step 4 함수 추적) 완료. 발견 이슈: [치명] 3건 + [중요] 2건 → 전체 수정 완료. DDL 대조 컬럼 불일치 5건 교정, 응답 매핑 보강 |
 | 5-9 | Edge Functions + RPC 구현 (Step 4) | ✅ 완료 | EF 7개 (send-push, send-alimtalk, send-chat-message, inicis-callback, create-reservation, complete-care, scheduler) + RPC 3개 (app_get_blocked_list, app_create_chat_room, app_get_chat_rooms). R1~R5 구현·배포 완료 (2026-04-18~19). R6 크로스체크 PASS — Step 3 가이드 정합성 검증 완료. `STEP4_WORK_PLAN.md` 참조 |
-| 5-10 | 인증 전환 | ⬜ 예정 | mb_id 파라미터 → Supabase Auth Phone OTP |
-| 5-11 | 채팅 전환 | ⬜ 예정 | 카페24 WebSocket → Supabase Realtime |
-| 5-12 | 파일 업로드 전환 | ⬜ 예정 | PHP 서버 저장 → Supabase Storage |
-| 5-13 | 통합 테스트 | ⬜ 예정 | 관리자 페이지 + 모바일 앱 동시 동작 확인 |
+| 5-10 | 인증 전환 | ✅ 완료 | Supabase Auth Phone OTP 적용 (외주 개발자) |
+| 5-11 | 채팅 전환 | ✅ 완료 | 카페24 WebSocket → Supabase Realtime 전환 (외주 개발자) |
+| 5-12 | 파일 업로드 전환 | ✅ 완료 | PHP 서버 저장 → Supabase Storage 전환 (외주 개발자) |
+| 5-13 | 통합 테스트 / 잔여 오류 수정 | 🔄 진행중 | 외주 개발자가 잔여 기능 오류 수정 중 — 관리자페이지/모바일앱 동시 동작 검증 |
 
 > 상세 작업 내용·분석 결과·매핑표는 `MIGRATION_PLAN.md` 참조.
 > **Step 2.5 완료 (2026-04-17)**: 앱용 RPC 13/13 전체 완료. VIEW 3개(sql/44_00) + DDL ALTER(sql/44_00a) + RPC 13개(sql/44_01~44_12 + 44_05b). settlements RLS 보강(sql/43_01). 외주개발자 RPC_PHP_MAPPING.md 확인 완료.
@@ -1227,7 +1221,8 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 > - APP_MIGRATION_CODE.md (6,374줄): 66개 API Before/After 코드 + 응답 매핑 테이블 + 부록(Storage 업로드 공통 유틸)
 > - REVIEW_REPORT.md: 4대 점검 완료 — [치명] 3건 + [중요] 2건 전체 수정 완료 (C1: #62 education_completions UPSERT 재작성, C2: #63 banks use_yn 교정, C3: #43 settlement_infos onConflict 교정, I1: #57 term_versions version_number 교정, I3: #42 응답 매핑 코드 예시 추가)
 > - R1~R6 6라운드 작성 + 라운드별 리뷰 반영, TODO 0건, 외주 개발자 복사-붙여넣기 가능 수준 확인
-> **Step 4 완료 (2026-04-19)**: EF 7개 + RPC 3개 구현·배포 완료. R6 크로스체크 PASS (Step 3 가이드 정합성 검증 완료). 다음 단계: Step 5 통합 테스트
+> **Step 4 완료 (2026-04-19)**: EF 7개 + RPC 3개 구현·배포 완료. R6 크로스체크 PASS (Step 3 가이드 정합성 검증 완료).
+> **Phase 5 전환 완료 (2026-05)**: 외주 개발자 작업으로 모바일 앱 백엔드의 Supabase 전환(인증/채팅/파일업로드/API) 완료. 현재 잔여 기능 오류 수정 진행 중.
 
 #### Phase 5 진행 이력
 
@@ -1258,10 +1253,20 @@ Phase 3 완료 후 전체 페이지의 DB 연결 오류 수정 및 UI 개선 작
 
 | 순서 | 작업 | 상태 | 비고 |
 |------|------|------|------|
-| 6-1 | 기존 데이터 백업 | ⬜ 예정 | MariaDB 데이터 + 서버 파일 백업 |
-| 6-2 | 카페24 해지 | ⬜ 예정 | 채팅 서버 해지 (월 ₩132,000 절감) |
-| 6-3 | 스마일서브 해지 | ⬜ 예정 | 메인 서버 해지 (월 ₩3,000 절감) |
-| 6-4 | 도메인 DNS 전체 이전 | ⬜ 예정 | SmileServ 네임서버 → Cloudflare 이전, 기존 DNS 레코드 13개 복제 후 전환 |
+| 6-1 | 기존 데이터 백업 | ✅ 완료 (생략) | 전체 테스트 데이터로 확인되어 백업 불필요로 종결 |
+| 6-2 | 카페24 해지 | ✅ 완료 (2026-05) | 채팅 서버 해지 (월 ₩132,000 절감) |
+| 6-3 | 스마일서브 해지 | ✅ 완료 (2026-05) | 메인 서버 + 도메인 호스팅 해지 (월 ₩3,000 절감) |
+| 6-4 | 도메인 등록기관 이전 | ✅ 완료 (2026-05) | 스마일서브 → Cloudflare Registrar 이전 |
+| 6-5 | DNS 네임서버 전환 | ✅ 완료 (2026-05) | SmileServ 네임서버 → Cloudflare, 기존 DNS 레코드 전체 복제, 불필요한 `mail.wooyoopet.com` 삭제 |
+| 6-6 | 메인 사이트 교체 | ✅ 완료 (2026-05) | `wooyoopet.com` → GitHub `sueng157/wooyoopet-web` (main) Cloudflare Pages 자동 배포로 교체 |
+
+> **Phase 6 완료 (2026-05)**: 레거시 호스팅 전면 해지 및 도메인·메인 사이트 이전 완료.
+
+---
+
+### 다음 단계: 모바일앱 기능점검 및 런칭 테스트
+
+외주 개발자가 진행 중인 잔여 기능 오류 수정이 마무리되는 대로, 모바일앱 최종 기능 점검 및 런칭 테스트를 진행한다.
 
 ---
 
