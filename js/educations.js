@@ -28,7 +28,7 @@
     return !!document.getElementById('topicListBody');
   }
 
-  var topicBody, checklistBody, pledgeBody, statusBody;
+  var topicBody, checklistBody, guardianChecklistBody, pledgeBody, statusBody;
   var topicCount, statusCount;
   // 이수현황 DOM 캐시 (reviews.js 패턴)
   var s = {};
@@ -37,6 +37,7 @@
   function cacheListDom() {
     topicBody = document.getElementById('topicListBody');
     checklistBody = document.getElementById('checklistListBody');
+    guardianChecklistBody = document.getElementById('guardianChecklistListBody');
     pledgeBody = document.getElementById('pledgeListBody');
     statusBody = document.getElementById('statusListBody');
 
@@ -125,22 +126,29 @@
     });
   }
 
-  // 탭2: 체크리스트 + 서약서
-  async function loadChecklistList() {
-    if (!checklistBody) return;
-    api.showTableLoading(checklistBody, 6);
+  // 탭2: 체크리스트 (target 별: 유치원/보호자)
+  async function loadChecklistList(target) {
+    var body = (target === '보호자') ? guardianChecklistBody : checklistBody;
+    if (!body) return;
+    var COLS = 7; // 대상/버전/상태/항목수/작성자/작성일시/상세
+    api.showTableLoading(body, COLS);
     var result = await api.fetchList('checklists', {
       select: '*, admin:created_by(name)',
+      filters: [{ column: 'target', op: 'eq', value: target }],
       orderBy: 'version_number', ascending: false, perPage: 100
     });
-    if (result.error) { api.showTableEmpty(checklistBody, 6, '데이터 로드 실패'); return; }
-    if (!result.data.length) { api.showTableEmpty(checklistBody, 6); return; }
+    if (result.error) { api.showTableEmpty(body, COLS, '데이터 로드 실패'); return; }
+    if (!result.data.length) { api.showTableEmpty(body, COLS); return; }
+
+    var badgeColor = (target === '보호자') ? 'brown' : 'pink';
+    var targetBadge = '<span class="badge badge--c-' + badgeColor + '">' + target + '</span>';
 
     var html = '';
     for (var i = 0; i < result.data.length; i++) {
       var c = result.data[i];
       var adminInfo = c.admin || {};
       html += '<tr>' +
+        '<td>' + targetBadge + '</td>' +
         '<td>v' + c.version_number + '</td>' +
         '<td>' + api.autoBadge(c.apply_status) + '</td>' +
         '<td>' + (c.item_count || 0) + '개</td>' +
@@ -149,7 +157,7 @@
         '<td>' + api.renderDetailLink('education-checklist-detail.html', c.id) + '</td>' +
         '</tr>';
     }
-    checklistBody.innerHTML = html;
+    body.innerHTML = html;
   }
 
   async function loadPledgeList() {
@@ -381,7 +389,8 @@
     bindListEvents();
     api.hideIfReadOnly(PERM_KEY, ['.btn-action', '.btn-add-new']);
     loadTopicList();
-    loadChecklistList();
+    loadChecklistList('보호자');
+    loadChecklistList('유치원');
     loadPledgeList();
     loadStatusList(1);
   }

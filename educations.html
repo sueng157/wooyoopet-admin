@@ -251,15 +251,40 @@
       <!-- ============================================================ -->
       <div class="tab-content" id="tab-checklist">
 
-        <!-- 섹션 A: 유치원 체크리스트 -->
+        <!-- 섹션 A1: 보호자 체크리스트 -->
+        <div class="detail-card">
+          <div class="detail-card__header">
+            <h2 class="detail-card__title">보호자 체크리스트</h2>
+            <a href="education-checklist-create.html?target=보호자" class="btn-add-new">+ 새 버전 생성</a>
+          </div>
+          <table class="mini-table" style="table-layout:fixed;">
+            <thead>
+              <tr>
+                <th>대상</th>
+                <th>버전 번호</th>
+                <th>적용 상태</th>
+                <th>항목 수</th>
+                <th>작성자</th>
+                <th>작성일시</th>
+                <th>상세</th>
+              </tr>
+            </thead>
+            <tbody id="guardianChecklistListBody">
+              <!-- JS가 동적으로 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 섹션 A2: 유치원 체크리스트 -->
         <div class="detail-card">
           <div class="detail-card__header">
             <h2 class="detail-card__title">유치원 체크리스트</h2>
-            <a href="education-checklist-create.html" class="btn-add-new">+ 새 버전 생성</a>
+            <a href="education-checklist-create.html?target=유치원" class="btn-add-new">+ 새 버전 생성</a>
           </div>
-          <table class="mini-table">
+          <table class="mini-table" style="table-layout:fixed;">
             <thead>
               <tr>
+                <th>대상</th>
                 <th>버전 번호</th>
                 <th>적용 상태</th>
                 <th>항목 수</th>
@@ -269,30 +294,7 @@
               </tr>
             </thead>
             <tbody id="checklistListBody">
-              <tr>
-                <td>v3</td>
-                <td><span class="badge badge--c-green">현재 적용중</span></td>
-                <td>22개</td>
-                <td>홍길동</td>
-                <td>2025-12-15 14:00</td>
-                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>v2</td>
-                <td><span class="badge badge--c-gray">미적용</span></td>
-                <td>20개</td>
-                <td>홍길동</td>
-                <td>2025-11-20 10:30</td>
-                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
-              </tr>
-              <tr>
-                <td>v1</td>
-                <td><span class="badge badge--c-gray">미적용</span></td>
-                <td>18개</td>
-                <td>홍길동</td>
-                <td>2025-10-01 09:00</td>
-                <td><a href="education-checklist-detail.html" class="mini-table__link">상세</a></td>
-              </tr>
+              <!-- JS가 동적으로 렌더링 -->
             </tbody>
           </table>
         </div>
