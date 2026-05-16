@@ -74,8 +74,8 @@
 | K | term_versions | 약관 버전 관리 | 관리자 전용 |
 | L | kindergarten_resident_pets | 유치원 상주 반려동물 | 관리자 + 앱 |
 | M | chat_room_reservations | 채팅방↔예약 연결 | 관리자 + 앱 (기존 payment_request_rooms 대체) |
-| N | checklists + checklist_items | 체크리스트 | 관리자 전용 |
-| O | pledges + pledge_items | 서약서 | 관리자 전용 |
+| N | checklists + checklist_items | 체크리스트 (target: 유치원/보호자) | 관리자 + 앱 |
+| O | pledges + pledge_items | 서약서 | 관리자 + 앱 |
 | P | app_settings | 앱 설정 | 관리자 전용 |
 
 ### 1-4. 기존 MariaDB에만 있고, Supabase 불필요한 테이블
