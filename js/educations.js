@@ -820,9 +820,13 @@
     // 버전 정보 렌더링
     var basicEl = document.getElementById('detailCheckBasic');
     if (basicEl) {
+      var targetVal = _checkDetail.target || '유치원';
+      var targetColor = targetVal === '보호자' ? 'brown' : 'pink';
+      var targetBadge = '<span class="badge badge--c-' + targetColor + '">' + targetVal + '</span>';
       api.setHtml(basicEl,
         '<div class="detail-card__header"><h2 class="detail-card__title">버전 정보</h2></div>' +
         '<div class="info-grid">' +
+        '<span class="info-grid__label">대상</span><span class="info-grid__value">' + targetBadge + '</span>' +
         '<span class="info-grid__label">버전</span><span class="info-grid__value">v' + _checkDetail.version_number + '</span>' +
         '<span class="info-grid__label">적용 상태</span><span class="info-grid__value">' + api.autoBadge(_checkDetail.apply_status) + '</span>' +
         '<span class="info-grid__label">항목 수</span><span class="info-grid__value">' + (_checkDetail.item_count || 0) + '개</span>' +
@@ -863,11 +867,13 @@
         var sb = window.__supabase;
         var newStatus = (_checkDetail.apply_status === '현재 적용중') ? '미적용' : '현재 적용중';
 
-        // 현재 적용중으로 변경 시 → 다른 적용중 버전을 미적용으로
+        // 현재 적용중으로 변경 시 → 같은 target의 다른 적용중 버전을 미적용으로
+        // (유치원/보호자는 각각 독립적으로 "현재 적용중" 1개를 유지)
         if (newStatus === '현재 적용중') {
           await sb.from('checklists')
             .update({ apply_status: '미적용' })
-            .eq('apply_status', '현재 적용중');
+            .eq('apply_status', '현재 적용중')
+            .eq('target', _checkDetail.target);
         }
 
         var upd = await api.updateRecord('checklists', id, { apply_status: newStatus });
